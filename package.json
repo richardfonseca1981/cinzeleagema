@@ -1,0 +1,19 @@
+{
+  "name": "site-pedras-preciosas",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev:backend": "npm run dev -w backend",
+    "dev:frontend": "npm run dev -w frontend",
+    "build:backend": "npm run build -w backend",
+    "build:frontend": "npm run build -w frontend",
+    "test:backend": "npm run test -w backend",
+    "prisma:migrate": "npm run prisma:migrate -w backend",
+    "prisma:generate": "npm run prisma:generate -w backend",
+    "prisma:seed": "npm run prisma:seed -w backend"
+  }
+}

@@ -1,0 +1,83 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         String   @default("admin")
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Category {
+  id   String @id @default(cuid())
+  name String // ex: "Esmeralda", "Ametista", "Topázio"
+  slug String @unique
+
+  // Descreve quais campos de "attributes" são esperados/exibidos para
+  // produtos dessa categoria. Schema leve, não obrigatório no banco:
+  // [{"key": "carat", "label": "Quilate", "type": "number"}, ...]
+  attributeSchema Json @default("[]")
+
+  products Product[]
+}
+
+model Product {
+  id          String  @id @default(cuid())
+  name        String
+  slug        String  @unique
+  description String?
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  price Decimal @db.Decimal(10, 2)
+  sku   String? @unique
+
+  // Estoque opcional — controlado por flag, não por presença/ausência de dado.
+  // Aqui cada peça costuma ser única: trackStock = false (peça única, sem
+  // controle de quantidade) ou trackStock = true + stockQty = 1.
+  trackStock Boolean @default(false)
+  stockQty   Int? // null quando trackStock = false
+
+  // Campos técnicos variáveis por tipo de pedra (quilate, corte, origem,
+  // certificado/laudo gemológico, cor, claridade etc.) — evita colunas
+  // fixas que só servem para um tipo de pedra. Formato validado em runtime
+  // a partir de category.attributeSchema, não pelo banco.
+  attributes Json @default("{}")
+
+  images ProductImage[]
+
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([categoryId])
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  url      String // URL pública no Cloudflare R2
+  key      String // chave do objeto no bucket R2 (para permitir exclusão futura)
+  position Int    @default(0)
+
+  // Preenchidos quando um tratamento de foto por IA é confirmado — guardam a
+  // URL/key da versão anterior para permitir desfazer (um único nível).
+  previousUrl String?
+  previousKey String?
+
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+}
