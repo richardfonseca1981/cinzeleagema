@@ -157,9 +157,35 @@ Cobertura atual: criação/listagem/edição/desativação/reativação de produ
 `trackStock=true`/`stockQty=1`), login de admin, o fluxo de atributos
 flexíveis entre categorias diferentes, e a validação das 9 operações de
 tratamento de foto (`backend/tests/imageOperations.test.ts`, testes
-unitários puros, sem rede). As rotas de `imageTreatment.routes.ts` (que
-chamam a Claude API e o microserviço `rembg`) não têm teste de integração
-ainda — ver [Tratamento de foto por IA](#tratamento-de-foto-por-ia).
+unitários puros, sem rede).
+
+### Testes de integração reais (Claude API + rembg)
+
+`backend/tests/imageTreatment.integration.test.ts` testa as rotas de
+`imageTreatment.routes.ts` com chamadas de rede **de verdade** — uma
+instrução real para a Claude API (`claude-haiku-4-5`) e uma remoção de fundo
+real via microserviço `rembg`. Por consumir créditos da Anthropic e depender
+de um serviço externo no ar, esse arquivo fica fora de `tests/**/*.test.ts`
+(não roda com `npm run test:backend`) — só roda explicitamente:
+
+```bash
+npm run test:integration
+```
+
+Pré-requisitos antes de rodar:
+- `ANTHROPIC_API_KEY` configurada em `backend/.env` — sem ela, o teste da
+  Claude API é pulado (com aviso no console), não falha.
+- Microserviço `rembg` no ar (`docker compose up -d rembg`) — sem ele, o
+  teste de remoção de fundo é pulado (com aviso no console); o teste que
+  verifica o comportamento com o serviço **fora** do ar sempre roda (não
+  depende de nada estar de pé).
+- Banco de teste migrado (`TEST_DATABASE_URL`, ver [Testes](#testes)).
+
+Cobre: formato da resposta estruturada da Claude API para uma instrução
+simples; remoção de fundo real via `rembg` (valida que o PNG retornado tem
+canal alpha); fallback 503 da rota `/treatment/preview` quando
+`ANTHROPIC_API_KEY` está ausente (sem chamar a IA); e erro tratado (502, sem
+derrubar o backend) quando o `rembg` está inacessível.
 
 ## Modelo de dados — peça única
 

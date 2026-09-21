@@ -12,6 +12,7 @@
     "build:backend": "npm run build -w backend",
     "build:frontend": "npm run build -w frontend",
     "test:backend": "npm run test -w backend",
+    "test:integration": "npm run test:integration -w backend",
     "prisma:migrate": "npm run prisma:migrate -w backend",
     "prisma:generate": "npm run prisma:generate -w backend",
     "prisma:seed": "npm run prisma:seed -w backend"

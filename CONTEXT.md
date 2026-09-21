@@ -33,16 +33,19 @@ Diferente do que se poderia supor, esta funcionalidade **já está construída e
 - Resultado salvo como objeto novo no R2 (preview); imagem do produto só muda quando admin confirma no painel; undo de um nível via `ProductImage.previousUrl`/`previousKey`
 - Rotas (protegidas por `requireAuth`): `POST /api/products/:productId/images/:imageId/treatment/{preview,confirm,discard}`, `POST /api/products/:productId/images/:imageId/undo`
 - Nada é automático — só roda quando o admin explicitamente pede e clica em "Aplicar"; upload não dispara tratamento
-- Testado: as 9 operações têm teste unitário puro (`backend/tests/imageOperations.test.ts`). **Não testado ainda**: as rotas de `imageTreatment.routes.ts` que de fato chamam a Claude API e o microserviço `rembg` não têm teste de integração
+- Testado: as 9 operações têm teste unitário puro (`backend/tests/imageOperations.test.ts`). As rotas de `imageTreatment.routes.ts` que de fato chamam a Claude API e o microserviço `rembg` têm teste de integração real em `backend/tests/imageTreatment.integration.test.ts` (chamada real à Claude API, remoção de fundo real via `rembg`, fallback 503 sem `ANTHROPIC_API_KEY`, erro 502 tratado quando o `rembg` está fora do ar) — roda só via `npm run test:integration` (não faz parte de `npm run test:backend`, pois consome créditos da Anthropic e depende de serviço externo). Validado em 2026-09-21: com `rembg` real rodando via Docker e sem `ANTHROPIC_API_KEY` configurada neste ambiente, os 3 testes aplicáveis passaram de verdade contra o serviço; o teste da Claude API foi pulado (aviso explícito no console) por falta da chave — ainda não validado com uma chamada Anthropic real
 - Fora de escopo (deliberado): upscaling/geração de detalhe via IA generativa; correção automática de cor por IA — precisão de cor da pedra deve ser resolvida operacionalmente (orientar cliente a fotografar com luz neutra/referência de cor), não via IA, pelo risco de propaganda enganosa
 - Limitação conhecida: ao confirmar um tratamento, o objeto R2 anterior não é apagado (permite o "desfazer"), o que deixa objetos órfãos no bucket sem limpeza automática ainda
 - Em produção (quando o deploy acontecer), o `rembg` deve rodar como serviço separado dentro do Railway — isso torna o custo de tratamento de foto NÃO mais R$0 puro (consome CPU/RAM extra, mesmo sem cobrança por imagem)
 
-## Identidade visual (AINDA NÃO INICIADA)
-- Confirmado no código: frontend usa Tailwind padrão (paleta `slate` neutra), sem tema customizado — deliberado, aguardando definição do cliente
-- Mesma referência estrutural dos sites usados no projeto de óleo (extronlubrificantes.com.br, lubrioil.com.br) — replicar forma/estrutura, não conteúdo
-- Paleta de cores: PRÓPRIA deste projeto, ainda a definir — NÃO reaproveitar a paleta do site de óleo (#1B3A6B etc.), que é exclusiva daquele projeto. Considerar tom mais sofisticado/joalheria ao definir
-- Quando definida, aplicar o tema é mudança isolada de CSS/Tailwind config, sem impacto em estrutura de dados ou API (por design)
+## Identidade visual — CONCLUÍDA em 2026-09-21 (decisão revista)
+- Decisão anterior (registrada aqui até 2026-09-21) era usar uma paleta PRÓPRIA, distinta do óleo. O usuário revisou essa decisão deliberadamente e pediu para reaproveitar a paleta EXATA do site de óleo/FluxioDesk, para dar consistência visual ao ecossistema de marcas do mesmo cliente terceiro — confirmado explicitamente antes da implementação (não foi engano).
+- Estrutura replicada do site de óleo (`site-vendas-oleo/frontend/src/components/landing/`), adaptando só o conteúdo: Header (sticky, logo + menu Home/Sobre Nós/Produtos/Onde Comprar/Blog/FAQ/Contato), WhatsApp flutuante, Hero split-screen, grid de peças em destaque, banner de confiança, FAQ técnica em accordion (quilate, corte vs. lapidação, claridade, laudo gemológico, natural vs. sintética/tratada, cuidados, variação de tom), "Quem somos nós", seção de certificação (placeholder, referenciando IBGM), galeria, blog ("Em breve"), footer, modal "Fale Conosco" (sem submit funcional) e modal "Política de Qualidade"
+- Implementado em `frontend/src/pages/Landing.tsx` + `frontend/src/components/landing/*` — cores aplicadas como valores arbitrários do Tailwind (`bg-[#1B3A6B]` etc.), sem estender `tailwind.config.js` (config simplificado, tema antigo "gem" preto/dourado removido junto com a página `Home.tsx` que ele estilizava)
+- Paleta aplicada (idêntica ao óleo): azul marca `#1B3A6B` (hover `#152D54`), azul institucional escuro `#15305A`, azul claro `#93B4D9`, texto principal `#1A1A1A`, texto secundário `#64748B`, texto terciário `#94A3B8`, borda `#E2E8F0`, fundo geral `#F8FAFC`, fundo alternativo `#F1F5F9`, fundo destaque suave `#EFF6FF`, WhatsApp `#25D366`
+- 100% estático, zero fetch/chamada de rede em runtime — validado com `npm run dev:frontend` isolado (sem backend), `tsc --noEmit` e `vite build`, todos sem erro
+- Nomes de peças placeholder (Esmeralda Lapidada, Ametista Bruta, Topázio Imperial, Rubi Lapidado, Safira Azul, Turmalina Verde, Citrino Lapidado, Quartzo Rosa, Granada Vermelha) — só para preencher o grid, sem ligação com o catálogo real
+- Painel admin (`AdminLayout`, `ProductList`, `ProductForm` etc.) NÃO foi alterado — continua neutro (Tailwind `slate` padrão), por ser uso interno sem identidade de marca necessária
 
 ## Custo de infraestrutura estimado
 - Cloudflare R2: ~R$0/mês
@@ -51,7 +54,7 @@ Diferente do que se poderia supor, esta funcionalidade **já está construída e
 ## Fases do projeto
 - Fase 1 (concluída): fundações técnicas — schema Prisma (`AdminUser`, `Category`, `Product`, `ProductImage`), auth JWT, CRUD de produtos e categorias, upload de imagem via R2, painel admin básico, testes de integração (produtos, auth, atributos flexíveis)
 - Fase 1.5 (concluída, não é mais pendência): tratamento de foto sob demanda com remoção de fundo — já implementado e com teste unitário das operações; falta apenas teste de integração das rotas que chamam Claude API/rembg
-- Fase 1.7 (pendente): identidade visual completa (aguardando definição do cliente)
+- Fase 1.7 (concluída): identidade visual completa — paleta e estrutura reaproveitadas do site de óleo, ver seção "Identidade visual" acima
 - Fase 2 (planejada): vitrine pública, carrinho, checkout + gateway de pagamento, cálculo de frete, NF-e, cadastro/login de cliente final, exibição de timestamps em BRT no frontend (hoje API retorna UTC cru), deploy real em Railway (backend/DB) + Vercel (frontend), integração com FluxioDesk
 
 ## Credenciais de desenvolvimento (seed)

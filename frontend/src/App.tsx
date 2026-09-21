@@ -1,5 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import { Home } from "./pages/Home";
+import { Landing } from "./pages/Landing";
 import { Login } from "./pages/Login";
 import { ProductList } from "./pages/ProductList";
 import { ProductForm } from "./pages/ProductForm";
@@ -10,7 +10,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Home />} />
+        <Route path="/" element={<Landing />} />
 
         <Route path="/login" element={<Login />} />
 
