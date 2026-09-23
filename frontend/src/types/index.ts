@@ -75,5 +75,5 @@ export interface ProductListResponse {
 
 export interface AdminSession {
   token: string;
-  admin: { id: string; email: string; role: string };
+  admin: { id: string; username: string; role: string };
 }

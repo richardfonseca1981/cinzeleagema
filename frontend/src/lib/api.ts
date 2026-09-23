@@ -48,8 +48,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
-  login: (email: string, password: string) =>
-    request<AdminSession>("/api/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
+  login: (username: string, password: string) =>
+    request<AdminSession>("/api/auth/login", { method: "POST", body: JSON.stringify({ username, password }) }),
 
   listCategories: () => request<Category[]>("/api/categories"),
   createCategory: (data: Partial<Category>) =>

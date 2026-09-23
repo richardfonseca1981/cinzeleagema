@@ -5,17 +5,18 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
+  const adminUsername = process.env.SEED_ADMIN_USERNAME ?? "admin";
   const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "admin@site-pedras-preciosas.com";
   const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? "admin123";
 
   const passwordHash = await bcrypt.hash(adminPassword, 10);
 
   await prisma.adminUser.upsert({
-    where: { email: adminEmail },
+    where: { username: adminUsername },
     update: {},
-    create: { email: adminEmail, passwordHash, role: "admin" },
+    create: { username: adminUsername, email: adminEmail, passwordHash, role: "admin" },
   });
-  console.log(`Admin criado/existente: ${adminEmail} (senha padrão: ${adminPassword})`);
+  console.log(`Admin criado/existente: ${adminUsername} (senha padrão: ${adminPassword})`);
 
   const esmeralda = await prisma.category.upsert({
     where: { slug: "esmeralda" },

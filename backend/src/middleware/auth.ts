@@ -4,7 +4,7 @@ import { env } from "../lib/env";
 
 export interface AuthPayload {
   sub: string;
-  email: string;
+  username: string;
   role: string;
 }
 

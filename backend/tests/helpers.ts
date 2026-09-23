@@ -9,9 +9,9 @@ export async function cleanDatabase() {
   await prisma.adminUser.deleteMany();
 }
 
-export function generateTestToken(overrides: Partial<{ sub: string; email: string; role: string }> = {}) {
+export function generateTestToken(overrides: Partial<{ sub: string; username: string; role: string }> = {}) {
   return jwt.sign(
-    { sub: overrides.sub ?? "test-admin-id", email: overrides.email ?? "admin@test.com", role: overrides.role ?? "admin" },
+    { sub: overrides.sub ?? "test-admin-id", username: overrides.username ?? "admin", role: overrides.role ?? "admin" },
     env.JWT_SECRET,
     { expiresIn: "1h" }
   );
