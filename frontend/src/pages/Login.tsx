@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import logo from "../assets/logo.png";
 import { api, ApiError } from "../lib/api";
 import { setSession } from "../lib/auth";
 
@@ -35,9 +36,9 @@ export function Login() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-[#F8FAFC] px-4">
-      <div className="mb-6 text-center">
-        <div className="text-lg font-bold tracking-wide text-[#1B3A6B]">Cinzel e a Gema</div>
-        <div className="text-xs font-medium text-[#64748B]">Admin</div>
+      <div className="mb-6 flex flex-col items-center text-center">
+        <img src={logo} alt="Cinzel e a Gema" className="h-20 w-auto object-contain" />
+        <div className="mt-1 text-xs font-medium text-[#64748B]">Admin</div>
       </div>
 
       <form

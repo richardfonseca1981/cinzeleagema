@@ -1,4 +1,5 @@
 import { useState } from "react";
+import logo from "../../assets/logo.png";
 import { NAV_LINKS } from "./data";
 import { CloseIcon, MenuIcon } from "./icons";
 
@@ -58,8 +59,8 @@ export function Header({
   return (
     <header className="sticky top-0 z-50 border-b border-[#E2E8F0] bg-white/95 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-        <a href="#home" className="text-xl font-bold tracking-tight text-[#1A1A1A]">
-          Cinzel <span className="text-[#1B3A6B]">e a Gema</span>
+        <a href="#home" className="flex items-center">
+          <img src={logo} alt="Cinzel e a Gema" className="h-12 w-auto object-contain" />
         </a>
 
         <nav className="hidden items-center gap-8 lg:flex">
