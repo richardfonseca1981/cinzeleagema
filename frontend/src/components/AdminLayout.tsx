@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { clearSession, getSession } from "../lib/auth";
 
@@ -5,6 +6,10 @@ export function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const session = getSession();
+
+  useEffect(() => {
+    document.title = "Cinzel e a Gema Admin";
+  }, []);
 
   function handleLogout() {
     clearSession();
@@ -16,7 +21,10 @@ export function AdminLayout() {
   return (
     <div className="flex min-h-screen bg-[#F8FAFC]">
       <aside className="flex w-56 flex-shrink-0 flex-col bg-[#1B3A6B] text-white">
-        <div className="px-5 py-5 text-sm font-semibold tracking-wide">Cinzel e a Gema</div>
+        <div className="border-b border-white/10 px-5 py-5">
+          <div className="text-base font-bold tracking-wide">Cinzel e a Gema</div>
+          <div className="text-xs font-medium text-white/60">Admin</div>
+        </div>
         <nav className="mt-2 flex flex-col gap-1 px-3">
           <Link
             to="/produtos"

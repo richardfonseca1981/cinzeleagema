@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, ApiError } from "../lib/api";
 import { setSession } from "../lib/auth";
@@ -9,6 +9,10 @@ export function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    document.title = "Cinzel e a Gema Admin";
+  }, []);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -30,7 +34,12 @@ export function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC] px-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-[#F8FAFC] px-4">
+      <div className="mb-6 text-center">
+        <div className="text-lg font-bold tracking-wide text-[#1B3A6B]">Cinzel e a Gema</div>
+        <div className="text-xs font-medium text-[#64748B]">Admin</div>
+      </div>
+
       <form
         onSubmit={handleSubmit}
         className="w-full max-w-sm space-y-5 rounded-xl border border-[#E2E8F0] bg-white p-8 shadow-sm"
