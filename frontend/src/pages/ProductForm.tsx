@@ -111,107 +111,124 @@ export function ProductForm() {
     <div>
       <h1 className="mb-4 text-lg font-semibold text-[#1A1A1A]">{isEditing ? "Editar produto" : "Novo produto"}</h1>
 
+      <div className="mb-6 rounded-lg border border-[#E2E8F0] bg-white p-6">
+        <h2 className="mb-3 text-sm font-semibold text-[#1A1A1A]">Fotos</h2>
+        {productId ? (
+          <ImageManager productId={productId} images={images} onChange={setImages} />
+        ) : (
+          <p className="text-sm text-[#64748B]">Salve o produto para poder adicionar fotos.</p>
+        )}
+      </div>
+
       <form onSubmit={handleSubmit} className="space-y-6">
         <section className="rounded-lg border border-[#E2E8F0] bg-white p-6">
           <h2 className="mb-4 text-sm font-semibold text-[#1A1A1A]">Dados do produto</h2>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelClass}>Nome</label>
-              <input required value={name} onChange={(e) => handleNameChange(e.target.value)} className={inputClass} />
-            </div>
-
-            <div>
-              <label className={labelClass}>Slug</label>
-              <input
-                required
-                value={slug}
-                onChange={(e) => {
-                  setSlug(e.target.value);
-                  setSlugTouched(true);
-                }}
-                className={inputClass}
-              />
-            </div>
-
-            <div className="col-span-2">
-              <label className={labelClass}>Descrição</label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={3}
-                className={inputClass}
-              />
-            </div>
-
-            <div>
-              <label className={labelClass}>SKU</label>
-              <input value={sku} onChange={(e) => setSku(e.target.value)} className={inputClass} />
-            </div>
-
-            <div>
-              <label className={labelClass}>Preço (R$)</label>
-              <input
-                required
-                type="number"
-                step="0.01"
-                min="0"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                className={inputClass}
-              />
-            </div>
-
-            <div>
-              <label className={labelClass}>Peso (gramas)</label>
-              <input
-                required
-                type="number"
-                step="0.01"
-                min="0"
-                value={weightGrams}
-                onChange={(e) => setWeightGrams(e.target.value)}
-                className={inputClass}
-              />
-            </div>
-
-            <div>
-              <label className={labelClass}>Tamanho (centímetros)</label>
-              <input
-                required
-                type="number"
-                step="0.01"
-                min="0"
-                value={sizeCm}
-                onChange={(e) => setSizeCm(e.target.value)}
-                className={inputClass}
-              />
-            </div>
-
-            <div className="flex items-end gap-3">
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className="flex items-center gap-2 text-sm font-medium text-[#1A1A1A]">
-                  <input
-                    type="checkbox"
-                    checked={trackStock}
-                    onChange={(e) => setTrackStock(e.target.checked)}
-                    className="h-4 w-4 accent-[#1B3A6B]"
-                  />
-                  Controlar estoque
-                </label>
-                <p className="mt-1 text-xs text-[#64748B]">Desmarcado = peça única, sem controle de quantidade.</p>
+                <label className={labelClass}>Nome</label>
+                <input required value={name} onChange={(e) => handleNameChange(e.target.value)} className={inputClass} />
               </div>
-              {trackStock && (
+
+              <div>
+                <label className={labelClass}>Descrição</label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={3}
+                  className={inputClass}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className={labelClass}>Peso (gramas)</label>
+                <input
+                  required
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={weightGrams}
+                  onChange={(e) => setWeightGrams(e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+
+              <div>
+                <label className={labelClass}>Tamanho (centímetros)</label>
+                <input
+                  required
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={sizeCm}
+                  onChange={(e) => setSizeCm(e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className={labelClass}>Slug</label>
+                <input
+                  required
+                  value={slug}
+                  onChange={(e) => {
+                    setSlug(e.target.value);
+                    setSlugTouched(true);
+                  }}
+                  className={inputClass}
+                />
+              </div>
+
+              <div>
+                <label className={labelClass}>SKU</label>
+                <input value={sku} onChange={(e) => setSku(e.target.value)} className={inputClass} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className={labelClass}>Preço (R$)</label>
+                <input
+                  required
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+
+              <div className="flex items-end gap-3">
                 <div>
-                  <label className={labelClass}>Qtd. em estoque</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={stockQty}
-                    onChange={(e) => setStockQty(e.target.value)}
-                    className={`${inputClass} w-32`}
-                  />
+                  <label className="flex items-center gap-2 text-sm font-medium text-[#1A1A1A]">
+                    <input
+                      type="checkbox"
+                      checked={trackStock}
+                      onChange={(e) => setTrackStock(e.target.checked)}
+                      className="h-4 w-4 accent-[#1B3A6B]"
+                    />
+                    Controlar estoque
+                  </label>
+                  <p className="mt-1 text-xs text-[#64748B]">Desmarcado = peça única, sem controle de quantidade.</p>
                 </div>
-              )}
+                {trackStock && (
+                  <div>
+                    <label className={labelClass}>Qtd. em estoque</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={stockQty}
+                      onChange={(e) => setStockQty(e.target.value)}
+                      className={`${inputClass} w-32`}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </section>
@@ -226,15 +243,6 @@ export function ProductForm() {
           </button>
         </div>
       </form>
-
-      <div className="mt-6 rounded-lg border border-[#E2E8F0] bg-white p-6">
-        <h2 className="mb-3 text-sm font-semibold text-[#1A1A1A]">Fotos</h2>
-        {productId ? (
-          <ImageManager productId={productId} images={images} onChange={setImages} />
-        ) : (
-          <p className="text-sm text-[#64748B]">Salve o produto para poder adicionar fotos.</p>
-        )}
-      </div>
     </div>
   );
 }
