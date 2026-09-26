@@ -4,6 +4,8 @@ export const createProductSchema = z.object({
   name: z.string().min(1),
   slug: z.string().min(1),
   description: z.string().optional().nullable(),
+  categoryId: z.string().min(1),
+  subcategoryId: z.string().optional().nullable(),
   price: z.coerce.number().nonnegative(),
   sku: z.string().optional().nullable(),
   weightGrams: z.coerce.number().positive(),
@@ -19,6 +21,8 @@ export const listProductsQuerySchema = z.object({
     .enum(["true", "false"])
     .optional()
     .transform((v) => (v === undefined ? undefined : v === "true")),
+  categoryId: z.string().min(1).optional(),
+  subcategoryId: z.string().min(1).optional(),
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().positive().max(100).default(20),
 });

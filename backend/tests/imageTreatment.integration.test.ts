@@ -135,12 +135,14 @@ describe("Rota /treatment/preview — fallback quando ANTHROPIC_API_KEY está au
   });
 
   it("responde 503 (não crasha, não chama a Claude API) quando a chave está ausente", async () => {
+    const category = await prisma.category.create({ data: { name: "Homedecor", slug: "homedecor" } });
     const product = await prisma.product.create({
       data: {
         name: "Peça de teste — tratamento de foto",
         slug: `peca-teste-tratamento-${Date.now()}`,
         price: 100,
         trackStock: false,
+        categoryId: category.id,
       },
     });
     const image = await prisma.productImage.create({

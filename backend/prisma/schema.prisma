@@ -18,11 +18,44 @@ model AdminUser {
   updatedAt    DateTime @updatedAt
 }
 
+// Categorias/subcategorias servem apenas para organização, navegação e
+// filtro do catálogo — não devem carregar campos técnicos variáveis por
+// categoria (esse conceito, attributeSchema/attributes, foi removido
+// intencionalmente e não deve voltar).
+model Category {
+  id   String @id @default(cuid())
+  name String
+  slug String @unique
+
+  subcategories Subcategory[]
+  products      Product[]
+}
+
+model Subcategory {
+  id   String @id @default(cuid())
+  name String
+  slug String @unique
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  products Product[]
+
+  @@index([categoryId])
+}
+
 model Product {
   id          String  @id @default(cuid())
   name        String
   slug        String  @unique
   description String?
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  // Null quando a categoria selecionada não tem subcategorias.
+  subcategoryId String?
+  subcategory   Subcategory? @relation(fields: [subcategoryId], references: [id])
 
   price Decimal @db.Decimal(10, 2)
   sku   String? @unique
@@ -46,6 +79,9 @@ model Product {
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([categoryId])
+  @@index([subcategoryId])
 }
 
 model ProductImage {

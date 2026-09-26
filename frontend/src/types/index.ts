@@ -32,11 +32,27 @@ export type PhotoTreatmentPreviewResult =
   | { unclear: true; suggestion?: string }
   | { unclear: false; operations: PhotoTreatmentOperation[]; previewUrl: string; previewKey: string };
 
+export interface Subcategory {
+  id: string;
+  name: string;
+  slug: string;
+  categoryId: string;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  subcategories: Subcategory[];
+}
+
 export interface Product {
   id: string;
   name: string;
   slug: string;
   description: string | null;
+  categoryId: string;
+  subcategoryId: string | null;
   price: string;
   sku: string | null;
   weightGrams: string;

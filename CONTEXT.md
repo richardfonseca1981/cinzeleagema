@@ -19,6 +19,7 @@
 
 ## Decisões de arquitetura
 - Cadastro de peça simplificado em 2026-09-26 (decisão revista) — Felipe (cliente) definiu que não haverá diferenciação de campos técnicos por tipo de pedra. A decisão anterior (registrada aqui até 2026-09-26) era usar `Product.attributes` (Json) para quilate, corte, origem, certificado/laudo gemológico, cor, claridade etc., com schema leve descrito por `Category.attributeSchema`. Todo esse sistema (model `Category`, `Product.categoryId`/`category`/`attributes`, rotas `/api/categories`, `DynamicAttributeFields.tsx`) foi **removido por completo** — migration `20260926130000_remove_category_and_attributes` dropa a tabela `Category` e as colunas `categoryId`/`attributes` de `Product` (produtos existentes perdem essa informação, aceito e confirmado antes de aplicar). Cadastro de peça hoje é só: nome, descrição, preço, SKU, peso (`weightGrams`), tamanho (`sizeCm`), estoque opcional e fotos — campos fixos, iguais para qualquer peça
+- Categorias/subcategorias reintroduzidas em 2026-09-26 (migration `20260926150000_add_categories`), mas só para organização/navegação/filtro do catálogo — sem trazer de volta `attributeSchema`/`attributes`. Models `Category` (id, name, slug) e `Subcategory` (id, name, slug, categoryId); `Product.categoryId` obrigatório, `Product.subcategoryId` opcional (null quando a categoria não tem subcategorias). Estrutura real fornecida pelo cliente: Pedras Brutas (Pedras Brutas Peça, Capelas de Ametista, Capelas de Citrino, Pedras Exclusivas), Pedras Polidas (Pedras Roladas, Pedras Polidas Exclusivas), Big (Ametistas, Calcitas, Citrinos, Formas), Homedecor e Acessorios (sem subcategorias) — populada via `prisma/seed.ts`. Rota `GET /api/categories` é pública (sem `requireAuth`), pensada para navegação/filtro do catálogo público; `GET /api/products` aceita filtro opcional por `categoryId`/`subcategoryId`. Validação de categoria/subcategoria obrigatória fica no handler das rotas de produto (`resolveSubcategoryId` em `product.routes.ts`), não no Zod, porque depende de consulta ao banco (se a categoria tem subcategorias)
 - Peso (`weightGrams`, gramas) e tamanho (`sizeCm`, centímetros) — campos fixos do `Product` desde 2026-09-25, obrigatórios no cadastro (Decimal, `@default(0)` só como rede de segurança de migration)
 - Estoque tipicamente unitário: `trackStock=false` (padrão, peça única sem controle de quantidade) ou `trackStock=true` + `stockQty=1` quando o admin preferir controlar disponibilidade explicitamente
 - Painel admin invisível ao público, protegido por JWT (`requireAuth`), sem link público; frontend usa `ProtectedRoute`
@@ -53,14 +54,14 @@ Diferente do que se poderia supor, esta funcionalidade **já está construída e
 - Tratamento de foto: não mais R$0 puro quando o `rembg` estiver rodando em produção no Railway (consome recursos, mesmo sem cobrança por imagem)
 
 ## Fases do projeto
-- Fase 1 (concluída): fundações técnicas — schema Prisma (`AdminUser`, `Product`, `ProductImage`), auth JWT, CRUD de produtos, upload de imagem via R2, painel admin básico, testes de integração (produtos, auth)
+- Fase 1 (concluída): fundações técnicas — schema Prisma (`AdminUser`, `Category`, `Subcategory`, `Product`, `ProductImage`), auth JWT, CRUD de produtos, categorias/subcategorias de organização, upload de imagem via R2, painel admin básico, testes de integração (produtos, categorias, auth)
 - Fase 1.5 (concluída, não é mais pendência): tratamento de foto sob demanda com remoção de fundo — já implementado e com teste unitário das operações; falta apenas teste de integração das rotas que chamam Claude API/rembg
 - Fase 1.7 (concluída): identidade visual completa — paleta e estrutura reaproveitadas do site de óleo, ver seção "Identidade visual" acima
 - Fase 2 (planejada): vitrine pública, carrinho, checkout + gateway de pagamento, cálculo de frete, NF-e, cadastro/login de cliente final, exibição de timestamps em BRT no frontend (hoje API retorna UTC cru), deploy real em Railway (backend/DB) + Vercel (frontend), integração com FluxioDesk
 
 ## Credenciais de desenvolvimento (seed)
 - Admin: `admin@site-pedras-preciosas.com` / senha `admin123` (sobrescrevível via `SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD`) — **trocar em produção**
-- 3 produtos de exemplo (Esmeralda Colombiana, Ametista Uruguaia, Topázio Imperial)
+- Categorias/subcategorias reais do cliente (Pedras Brutas, Pedras Polidas, Big, Homedecor, Acessorios — ver "Decisões de arquitetura") e 3 produtos de exemplo (Esmeralda Colombiana, Ametista Uruguaia, Topázio Imperial), cada um já associado a uma categoria/subcategoria real
 - Banco de testes precisa ser criado manualmente uma vez: `docker exec site-pedras-preciosas-db psql -U postgres -c "CREATE DATABASE site_pedras_preciosas_test;"`
 
 ## Padrões técnicos

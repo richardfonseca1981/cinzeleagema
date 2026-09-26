@@ -2,21 +2,27 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, ApiError } from "../lib/api";
 import { useToast } from "../components/Toast";
-import type { Product } from "../types";
+import type { Category, Product } from "../types";
 
 export function ProductList() {
   const { showToast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [search, setSearch] = useState("");
+  const [categoryId, setCategoryId] = useState("");
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.listCategories().then(setCategories);
+  }, []);
 
   useEffect(() => {
     setLoading(true);
     api
-      .listProducts()
+      .listProducts({ categoryId: categoryId || undefined })
       .then((res) => setProducts(res.items))
       .finally(() => setLoading(false));
-  }, []);
+  }, [categoryId]);
 
   const filteredProducts = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -54,6 +60,18 @@ export function ProductList() {
           placeholder="Buscar por nome..."
           className="min-w-[220px] flex-1 rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm outline-none focus:border-[#1B3A6B] focus:ring-2 focus:ring-[#EFF6FF]"
         />
+        <select
+          value={categoryId}
+          onChange={(e) => setCategoryId(e.target.value)}
+          className="rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm outline-none focus:border-[#1B3A6B] focus:ring-2 focus:ring-[#EFF6FF]"
+        >
+          <option value="">Todas as categorias</option>
+          {categories.map((category) => (
+            <option key={category.id} value={category.id}>
+              {category.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="overflow-hidden rounded-lg border border-[#E2E8F0] bg-white">

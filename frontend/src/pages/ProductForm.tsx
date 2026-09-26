@@ -1,7 +1,7 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, ApiError } from "../lib/api";
-import type { ProductImage } from "../types";
+import type { Category, ProductImage } from "../types";
 import { ImageManager } from "../components/ImageManager";
 import { useToast } from "../components/Toast";
 
@@ -28,11 +28,14 @@ export function ProductForm() {
 
   const [productId, setProductId] = useState<string | null>(id ?? null);
   const [images, setImages] = useState<ProductImage[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
 
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [slugTouched, setSlugTouched] = useState(false);
   const [description, setDescription] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [subcategoryId, setSubcategoryId] = useState("");
   const [price, setPrice] = useState("");
   const [sku, setSku] = useState("");
   const [weightGrams, setWeightGrams] = useState("");
@@ -44,6 +47,10 @@ export function ProductForm() {
   const [loading, setLoading] = useState(isEditing);
 
   useEffect(() => {
+    api.listCategories().then(setCategories);
+  }, []);
+
+  useEffect(() => {
     if (!id) return;
     api
       .getProduct(id)
@@ -52,6 +59,8 @@ export function ProductForm() {
         setSlug(product.slug);
         setSlugTouched(true);
         setDescription(product.description ?? "");
+        setCategoryId(product.categoryId);
+        setSubcategoryId(product.subcategoryId ?? "");
         setPrice(String(product.price));
         setSku(product.sku ?? "");
         setWeightGrams(String(product.weightGrams));
@@ -69,6 +78,13 @@ export function ProductForm() {
     if (!slugTouched) setSlug(slugify(value));
   }
 
+  const selectedCategory = useMemo(() => categories.find((c) => c.id === categoryId), [categories, categoryId]);
+
+  function handleCategoryChange(value: string) {
+    setCategoryId(value);
+    setSubcategoryId("");
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -77,6 +93,8 @@ export function ProductForm() {
       name,
       slug,
       description: description || null,
+      categoryId,
+      subcategoryId: selectedCategory && selectedCategory.subcategories.length > 0 ? subcategoryId : null,
       price: Number(price),
       sku: sku || null,
       weightGrams: Number(weightGrams),
@@ -139,6 +157,48 @@ export function ProductForm() {
                   className={inputClass}
                 />
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className={labelClass}>Categoria</label>
+                <select
+                  required
+                  value={categoryId}
+                  onChange={(e) => handleCategoryChange(e.target.value)}
+                  className={inputClass}
+                >
+                  <option value="" disabled>
+                    Selecione uma categoria
+                  </option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedCategory && selectedCategory.subcategories.length > 0 && (
+                <div>
+                  <label className={labelClass}>Subcategoria</label>
+                  <select
+                    required
+                    value={subcategoryId}
+                    onChange={(e) => setSubcategoryId(e.target.value)}
+                    className={inputClass}
+                  >
+                    <option value="" disabled>
+                      Selecione uma subcategoria
+                    </option>
+                    {selectedCategory.subcategories.map((subcategory) => (
+                      <option key={subcategory.id} value={subcategory.id}>
+                        {subcategory.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

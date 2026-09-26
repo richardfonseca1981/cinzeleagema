@@ -2,6 +2,7 @@ import { clearSession, getSession } from "./auth";
 import type {
   AdminSession,
   AdminUserSummary,
+  Category,
   PhotoTreatmentPreviewResult,
   Product,
   ProductImage,
@@ -57,9 +58,12 @@ export const api = {
   deactivateAdminUser: (id: string) =>
     request<AdminUserSummary>(`/api/admin-users/${id}/deactivate`, { method: "PATCH" }),
 
-  listProducts: (params: { active?: boolean } = {}) => {
+  listCategories: () => request<Category[]>("/api/categories"),
+
+  listProducts: (params: { active?: boolean; categoryId?: string } = {}) => {
     const query = new URLSearchParams();
     if (params.active !== undefined) query.set("active", String(params.active));
+    if (params.categoryId) query.set("categoryId", params.categoryId);
     return request<ProductListResponse>(`/api/products?${query.toString()}`);
   },
   getProduct: (id: string) => request<Product>(`/api/products/${id}`),

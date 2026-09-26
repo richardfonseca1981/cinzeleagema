@@ -5,6 +5,8 @@ import { env } from "../src/lib/env";
 export async function cleanDatabase() {
   await prisma.productImage.deleteMany();
   await prisma.product.deleteMany();
+  await prisma.subcategory.deleteMany();
+  await prisma.category.deleteMany();
   await prisma.adminUser.deleteMany();
 }
 
