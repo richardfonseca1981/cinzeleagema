@@ -1,8 +1,7 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, ApiError } from "../lib/api";
-import type { Category, ProductImage } from "../types";
-import { DynamicAttributeFields } from "../components/DynamicAttributeFields";
+import type { ProductImage } from "../types";
 import { ImageManager } from "../components/ImageManager";
 import { useToast } from "../components/Toast";
 
@@ -27,7 +26,6 @@ export function ProductForm() {
   const navigate = useNavigate();
   const { showToast } = useToast();
 
-  const [categories, setCategories] = useState<Category[]>([]);
   const [productId, setProductId] = useState<string | null>(id ?? null);
   const [images, setImages] = useState<ProductImage[]>([]);
 
@@ -35,21 +33,15 @@ export function ProductForm() {
   const [slug, setSlug] = useState("");
   const [slugTouched, setSlugTouched] = useState(false);
   const [description, setDescription] = useState("");
-  const [categoryId, setCategoryId] = useState("");
   const [price, setPrice] = useState("");
   const [sku, setSku] = useState("");
+  const [weightGrams, setWeightGrams] = useState("");
+  const [sizeCm, setSizeCm] = useState("");
   const [trackStock, setTrackStock] = useState(false);
   const [stockQty, setStockQty] = useState("");
-  const [attributes, setAttributes] = useState<Record<string, unknown>>({});
 
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(isEditing);
-
-  const selectedCategory = useMemo(() => categories.find((c) => c.id === categoryId), [categories, categoryId]);
-
-  useEffect(() => {
-    api.listCategories().then(setCategories);
-  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -60,12 +52,12 @@ export function ProductForm() {
         setSlug(product.slug);
         setSlugTouched(true);
         setDescription(product.description ?? "");
-        setCategoryId(product.categoryId);
         setPrice(String(product.price));
         setSku(product.sku ?? "");
+        setWeightGrams(String(product.weightGrams));
+        setSizeCm(String(product.sizeCm));
         setTrackStock(product.trackStock);
         setStockQty(product.stockQty !== null ? String(product.stockQty) : "");
-        setAttributes(product.attributes);
         setImages(product.images);
         setProductId(product.id);
       })
@@ -77,10 +69,6 @@ export function ProductForm() {
     if (!slugTouched) setSlug(slugify(value));
   }
 
-  function handleAttributeChange(key: string, value: unknown) {
-    setAttributes((prev) => ({ ...prev, [key]: value }));
-  }
-
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -89,12 +77,12 @@ export function ProductForm() {
       name,
       slug,
       description: description || null,
-      categoryId,
       price: Number(price),
       sku: sku || null,
+      weightGrams: Number(weightGrams),
+      sizeCm: Number(sizeCm),
       trackStock,
       stockQty: trackStock && stockQty !== "" ? Number(stockQty) : null,
-      attributes,
     };
 
     try {
@@ -156,18 +144,6 @@ export function ProductForm() {
             </div>
 
             <div>
-              <label className={labelClass}>Categoria</label>
-              <select required value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className={inputClass}>
-                <option value="">Selecione...</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
               <label className={labelClass}>SKU</label>
               <input value={sku} onChange={(e) => setSku(e.target.value)} className={inputClass} />
             </div>
@@ -181,6 +157,32 @@ export function ProductForm() {
                 min="0"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
+                className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label className={labelClass}>Peso (gramas)</label>
+              <input
+                required
+                type="number"
+                step="0.01"
+                min="0"
+                value={weightGrams}
+                onChange={(e) => setWeightGrams(e.target.value)}
+                className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label className={labelClass}>Tamanho (centímetros)</label>
+              <input
+                required
+                type="number"
+                step="0.01"
+                min="0"
+                value={sizeCm}
+                onChange={(e) => setSizeCm(e.target.value)}
                 className={inputClass}
               />
             </div>
@@ -213,14 +215,6 @@ export function ProductForm() {
             </div>
           </div>
         </section>
-
-        {selectedCategory && (
-          <section className="rounded-lg border border-[#E2E8F0] bg-[#EFF6FF] p-6">
-            <h2 className="mb-1 text-sm font-semibold text-[#1A1A1A]">Campos técnicos — {selectedCategory.name}</h2>
-            <p className="mb-4 text-xs text-[#64748B]">Definidos pela categoria selecionada.</p>
-            <DynamicAttributeFields schema={selectedCategory.attributeSchema} values={attributes} onChange={handleAttributeChange} />
-          </section>
-        )}
 
         <div>
           <button

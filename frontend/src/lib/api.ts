@@ -1,12 +1,5 @@
 import { clearSession, getSession } from "./auth";
-import type {
-  AdminSession,
-  Category,
-  PhotoTreatmentPreviewResult,
-  Product,
-  ProductImage,
-  ProductListResponse,
-} from "../types";
+import type { AdminSession, PhotoTreatmentPreviewResult, Product, ProductImage, ProductListResponse } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -51,13 +44,8 @@ export const api = {
   login: (username: string, password: string) =>
     request<AdminSession>("/api/auth/login", { method: "POST", body: JSON.stringify({ username, password }) }),
 
-  listCategories: () => request<Category[]>("/api/categories"),
-  createCategory: (data: Partial<Category>) =>
-    request<Category>("/api/categories", { method: "POST", body: JSON.stringify(data) }),
-
-  listProducts: (params: { categoryId?: string; active?: boolean } = {}) => {
+  listProducts: (params: { active?: boolean } = {}) => {
     const query = new URLSearchParams();
-    if (params.categoryId) query.set("categoryId", params.categoryId);
     if (params.active !== undefined) query.set("active", String(params.active));
     return request<ProductListResponse>(`/api/products?${query.toString()}`);
   },

@@ -18,30 +18,22 @@ model AdminUser {
   updatedAt    DateTime @updatedAt
 }
 
-model Category {
-  id   String @id @default(cuid())
-  name String // ex: "Esmeralda", "Ametista", "Topázio"
-  slug String @unique
-
-  // Descreve quais campos de "attributes" são esperados/exibidos para
-  // produtos dessa categoria. Schema leve, não obrigatório no banco:
-  // [{"key": "carat", "label": "Quilate", "type": "number"}, ...]
-  attributeSchema Json @default("[]")
-
-  products Product[]
-}
-
 model Product {
   id          String  @id @default(cuid())
   name        String
   slug        String  @unique
   description String?
 
-  categoryId String
-  category   Category @relation(fields: [categoryId], references: [id])
-
   price Decimal @db.Decimal(10, 2)
   sku   String? @unique
+
+  // Peso e tamanho se aplicam a qualquer peça, independente da categoria —
+  // por isso são colunas fixas, diferente dos campos técnicos variáveis em
+  // `attributes` (quilate, corte, claridade etc.). Default 0 apenas para
+  // não quebrar registros existentes na migration; cadastros novos via
+  // formulário sempre informam um valor real (validado no Zod).
+  weightGrams Decimal @default(0) @db.Decimal(10, 2)
+  sizeCm      Decimal @default(0) @db.Decimal(10, 2)
 
   // Estoque opcional — controlado por flag, não por presença/ausência de dado.
   // Aqui cada peça costuma ser única: trackStock = false (peça única, sem
@@ -49,19 +41,11 @@ model Product {
   trackStock Boolean @default(false)
   stockQty   Int? // null quando trackStock = false
 
-  // Campos técnicos variáveis por tipo de pedra (quilate, corte, origem,
-  // certificado/laudo gemológico, cor, claridade etc.) — evita colunas
-  // fixas que só servem para um tipo de pedra. Formato validado em runtime
-  // a partir de category.attributeSchema, não pelo banco.
-  attributes Json @default("{}")
-
   images ProductImage[]
 
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  @@index([categoryId])
 }
 
 model ProductImage {

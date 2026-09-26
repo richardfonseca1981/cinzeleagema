@@ -4,18 +4,17 @@ export const createProductSchema = z.object({
   name: z.string().min(1),
   slug: z.string().min(1),
   description: z.string().optional().nullable(),
-  categoryId: z.string().min(1),
   price: z.coerce.number().nonnegative(),
   sku: z.string().optional().nullable(),
+  weightGrams: z.coerce.number().positive(),
+  sizeCm: z.coerce.number().positive(),
   trackStock: z.boolean().default(false),
   stockQty: z.coerce.number().int().nonnegative().optional().nullable(),
-  attributes: z.record(z.unknown()).default({}),
 });
 
 export const updateProductSchema = createProductSchema.partial();
 
 export const listProductsQuerySchema = z.object({
-  categoryId: z.string().optional(),
   active: z
     .enum(["true", "false"])
     .optional()

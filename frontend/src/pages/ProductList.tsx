@@ -2,27 +2,21 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, ApiError } from "../lib/api";
 import { useToast } from "../components/Toast";
-import type { Category, Product } from "../types";
+import type { Product } from "../types";
 
 export function ProductList() {
   const { showToast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [categoryFilter, setCategoryFilter] = useState("");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.listCategories().then(setCategories);
-  }, []);
-
-  useEffect(() => {
     setLoading(true);
     api
-      .listProducts({ categoryId: categoryFilter || undefined })
+      .listProducts()
       .then((res) => setProducts(res.items))
       .finally(() => setLoading(false));
-  }, [categoryFilter]);
+  }, []);
 
   const filteredProducts = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -60,18 +54,6 @@ export function ProductList() {
           placeholder="Buscar por nome..."
           className="min-w-[220px] flex-1 rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm outline-none focus:border-[#1B3A6B] focus:ring-2 focus:ring-[#EFF6FF]"
         />
-        <select
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-          className="rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm outline-none focus:border-[#1B3A6B] focus:ring-2 focus:ring-[#EFF6FF]"
-        >
-          <option value="">Todas as categorias</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
       </div>
 
       <div className="overflow-hidden rounded-lg border border-[#E2E8F0] bg-white">
@@ -79,7 +61,6 @@ export function ProductList() {
           <thead className="bg-[#F8FAFC] text-[#64748B]">
             <tr>
               <th className="px-4 py-2">Nome</th>
-              <th className="px-4 py-2">Categoria</th>
               <th className="px-4 py-2">Preço</th>
               <th className="px-4 py-2">Estoque</th>
               <th className="px-4 py-2">Status</th>
@@ -89,21 +70,21 @@ export function ProductList() {
           <tbody>
             {loading && (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-[#64748B]">
+                <td colSpan={5} className="px-4 py-6 text-center text-[#64748B]">
                   Carregando...
                 </td>
               </tr>
             )}
             {!loading && filteredProducts.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center">
+                <td colSpan={5} className="px-4 py-10 text-center">
                   <p className="font-medium text-[#1A1A1A]">
                     {products.length === 0 ? "Nenhum produto cadastrado ainda" : "Nenhum produto encontrado"}
                   </p>
                   <p className="mt-1 text-sm text-[#64748B]">
                     {products.length === 0
                       ? 'Clique em "Novo produto" para cadastrar a primeira peça do catálogo.'
-                      : "Tente ajustar a busca ou o filtro de categoria."}
+                      : "Tente ajustar a busca."}
                   </p>
                 </td>
               </tr>
@@ -111,7 +92,6 @@ export function ProductList() {
             {filteredProducts.map((product) => (
               <tr key={product.id} className={`border-t border-[#E2E8F0] ${!product.active ? "bg-[#F8FAFC]" : ""}`}>
                 <td className="px-4 py-2 text-[#1A1A1A]">{product.name}</td>
-                <td className="px-4 py-2 text-[#64748B]">{product.category.name}</td>
                 <td className="px-4 py-2 text-[#1A1A1A]">
                   {Number(product.price).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                 </td>

@@ -1,19 +1,3 @@
-export type AttributeFieldType = "text" | "number" | "boolean" | "select";
-
-export interface AttributeSchemaField {
-  key: string;
-  label: string;
-  type: AttributeFieldType;
-  options?: string[];
-}
-
-export interface Category {
-  id: string;
-  name: string;
-  slug: string;
-  attributeSchema: AttributeSchemaField[];
-}
-
 export interface ProductImage {
   id: string;
   url: string;
@@ -53,13 +37,12 @@ export interface Product {
   name: string;
   slug: string;
   description: string | null;
-  categoryId: string;
-  category: Category;
   price: string;
   sku: string | null;
+  weightGrams: string;
+  sizeCm: string;
   trackStock: boolean;
   stockQty: number | null;
-  attributes: Record<string, unknown>;
   images: ProductImage[];
   active: boolean;
   createdAt: string;
