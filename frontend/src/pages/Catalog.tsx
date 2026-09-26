@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api } from "../lib/api";
 import type { Category, Product } from "../types";
 import { CatalogHeader } from "../components/catalog/CatalogHeader";
+import { CategoryNav } from "../components/catalog/CategoryNav";
 import { ProductCard } from "../components/catalog/ProductCard";
 import { FloatingCartButton } from "../components/catalog/FloatingCartButton";
 
@@ -19,8 +20,6 @@ export function Catalog() {
     api.listCategories().then(setCategories);
   }, []);
 
-  const selectedCategory = useMemo(() => categories.find((c) => c.id === categoryId), [categories, categoryId]);
-
   useEffect(() => {
     setLoading(true);
     api
@@ -33,14 +32,12 @@ export function Catalog() {
     setSearchParams(id ? { categoria: id } : {});
   }
 
-  function handleSelectSubcategory(id: string) {
-    const next = new URLSearchParams(searchParams);
-    if (id && id !== subcategoryId) {
-      next.set("subcategoria", id);
+  function handleSelectSubcategory(catId: string, subId: string) {
+    if (catId === categoryId && subId === subcategoryId) {
+      setSearchParams({ categoria: catId });
     } else {
-      next.delete("subcategoria");
+      setSearchParams({ categoria: catId, subcategoria: subId });
     }
-    setSearchParams(next);
   }
 
   return (
@@ -51,62 +48,30 @@ export function Catalog() {
         <h1 className="text-2xl font-bold">Catálogo</h1>
         <p className="mt-1 text-[#64748B]">Conheça as peças disponíveis, organizadas por categoria.</p>
 
-        <div className="mt-6 flex flex-wrap gap-2">
-          <button
-            onClick={() => handleSelectCategory("")}
-            className={`rounded-full border px-4 py-1.5 text-sm font-medium transition ${
-              !categoryId
-                ? "border-[#1B3A6B] bg-[#1B3A6B] text-white"
-                : "border-[#E2E8F0] bg-white text-[#1A1A1A] hover:border-[#1B3A6B]"
-            }`}
-          >
-            Todas
-          </button>
-          {categories.map((category) => (
-            <button
-              key={category.id}
-              onClick={() => handleSelectCategory(category.id)}
-              className={`rounded-full border px-4 py-1.5 text-sm font-medium transition ${
-                categoryId === category.id
-                  ? "border-[#1B3A6B] bg-[#1B3A6B] text-white"
-                  : "border-[#E2E8F0] bg-white text-[#1A1A1A] hover:border-[#1B3A6B]"
-              }`}
-            >
-              {category.name}
-            </button>
-          ))}
+        <div className="mt-8 grid gap-8 lg:grid-cols-[220px_1fr]">
+          <CategoryNav
+            categories={categories}
+            categoryId={categoryId}
+            subcategoryId={subcategoryId}
+            onSelectCategory={handleSelectCategory}
+            onSelectSubcategory={handleSelectSubcategory}
+          />
+
+          <div>
+            {loading && <p className="text-[#64748B]">Carregando...</p>}
+            {!loading && products.length === 0 && (
+              <p className="text-[#64748B]">Nenhuma peça encontrada nessa categoria.</p>
+            )}
+
+            {!loading && products.length > 0 && (
+              <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+                {products.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-
-        {selectedCategory && selectedCategory.subcategories.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {selectedCategory.subcategories.map((subcategory) => (
-              <button
-                key={subcategory.id}
-                onClick={() => handleSelectSubcategory(subcategory.id)}
-                className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
-                  subcategoryId === subcategory.id
-                    ? "border-[#1B3A6B] bg-[#EFF6FF] text-[#1B3A6B]"
-                    : "border-[#E2E8F0] bg-white text-[#64748B] hover:border-[#1B3A6B]"
-                }`}
-              >
-                {subcategory.name}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {loading && <p className="mt-10 text-[#64748B]">Carregando...</p>}
-        {!loading && products.length === 0 && (
-          <p className="mt-10 text-[#64748B]">Nenhuma peça encontrada nessa categoria.</p>
-        )}
-
-        {!loading && products.length > 0 && (
-          <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {products.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-        )}
       </div>
 
       <FloatingCartButton />
