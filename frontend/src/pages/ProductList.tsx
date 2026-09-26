@@ -39,7 +39,7 @@ export function ProductList() {
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-lg font-semibold text-[#1A1A1A]">Produtos</h1>
         <Link
-          to="/produtos/novo"
+          to="/admin/produtos/novo"
           className="rounded-lg bg-[#1B3A6B] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#152D54]"
         >
           Novo produto
@@ -110,7 +110,7 @@ export function ProductList() {
                   </span>
                 </td>
                 <td className="px-4 py-2 text-right">
-                  <Link to={`/produtos/${product.id}`} className="mr-3 text-[#1B3A6B] hover:underline">
+                  <Link to={`/admin/produtos/${product.id}`} className="mr-3 text-[#1B3A6B] hover:underline">
                     Editar
                   </Link>
                   <button onClick={() => handleToggleActive(product)} className="text-[#64748B] hover:underline">

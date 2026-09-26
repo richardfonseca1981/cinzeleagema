@@ -14,10 +14,11 @@ export function AdminLayout() {
 
   function handleLogout() {
     clearSession();
-    navigate("/login");
+    navigate("/admin");
   }
 
-  const isProductsSection = location.pathname.startsWith("/produtos");
+  const isProductsSection = location.pathname.startsWith("/admin/produtos");
+  const isUsersSection = location.pathname.startsWith("/admin/usuarios");
 
   return (
     <div className="flex min-h-screen bg-[#F8FAFC]">
@@ -28,12 +29,20 @@ export function AdminLayout() {
         </div>
         <nav className="mt-2 flex flex-col gap-1 px-3">
           <Link
-            to="/produtos"
+            to="/admin/produtos"
             className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
               isProductsSection ? "bg-white/15 text-white" : "text-white/80 hover:bg-white/10 hover:text-white"
             }`}
           >
             Produtos
+          </Link>
+          <Link
+            to="/admin/usuarios"
+            className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+              isUsersSection ? "bg-white/15 text-white" : "text-white/80 hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            Usuários
           </Link>
         </nav>
       </aside>

@@ -89,12 +89,12 @@ export function ProductForm() {
       if (productId) {
         await api.updateProduct(productId, payload);
         showToast("success", "Produto atualizado com sucesso");
-        navigate("/produtos");
+        navigate("/admin/produtos");
       } else {
         const created = await api.createProduct(payload);
         setProductId(created.id);
         showToast("success", "Produto criado com sucesso");
-        navigate(`/produtos/${created.id}`, { replace: true });
+        navigate(`/admin/produtos/${created.id}`, { replace: true });
       }
     } catch (err) {
       showToast("error", err instanceof ApiError ? err.message : "Não foi possível salvar o produto");

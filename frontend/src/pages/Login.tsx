@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/logo.png";
 import { api, ApiError } from "../lib/api";
-import { setSession } from "../lib/auth";
+import { getSession, setSession } from "../lib/auth";
 
 export function Login() {
   const navigate = useNavigate();
@@ -13,7 +13,10 @@ export function Login() {
 
   useEffect(() => {
     document.title = "Cinzel e a Gema Admin";
-  }, []);
+    if (getSession()) {
+      navigate("/admin/produtos", { replace: true });
+    }
+  }, [navigate]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -22,7 +25,7 @@ export function Login() {
     try {
       const session = await api.login(username, password);
       setSession(session);
-      navigate("/produtos");
+      navigate("/admin/produtos");
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         setError("Usuário ou senha incorretos");

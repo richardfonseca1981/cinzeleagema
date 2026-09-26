@@ -60,3 +60,11 @@ export interface AdminSession {
   token: string;
   admin: { id: string; username: string; role: string };
 }
+
+export interface AdminUserSummary {
+  id: string;
+  username: string;
+  role: string;
+  active: boolean;
+  createdAt: string;
+}

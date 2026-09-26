@@ -10,7 +10,7 @@ datasource db {
 model AdminUser {
   id           String   @id @default(cuid())
   username     String   @unique
-  email        String   @unique
+  email        String?  @unique
   passwordHash String
   role         String   @default("admin")
   active       Boolean  @default(true)

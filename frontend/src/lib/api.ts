@@ -1,5 +1,12 @@
 import { clearSession, getSession } from "./auth";
-import type { AdminSession, PhotoTreatmentPreviewResult, Product, ProductImage, ProductListResponse } from "../types";
+import type {
+  AdminSession,
+  AdminUserSummary,
+  PhotoTreatmentPreviewResult,
+  Product,
+  ProductImage,
+  ProductListResponse,
+} from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -27,7 +34,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (res.status === 401) {
     clearSession();
-    window.location.href = "/login";
+    window.location.href = "/admin";
     throw new ApiError(401, "Sessão expirada");
   }
 
@@ -43,6 +50,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 export const api = {
   login: (username: string, password: string) =>
     request<AdminSession>("/api/auth/login", { method: "POST", body: JSON.stringify({ username, password }) }),
+
+  listAdminUsers: () => request<AdminUserSummary[]>("/api/admin-users"),
+  createAdminUser: (data: { username: string; password: string }) =>
+    request<AdminUserSummary>("/api/admin-users", { method: "POST", body: JSON.stringify(data) }),
+  deactivateAdminUser: (id: string) =>
+    request<AdminUserSummary>(`/api/admin-users/${id}/deactivate`, { method: "PATCH" }),
 
   listProducts: (params: { active?: boolean } = {}) => {
     const query = new URLSearchParams();
