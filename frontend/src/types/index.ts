@@ -53,6 +53,8 @@ export interface Product {
   description: string | null;
   categoryId: string;
   subcategoryId: string | null;
+  category?: { id: string; name: string; slug: string };
+  subcategory?: { id: string; name: string; slug: string; categoryId: string } | null;
   price: string;
   sku: string | null;
   weightGrams: string;
@@ -83,4 +85,16 @@ export interface AdminUserSummary {
   role: string;
   active: boolean;
   createdAt: string;
+}
+
+export interface CartItem {
+  productId: string;
+  name: string;
+  unitPrice: number;
+  imageUrl: string | null;
+  quantity: number;
+}
+
+export interface CreateOrderResult {
+  delivered: boolean;
 }

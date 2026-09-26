@@ -25,9 +25,11 @@
 - Painel admin invisível ao público, protegido por JWT (`requireAuth`), sem link público; frontend usa `ProtectedRoute`
 - Upload de imagem via URL assinada do R2 — backend nunca recebe o arquivo (`presign` → `PUT` direto → confirma registro `ProductImage`)
 
-## Checkout
-- Ainda não implementado nesta fase (não há vitrine pública, carrinho nem checkout — ver "Fases do projeto")
-- Planejado: também será encaminhado ao setor de Vendas do FluxioDesk (mesmo padrão do óleo), com atendimento separado por marca (chat/setor próprio para Cinzel e a Gema, distinto do TechFlow) mas os mesmos agentes atendendo as duas marcas
+## Checkout — catálogo público implementado em 2026-09-26 (sem pagamento no site)
+- Rotas públicas (sem `requireAuth`): `GET /api/categories`, `GET /api/products` (com filtro opcional `categoryId`/`subcategoryId`) e `GET /api/products/:id` — alimentam `/catalogo`, `/catalogo/:id`, `/carrinho` e `/finalizar` no frontend. Só as rotas que alteram produto (`POST`/`PATCH`/ativar/desativar) continuam exigindo login de admin
+- Carrinho é 100% client-side (`frontend/src/lib/cart.tsx`, contexto React + `localStorage`, chave `cinzeleagema_cart`) — nada é persistido no backend até o pedido ser finalizado
+- Finalização de pedido (`POST /api/orders`, pública, sem auth): tenta entregar ao FluxioDesk via `FLUXIODESK_API_URL`/`FLUXIODESK_API_KEY` (variáveis só no backend — nunca expostas ao browser); se as variáveis estiverem ausentes ou a chamada falhar, responde `{ delivered: false }` e o frontend cai para um link `wa.me` com a mensagem do pedido pré-preenchida (`VITE_WHATSAPP_NUMBER`). Carrinho é limpo depois do envio, por qualquer um dos dois caminhos. Não há pagamento nem gateway no site — é só encaminhamento do pedido
+- Também será encaminhado ao setor de Vendas do FluxioDesk (mesmo padrão do óleo), com atendimento separado por marca (chat/setor próprio para Cinzel e a Gema, distinto do TechFlow) mas os mesmos agentes atendendo as duas marcas
 
 ## Tratamento de foto sob demanda — JÁ IMPLEMENTADO (não é só design)
 Diferente do que se poderia supor, esta funcionalidade **já está construída e testada** (não é uma fase futura):
@@ -57,7 +59,8 @@ Diferente do que se poderia supor, esta funcionalidade **já está construída e
 - Fase 1 (concluída): fundações técnicas — schema Prisma (`AdminUser`, `Category`, `Subcategory`, `Product`, `ProductImage`), auth JWT, CRUD de produtos, categorias/subcategorias de organização, upload de imagem via R2, painel admin básico, testes de integração (produtos, categorias, auth)
 - Fase 1.5 (concluída, não é mais pendência): tratamento de foto sob demanda com remoção de fundo — já implementado e com teste unitário das operações; falta apenas teste de integração das rotas que chamam Claude API/rembg
 - Fase 1.7 (concluída): identidade visual completa — paleta e estrutura reaproveitadas do site de óleo, ver seção "Identidade visual" acima
-- Fase 2 (planejada): vitrine pública, carrinho, checkout + gateway de pagamento, cálculo de frete, NF-e, cadastro/login de cliente final, exibição de timestamps em BRT no frontend (hoje API retorna UTC cru), deploy real em Railway (backend/DB) + Vercel (frontend), integração com FluxioDesk
+- Fase 1.9 (concluída em 2026-09-26): catálogo público real (`/catalogo`, `/catalogo/:id`) com navegação por categoria/subcategoria puxando dados reais da API, carrinho client-side e finalização de pedido sem pagamento (FluxioDesk com fallback WhatsApp) — ver "Checkout" acima
+- Fase 2 (planejada): gateway de pagamento, cálculo de frete, NF-e, cadastro/login de cliente final, exibição de timestamps em BRT no frontend (hoje API retorna UTC cru), deploy real em Railway (backend/DB) + Vercel (frontend)
 
 ## Credenciais de desenvolvimento (seed)
 - Admin: `admin@site-pedras-preciosas.com` / senha `admin123` (sobrescrevível via `SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD`) — **trocar em produção**

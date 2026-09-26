@@ -3,6 +3,7 @@ import type {
   AdminSession,
   AdminUserSummary,
   Category,
+  CreateOrderResult,
   PhotoTreatmentPreviewResult,
   Product,
   ProductImage,
@@ -60,13 +61,21 @@ export const api = {
 
   listCategories: () => request<Category[]>("/api/categories"),
 
-  listProducts: (params: { active?: boolean; categoryId?: string } = {}) => {
+  listProducts: (params: { active?: boolean; categoryId?: string; subcategoryId?: string } = {}) => {
     const query = new URLSearchParams();
     if (params.active !== undefined) query.set("active", String(params.active));
     if (params.categoryId) query.set("categoryId", params.categoryId);
+    if (params.subcategoryId) query.set("subcategoryId", params.subcategoryId);
     return request<ProductListResponse>(`/api/products?${query.toString()}`);
   },
   getProduct: (id: string) => request<Product>(`/api/products/${id}`),
+
+  createOrder: (data: {
+    customerName: string;
+    customerPhone: string;
+    items: { productId: string; name: string; quantity: number; unitPrice: number }[];
+    totalEstimate: number;
+  }) => request<CreateOrderResult>("/api/orders", { method: "POST", body: JSON.stringify(data) }),
   createProduct: (data: Record<string, unknown>) =>
     request<Product>("/api/products", { method: "POST", body: JSON.stringify(data) }),
   updateProduct: (id: string, data: Record<string, unknown>) =>

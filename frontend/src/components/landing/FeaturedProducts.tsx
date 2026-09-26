@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { PLACEHOLDER_PRODUCTS } from "./data";
 import { PlaceholderImage } from "./PlaceholderImage";
 
@@ -44,19 +45,12 @@ export function FeaturedProducts({ whatsappHref }: { whatsappHref: string | null
         </div>
 
         <div className="mt-10 text-center">
-          {/* Sem página de catálogo real ainda — leva para o WhatsApp com uma
-              mensagem genérica. Trocar por link para a página de catálogo
-              completo quando ela existir. */}
-          {whatsappHref && (
-            <a
-              href={`${whatsappHref}?text=${encodeURIComponent("Olá! Gostaria de conhecer o catálogo completo de peças.")}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center rounded-full bg-[#1B3A6B] px-8 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#152D54]"
-            >
-              Visualizar todos os produtos
-            </a>
-          )}
+          <Link
+            to="/catalogo"
+            className="inline-flex items-center justify-center rounded-full bg-[#1B3A6B] px-8 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#152D54]"
+          >
+            Visualizar todos os produtos
+          </Link>
         </div>
       </div>
     </section>

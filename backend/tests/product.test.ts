@@ -38,8 +38,15 @@ afterAll(async () => {
 });
 
 describe("Product routes", () => {
-  it("rejects requests without an auth token", async () => {
+  it("allows listing products without an auth token (public catalog)", async () => {
     const res = await request(app).get("/api/products");
+    expect(res.status).toBe(200);
+  });
+
+  it("rejects creating a product without an auth token", async () => {
+    const res = await request(app)
+      .post("/api/products")
+      .send({ name: "Peça", slug: "peca", price: 10, categoryId: categoryWithoutSubId });
     expect(res.status).toBe(401);
   });
 

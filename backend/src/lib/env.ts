@@ -17,6 +17,8 @@ const envSchema = z.object({
   ANTHROPIC_API_KEY: z.string().optional().default(""),
   REMBG_SERVICE_URL: z.string().optional().default("http://localhost:8001"),
   REMBG_SERVICE_SECRET: z.string().optional().default(""),
+  FLUXIODESK_API_URL: z.string().optional().default(""),
+  FLUXIODESK_API_KEY: z.string().optional().default(""),
 });
 
 export const env = envSchema.parse(process.env);

@@ -7,7 +7,8 @@ import { createProductSchema, listProductsQuerySchema, updateProductSchema } fro
 
 export const productRouter = Router();
 
-productRouter.use(requireAuth);
+// GET fica público: alimenta o catálogo do site (navegação/filtro por
+// categoria e página de detalhe). Só as rotas que alteram dados exigem login.
 
 // Valida que a categoria existe e que a subcategoria (quando informada ou
 // exigida) pertence a ela. Retorna o subcategoryId final a ser persistido
@@ -72,6 +73,7 @@ productRouter.get(
 
 productRouter.post(
   "/",
+  requireAuth,
   asyncHandler(async (req, res) => {
     const data = createProductSchema.parse(req.body);
 
@@ -90,6 +92,7 @@ productRouter.post(
 
 productRouter.patch(
   "/:id",
+  requireAuth,
   asyncHandler(async (req, res) => {
     const data = updateProductSchema.parse(req.body);
 
@@ -117,6 +120,7 @@ productRouter.patch(
 
 productRouter.patch(
   "/:id/deactivate",
+  requireAuth,
   asyncHandler(async (req, res) => {
     const product = await prisma.product.update({
       where: { id: req.params.id },
@@ -128,6 +132,7 @@ productRouter.patch(
 
 productRouter.patch(
   "/:id/activate",
+  requireAuth,
   asyncHandler(async (req, res) => {
     const product = await prisma.product.update({
       where: { id: req.params.id },
