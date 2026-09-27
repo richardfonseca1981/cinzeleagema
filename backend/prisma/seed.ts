@@ -4,6 +4,8 @@ import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
+// Ordem fixa definida pelo cliente — a posição de cada categoria e de cada
+// subcategoria dentro dela vem da ordem dos arrays abaixo (1-based).
 const categoryData: { name: string; slug: string; subcategories?: { name: string; slug: string }[] }[] = [
   {
     name: "Pedras Brutas",
@@ -54,19 +56,21 @@ async function main() {
   const categoryIdBySlug = new Map<string, string>();
   const subcategoryIdBySlug = new Map<string, string>();
 
-  for (const cat of categoryData) {
+  for (const [categoryIndex, cat] of categoryData.entries()) {
+    const position = categoryIndex + 1;
     const category = await prisma.category.upsert({
       where: { slug: cat.slug },
-      update: { name: cat.name },
-      create: { name: cat.name, slug: cat.slug },
+      update: { name: cat.name, position },
+      create: { name: cat.name, slug: cat.slug, position },
     });
     categoryIdBySlug.set(cat.slug, category.id);
 
-    for (const sub of cat.subcategories ?? []) {
+    for (const [subIndex, sub] of (cat.subcategories ?? []).entries()) {
+      const subPosition = subIndex + 1;
       const subcategory = await prisma.subcategory.upsert({
         where: { slug: sub.slug },
-        update: { name: sub.name, categoryId: category.id },
-        create: { name: sub.name, slug: sub.slug, categoryId: category.id },
+        update: { name: sub.name, categoryId: category.id, position: subPosition },
+        create: { name: sub.name, slug: sub.slug, categoryId: category.id, position: subPosition },
       });
       subcategoryIdBySlug.set(sub.slug, subcategory.id);
     }

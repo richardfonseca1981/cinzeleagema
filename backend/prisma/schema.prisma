@@ -27,6 +27,10 @@ model Category {
   name String
   slug String @unique
 
+  // Ordem de exibição fixa definida pelo cliente — só o seed altera; não há
+  // interface para editar categorias/posições.
+  position Int @default(0)
+
   subcategories Subcategory[]
   products      Product[]
 }
@@ -35,6 +39,9 @@ model Subcategory {
   id   String @id @default(cuid())
   name String
   slug String @unique
+
+  // Ordem de exibição fixa dentro da categoria — mesma regra da posição da Category.
+  position Int @default(0)
 
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
