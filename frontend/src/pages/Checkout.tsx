@@ -105,7 +105,8 @@ export function Checkout() {
       <div className="mx-auto max-w-lg px-4 py-8">
         <h1 className="text-2xl font-bold">Finalizar pedido</h1>
         <p className="mt-1 text-sm text-[#64748B]">
-          Sem pagamento pelo site — nossa equipe entra em contato para combinar entrega e forma de pagamento.
+          Quase lá! Informe seus dados e confirme o pedido. Em breve nossa equipe fala com você pelo WhatsApp para
+          combinar pagamento e entrega.
         </p>
 
         <div className="mt-6 rounded-lg border border-[#E2E8F0] bg-white p-4">
