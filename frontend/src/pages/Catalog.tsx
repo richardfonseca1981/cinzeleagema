@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api } from "../lib/api";
 import type { Category, Product } from "../types";
-import { CatalogHeader } from "../components/catalog/CatalogHeader";
+import { PublicHeader } from "../components/landing/PublicHeader";
+import { WhatsAppFloatingButton } from "../components/landing/WhatsAppFloatingButton";
 import { CategoryNav } from "../components/catalog/CategoryNav";
 import { ProductCard } from "../components/catalog/ProductCard";
 import { FloatingCartButton } from "../components/catalog/FloatingCartButton";
+import { WHATSAPP_HREF } from "../lib/whatsapp";
 
 export function Catalog() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -42,7 +44,7 @@ export function Catalog() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#1A1A1A]">
-      <CatalogHeader />
+      <PublicHeader />
 
       <div className="mx-auto max-w-6xl px-4 py-8">
         <h1 className="text-2xl font-bold">Catálogo</h1>
@@ -75,6 +77,7 @@ export function Catalog() {
       </div>
 
       <FloatingCartButton />
+      <WhatsAppFloatingButton whatsappHref={WHATSAPP_HREF} />
     </div>
   );
 }

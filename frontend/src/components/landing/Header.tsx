@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import logo from "../../assets/logo.png";
 import { NAV_LINKS } from "./data";
 import { CloseIcon, MenuIcon } from "./icons";
@@ -40,6 +41,14 @@ function NavItem({
     );
   }
 
+  if (link.kind === "route") {
+    return (
+      <Link to={link.to} onClick={onNavigate} className={className}>
+        {link.label}
+      </Link>
+    );
+  }
+
   return (
     <a href={link.href} onClick={onNavigate} className={className}>
       {link.label}
@@ -59,7 +68,7 @@ export function Header({
   return (
     <header className="sticky top-0 z-50 border-b border-[#E2E8F0] bg-white/95 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-        <a href="#home" className="flex items-center">
+        <a href="/#home" className="flex items-center">
           <img src={logo} alt="Cinzel e a Gema" className="h-12 w-auto object-contain" />
         </a>
 

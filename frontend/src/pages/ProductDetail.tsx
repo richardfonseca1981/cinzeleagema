@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api, ApiError } from "../lib/api";
 import type { Product } from "../types";
-import { CatalogHeader } from "../components/catalog/CatalogHeader";
+import { PublicHeader } from "../components/landing/PublicHeader";
+import { WhatsAppFloatingButton } from "../components/landing/WhatsAppFloatingButton";
 import { FloatingCartButton } from "../components/catalog/FloatingCartButton";
 import { formatPrice, formatWeightSize } from "../lib/format";
+import { WHATSAPP_HREF } from "../lib/whatsapp";
 import { useCart } from "../lib/cart";
 import { useToast } from "../components/Toast";
 
@@ -16,6 +18,7 @@ export function ProductDetail() {
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const weightSize = product ? formatWeightSize(product.weightGrams, product.sizeCm) : null;
 
   useEffect(() => {
     if (!id) return;
@@ -44,7 +47,7 @@ export function ProductDetail() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#1A1A1A]">
-      <CatalogHeader />
+      <PublicHeader />
       <div className="mx-auto max-w-4xl px-4 py-8">
         <Link to="/catalogo" className="text-sm font-medium text-[#1B3A6B] hover:underline">
           ← Voltar ao catálogo
@@ -75,7 +78,7 @@ export function ProductDetail() {
               )}
               <h1 className="mt-1 text-2xl font-bold">{product.name}</h1>
               {product.description && <p className="mt-4 text-[#1A1A1A]">{product.description}</p>}
-              <p className="mt-4 text-sm text-[#64748B]">{formatWeightSize(product.weightGrams, product.sizeCm)}</p>
+              {weightSize && <p className="mt-4 text-sm text-[#64748B]">{weightSize}</p>}
               <p className="mt-2 text-2xl font-bold text-[#1B3A6B]">{formatPrice(product.price)}</p>
 
               <div className="mt-6 flex items-center gap-3">
@@ -103,6 +106,7 @@ export function ProductDetail() {
         )}
       </div>
       <FloatingCartButton />
+      <WhatsAppFloatingButton whatsappHref={WHATSAPP_HREF} />
     </div>
   );
 }

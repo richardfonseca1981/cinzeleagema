@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { FacebookIcon, InstagramIcon, LinkedinIcon, MailIcon, MapPinIcon, WhatsAppIcon } from "./icons";
 
 export function Footer({
@@ -66,7 +67,7 @@ export function Footer({
             <h3 className="text-sm font-semibold uppercase tracking-widest text-[#93B4D9]">Navegação</h3>
             <ul className="mt-3 space-y-2 text-sm">
               <li><a href="#sobre" className="hover:text-white">Sobre Nós</a></li>
-              <li><a href="#produtos" className="hover:text-white">Produtos</a></li>
+              <li><Link to="/catalogo" className="hover:text-white">Produtos</Link></li>
               <li><a href="#faq" className="hover:text-white">FAQ</a></li>
               <li>
                 <button type="button" onClick={onOpenQualityPolicy} className="hover:text-white">

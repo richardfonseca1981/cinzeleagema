@@ -1,7 +1,9 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useCart } from "../lib/cart";
 import { formatPrice } from "../lib/format";
-import { CatalogHeader } from "../components/catalog/CatalogHeader";
+import { PublicHeader } from "../components/landing/PublicHeader";
+import { WhatsAppFloatingButton } from "../components/landing/WhatsAppFloatingButton";
+import { WHATSAPP_HREF } from "../lib/whatsapp";
 
 export function Cart() {
   const { items, removeItem, updateQuantity, totalEstimate } = useCart();
@@ -9,7 +11,7 @@ export function Cart() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#1A1A1A]">
-      <CatalogHeader />
+      <PublicHeader />
       <div className="mx-auto max-w-3xl px-4 py-8">
         <h1 className="text-2xl font-bold">Seu pedido</h1>
 
@@ -73,6 +75,7 @@ export function Cart() {
           </>
         )}
       </div>
+      <WhatsAppFloatingButton whatsappHref={WHATSAPP_HREF} />
     </div>
   );
 }

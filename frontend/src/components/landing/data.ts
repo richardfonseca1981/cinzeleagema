@@ -5,14 +5,18 @@
 
 // "Onde Comprar" é um link direto para o WhatsApp (não uma âncora — não há
 // seção "Onde Comprar" no corpo da página). "Contato" abre o modal "Fale
-// Conosco" em vez de navegar.
+// Conosco" em vez de navegar. "Produtos" é uma rota real (catálogo público),
+// não mais uma âncora para a seção da landing. Os demais itens usam "/#id"
+// (não só "#id") para funcionar tanto na landing quanto vindos de outra
+// página (ex.: catálogo) — nesse caso é uma navegação de página inteira até
+// "/", com o navegador rolando até a âncora depois do carregamento.
 export const NAV_LINKS = [
-  { kind: "anchor", href: "#home", label: "Home" },
-  { kind: "anchor", href: "#sobre", label: "Sobre Nós" },
-  { kind: "anchor", href: "#produtos", label: "Produtos" },
+  { kind: "anchor", href: "/#home", label: "Home" },
+  { kind: "anchor", href: "/#sobre", label: "Sobre Nós" },
+  { kind: "route", to: "/catalogo", label: "Produtos" },
   { kind: "whatsapp", label: "Onde Comprar" },
-  { kind: "anchor", href: "#blog", label: "Blog" },
-  { kind: "anchor", href: "#faq", label: "FAQ" },
+  { kind: "anchor", href: "/#blog", label: "Blog" },
+  { kind: "anchor", href: "/#faq", label: "FAQ" },
   { kind: "modal", label: "Contato" },
 ] as const;
 
@@ -22,20 +26,6 @@ export const HERO_CONTENT = {
   title: "Pedras preciosas selecionadas com curadoria e procedência",
   subtitle: "Peças únicas, com atenção à qualidade, à origem e à documentação de cada pedra.",
 };
-
-// Peças placeholder — nomes genéricos só para preencher o grid visualmente.
-// Substituir pelo catálogo real assim que ele for integrado.
-export const PLACEHOLDER_PRODUCTS = [
-  { name: "Esmeralda Lapidada", description: "Peça única, lapidação em corte esmeralda" },
-  { name: "Ametista Bruta", description: "Tonalidade profunda, sem lapidação" },
-  { name: "Topázio Imperial", description: "Cor laranja-rosada característica" },
-  { name: "Rubi Lapidado", description: "Corte oval, alta transparência" },
-  { name: "Safira Azul", description: "Peça com laudo gemológico disponível" },
-  { name: "Turmalina Verde", description: "Tonalidade vibrante, corte pera" },
-  { name: "Citrino Lapidado", description: "Corte redondo, brilho intenso" },
-  { name: "Quartzo Rosa", description: "Peça bruta, tom suave e uniforme" },
-  { name: "Granada Vermelha", description: "Corte cushion, alta claridade" },
-] as const;
 
 export const FAQ_ITEMS = [
   {

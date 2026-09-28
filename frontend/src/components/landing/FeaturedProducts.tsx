@@ -1,48 +1,45 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { PLACEHOLDER_PRODUCTS } from "./data";
-import { PlaceholderImage } from "./PlaceholderImage";
+import { api } from "../../lib/api";
+import type { Product } from "../../types";
+import { ProductCard } from "../catalog/ProductCard";
 
-export function FeaturedProducts({ whatsappHref }: { whatsappHref: string | null }) {
+export function FeaturedProducts() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+
+  useEffect(() => {
+    api
+      .listProducts({ active: true, pageSize: 6 })
+      .then((res) => {
+        setProducts(res.items);
+        setStatus("ready");
+      })
+      .catch(() => setStatus("error"));
+  }, []);
+
+  // Falha na API não deve quebrar a landing — some a seção em silêncio.
+  if (status === "error") return null;
+
   return (
     <section id="produtos" className="bg-[#F8FAFC] py-16 sm:py-24">
       <div className="mx-auto max-w-6xl px-4">
         <div className="mx-auto max-w-2xl text-center">
           <p className="text-sm font-semibold uppercase tracking-widest text-[#1B3A6B]">Peças em destaque</p>
           <h2 className="mt-2 text-2xl font-bold text-[#1A1A1A] sm:text-3xl">Conheça algumas de nossas peças</h2>
-          <p className="mt-4 text-[#64748B]">
-            Catálogo completo em construção. As peças abaixo são exemplos ilustrativos da nossa
-            curadoria.
-          </p>
         </div>
 
-        <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {PLACEHOLDER_PRODUCTS.map((product) => (
-            <div
-              key={product.name}
-              className="flex flex-col overflow-hidden rounded-xl border border-[#E2E8F0] bg-white shadow-sm transition hover:shadow-md"
-            >
-              <PlaceholderImage label="Imagem da peça (placeholder)" className="h-44 w-full" />
-              <div className="flex flex-1 flex-col p-5">
-                <h3 className="font-semibold text-[#1A1A1A]">{product.name}</h3>
-                <p className="mt-1 flex-1 text-sm text-[#64748B]">{product.description}</p>
-                {whatsappHref ? (
-                  <a
-                    href={`${whatsappHref}?text=${encodeURIComponent(`Olá! Tenho interesse em saber mais sobre: ${product.name}`)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-4 inline-flex items-center justify-center rounded-lg border border-[#1B3A6B] px-4 py-2 text-sm font-semibold text-[#1B3A6B] transition hover:bg-[#EFF6FF]"
-                  >
-                    Saiba mais
-                  </a>
-                ) : (
-                  <span className="mt-4 inline-flex items-center justify-center rounded-lg border border-[#E2E8F0] px-4 py-2 text-sm font-semibold text-[#94A3B8]">
-                    Saiba mais
-                  </span>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
+        {status === "ready" && products.length === 0 && (
+          <p className="mt-10 text-center text-[#64748B]">Novidades chegando em breve — volte para conferir.</p>
+        )}
+
+        {products.length > 0 && (
+          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {products.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        )}
 
         <div className="mt-10 text-center">
           <Link

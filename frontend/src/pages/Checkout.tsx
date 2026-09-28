@@ -3,7 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useCart } from "../lib/cart";
 import { api } from "../lib/api";
 import { formatPrice } from "../lib/format";
-import { CatalogHeader } from "../components/catalog/CatalogHeader";
+import { PublicHeader } from "../components/landing/PublicHeader";
+import { WhatsAppFloatingButton } from "../components/landing/WhatsAppFloatingButton";
+import { WHATSAPP_HREF } from "../lib/whatsapp";
 
 const WHATSAPP_NUMBER = import.meta.env.VITE_WHATSAPP_NUMBER;
 
@@ -69,10 +71,11 @@ export function Checkout() {
   if (items.length === 0 && !sentVia) {
     return (
       <div className="min-h-screen bg-[#F8FAFC] text-[#1A1A1A]">
-        <CatalogHeader />
+        <PublicHeader />
         <div className="mx-auto max-w-lg px-4 py-16 text-center">
           <p className="text-[#64748B]">Seu pedido está vazio.</p>
         </div>
+        <WhatsAppFloatingButton whatsappHref={WHATSAPP_HREF} />
       </div>
     );
   }
@@ -80,7 +83,7 @@ export function Checkout() {
   if (sentVia) {
     return (
       <div className="min-h-screen bg-[#F8FAFC] text-[#1A1A1A]">
-        <CatalogHeader />
+        <PublicHeader />
         <div className="mx-auto max-w-lg px-4 py-16 text-center">
           <h1 className="text-2xl font-bold text-[#1B3A6B]">Pedido enviado!</h1>
           <p className="mt-3 text-[#64748B]">
@@ -95,13 +98,14 @@ export function Checkout() {
             Voltar ao catálogo
           </button>
         </div>
+        <WhatsAppFloatingButton whatsappHref={WHATSAPP_HREF} />
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#1A1A1A]">
-      <CatalogHeader />
+      <PublicHeader />
       <div className="mx-auto max-w-lg px-4 py-8">
         <h1 className="text-2xl font-bold">Finalizar pedido</h1>
         <p className="mt-1 text-sm text-[#64748B]">
@@ -153,6 +157,7 @@ export function Checkout() {
           </button>
         </form>
       </div>
+      <WhatsAppFloatingButton whatsappHref={WHATSAPP_HREF} />
     </div>
   );
 }

@@ -61,11 +61,12 @@ export const api = {
 
   listCategories: () => request<Category[]>("/api/categories"),
 
-  listProducts: (params: { active?: boolean; categoryId?: string; subcategoryId?: string } = {}) => {
+  listProducts: (params: { active?: boolean; categoryId?: string; subcategoryId?: string; pageSize?: number } = {}) => {
     const query = new URLSearchParams();
     if (params.active !== undefined) query.set("active", String(params.active));
     if (params.categoryId) query.set("categoryId", params.categoryId);
     if (params.subcategoryId) query.set("subcategoryId", params.subcategoryId);
+    if (params.pageSize !== undefined) query.set("pageSize", String(params.pageSize));
     return request<ProductListResponse>(`/api/products?${query.toString()}`);
   },
   getProduct: (id: string) => request<Product>(`/api/products/${id}`),

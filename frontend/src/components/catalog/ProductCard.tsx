@@ -8,6 +8,7 @@ export function ProductCard({ product }: { product: Product }) {
   const { addItem } = useCart();
   const { showToast } = useToast();
   const image = product.images[0]?.url ?? null;
+  const weightSize = formatWeightSize(product.weightGrams, product.sizeCm);
 
   function handleAdd() {
     addItem({ productId: product.id, name: product.name, unitPrice: Number(product.price), imageUrl: image });
@@ -30,7 +31,7 @@ export function ProductCard({ product }: { product: Product }) {
         {product.description && (
           <p className="mt-1 line-clamp-2 flex-1 text-sm text-[#64748B]">{product.description}</p>
         )}
-        <p className="mt-2 text-xs text-[#94A3B8]">{formatWeightSize(product.weightGrams, product.sizeCm)}</p>
+        {weightSize && <p className="mt-2 text-xs text-[#94A3B8]">{weightSize}</p>}
         <p className="mt-2 text-lg font-bold text-[#1B3A6B]">{formatPrice(product.price)}</p>
         <button
           onClick={handleAdd}
