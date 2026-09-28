@@ -6,13 +6,11 @@ import { CloseIcon, MenuIcon } from "./icons";
 
 function NavItem({
   link,
-  whatsappHref,
   onOpenContact,
   onNavigate,
   className,
 }: {
   link: (typeof NAV_LINKS)[number];
-  whatsappHref: string | null;
   onOpenContact: () => void;
   onNavigate: () => void;
   className: string;
@@ -32,15 +30,6 @@ function NavItem({
     );
   }
 
-  if (link.kind === "whatsapp") {
-    if (!whatsappHref) return null;
-    return (
-      <a href={whatsappHref} target="_blank" rel="noopener noreferrer" onClick={onNavigate} className={className}>
-        {link.label}
-      </a>
-    );
-  }
-
   if (link.kind === "route") {
     return (
       <Link to={link.to} onClick={onNavigate} className={className}>
@@ -56,13 +45,7 @@ function NavItem({
   );
 }
 
-export function Header({
-  whatsappHref,
-  onOpenContact,
-}: {
-  whatsappHref: string | null;
-  onOpenContact: () => void;
-}) {
+export function Header({ onOpenContact }: { onOpenContact: () => void }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -77,7 +60,6 @@ export function Header({
             <NavItem
               key={link.label}
               link={link}
-              whatsappHref={whatsappHref}
               onOpenContact={onOpenContact}
               onNavigate={() => {}}
               className="text-sm font-medium text-[#64748B] transition hover:text-[#1B3A6B]"
@@ -103,7 +85,6 @@ export function Header({
               <NavItem
                 key={link.label}
                 link={link}
-                whatsappHref={whatsappHref}
                 onOpenContact={onOpenContact}
                 onNavigate={() => setOpen(false)}
                 className="rounded-md px-2 py-2 text-left text-sm font-medium text-[#1A1A1A] hover:bg-[#F1F5F9]"

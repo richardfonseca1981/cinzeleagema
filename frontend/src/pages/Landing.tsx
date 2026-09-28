@@ -33,7 +33,7 @@ export function Landing() {
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#1A1A1A]">
       <PublicHeader />
-      <Hero whatsappHref={WHATSAPP_HREF} />
+      <Hero />
       <FeaturedProducts />
       <TrustBanner />
       <Faq />

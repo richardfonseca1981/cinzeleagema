@@ -11,7 +11,7 @@ export function PublicHeader() {
 
   return (
     <>
-      <Header whatsappHref={WHATSAPP_HREF} onOpenContact={() => setContactOpen(true)} />
+      <Header onOpenContact={() => setContactOpen(true)} />
       <ContactModal open={contactOpen} onClose={() => setContactOpen(false)} whatsappHref={WHATSAPP_HREF} />
     </>
   );

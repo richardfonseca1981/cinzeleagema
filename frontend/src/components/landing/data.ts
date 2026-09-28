@@ -3,18 +3,16 @@
 // disponíveis. Nenhum destes dados vem de API — são estáticos, conforme
 // decisão de escopo do projeto (site 100% independente de backend).
 
-// "Onde Comprar" é um link direto para o WhatsApp (não uma âncora — não há
-// seção "Onde Comprar" no corpo da página). "Contato" abre o modal "Fale
-// Conosco" em vez de navegar. "Produtos" é uma rota real (catálogo público),
-// não mais uma âncora para a seção da landing. Os demais itens usam "/#id"
-// (não só "#id") para funcionar tanto na landing quanto vindos de outra
-// página (ex.: catálogo) — nesse caso é uma navegação de página inteira até
-// "/", com o navegador rolando até a âncora depois do carregamento.
+// "Contato" abre o modal "Fale Conosco" em vez de navegar. "Produtos" é uma
+// rota real (catálogo público), não mais uma âncora para a seção da landing.
+// Os demais itens usam "/#id" (não só "#id") para funcionar tanto na landing
+// quanto vindos de outra página (ex.: catálogo) — nesse caso é uma navegação
+// de página inteira até "/", com o navegador rolando até a âncora depois do
+// carregamento.
 export const NAV_LINKS = [
   { kind: "anchor", href: "/#home", label: "Home" },
   { kind: "anchor", href: "/#sobre", label: "Sobre Nós" },
   { kind: "route", to: "/catalogo", label: "Produtos" },
-  { kind: "whatsapp", label: "Onde Comprar" },
   { kind: "anchor", href: "/#blog", label: "Blog" },
   { kind: "anchor", href: "/#faq", label: "FAQ" },
   { kind: "modal", label: "Contato" },

@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { HERO_CONTENT } from "./data";
 import { PlaceholderImage } from "./PlaceholderImage";
 
@@ -7,7 +8,7 @@ import { PlaceholderImage } from "./PlaceholderImage";
 const HERO_PATTERN =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28'%3E%3Ccircle cx='2' cy='2' r='1.5' fill='%2393B4D9' fill-opacity='0.4'/%3E%3C/svg%3E\")";
 
-export function Hero({ whatsappHref }: { whatsappHref: string | null }) {
+export function Hero() {
   return (
     <section id="home" className="grid lg:min-h-[600px] lg:grid-cols-2">
       <div className="relative order-1 flex flex-col justify-center overflow-hidden px-6 py-16 text-white sm:px-10 lg:order-1 lg:py-20">
@@ -25,16 +26,12 @@ export function Hero({ whatsappHref }: { whatsappHref: string | null }) {
             {HERO_CONTENT.title}
           </h1>
           <p className="mt-6 max-w-md text-white/80 sm:text-lg">{HERO_CONTENT.subtitle}</p>
-          {whatsappHref && (
-            <a
-              href={whatsappHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-8 inline-flex w-fit items-center justify-center rounded-full bg-white px-8 py-3.5 font-semibold text-[#1B3A6B] shadow-lg transition hover:bg-[#EFF6FF]"
-            >
-              Onde comprar
-            </a>
-          )}
+          <Link
+            to="/catalogo"
+            className="mt-8 inline-flex w-fit items-center justify-center rounded-full bg-white px-8 py-3.5 font-semibold text-[#1B3A6B] shadow-lg transition hover:bg-[#EFF6FF]"
+          >
+            Ver catálogo
+          </Link>
         </div>
       </div>
 
