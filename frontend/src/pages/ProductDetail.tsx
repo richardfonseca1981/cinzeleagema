@@ -6,7 +6,7 @@ import type { Product } from "../types";
 import { PublicHeader } from "../components/landing/PublicHeader";
 import { WhatsAppFloatingButton } from "../components/landing/WhatsAppFloatingButton";
 import { FloatingCartButton } from "../components/catalog/FloatingCartButton";
-import { formatPrice, formatWeightSize, localizeText } from "../lib/format";
+import { formatPrice, formatWeightSize, localizeCategoryName, localizeText } from "../lib/format";
 import { WHATSAPP_HREF } from "../lib/whatsapp";
 import { useCart } from "../lib/cart";
 import { useToast } from "../components/Toast";
@@ -82,7 +82,12 @@ export function ProductDetail() {
             <div>
               {(product.category || product.subcategory) && (
                 <p className="text-sm font-medium uppercase tracking-wide text-[#94A3B8]">
-                  {[product.category?.name, product.subcategory?.name].filter(Boolean).join(" · ")}
+                  {[
+                    product.category && localizeCategoryName(t, product.category.name),
+                    product.subcategory && localizeCategoryName(t, product.subcategory.name),
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </p>
               )}
               <h1 className="mt-1 text-2xl font-bold">{displayName}</h1>

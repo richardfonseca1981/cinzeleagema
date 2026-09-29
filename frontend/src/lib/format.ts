@@ -64,3 +64,12 @@ export function formatWeightSize(
 export function localizeText(pt: string, en: string | null | undefined, lang: string): string {
   return lang === "en" && en ? en : pt;
 }
+
+// Nome de categoria/subcategoria: lista fixa e pequena, traduzida de forma
+// estática em locales/en.json (chave categoryNames.<nome em PT>) — sem IA,
+// diferente do nome/descrição de produto. `t` já resolve pelo idioma ativo;
+// nomes sem entrada no mapa (ou idioma PT, que não tem esse bloco) caem no
+// defaultValue, ou seja, no próprio nome em português.
+export function localizeCategoryName(t: (key: string, options?: Record<string, unknown>) => string, name: string): string {
+  return t(`categoryNames.${name}`, { defaultValue: name });
+}
