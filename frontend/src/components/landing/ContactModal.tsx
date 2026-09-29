@@ -41,7 +41,7 @@ export function ContactModal({
               href={whatsappHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#1B3A6B] px-6 py-3 font-semibold text-white transition hover:bg-[#152D54]"
+              className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#C78F50] px-6 py-3 font-semibold text-[#010B1A] transition hover:bg-[#B37D3F]"
             >
               <WhatsAppIcon className="h-4 w-4" />
               {t("contactModal.whatsappCta")}
@@ -58,7 +58,7 @@ export function ContactModal({
               id="contact-name"
               type="text"
               required
-              className="mt-1 w-full rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm focus:border-[#1B3A6B] focus:outline-none"
+              className="mt-1 w-full rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm focus:border-[#C78F50] focus:outline-none"
             />
           </div>
           <div>
@@ -69,7 +69,7 @@ export function ContactModal({
               id="contact-email"
               type="email"
               required
-              className="mt-1 w-full rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm focus:border-[#1B3A6B] focus:outline-none"
+              className="mt-1 w-full rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm focus:border-[#C78F50] focus:outline-none"
             />
           </div>
           <div>
@@ -80,7 +80,7 @@ export function ContactModal({
               id="contact-subject"
               type="text"
               required
-              className="mt-1 w-full rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm focus:border-[#1B3A6B] focus:outline-none"
+              className="mt-1 w-full rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm focus:border-[#C78F50] focus:outline-none"
             />
           </div>
           <div>
@@ -91,12 +91,12 @@ export function ContactModal({
               id="contact-message"
               rows={4}
               required
-              className="mt-1 w-full rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm focus:border-[#1B3A6B] focus:outline-none"
+              className="mt-1 w-full rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm focus:border-[#C78F50] focus:outline-none"
             />
           </div>
           <button
             type="submit"
-            className="w-full rounded-lg bg-[#1B3A6B] px-4 py-2.5 font-semibold text-white transition hover:bg-[#152D54]"
+            className="w-full rounded-lg bg-[#C78F50] px-4 py-2.5 font-semibold text-[#010B1A] transition hover:bg-[#B37D3F]"
           >
             {t("contactModal.submit")}
           </button>

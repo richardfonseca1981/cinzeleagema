@@ -30,16 +30,16 @@ export function ProductCard({ product }: { product: Product }) {
       </Link>
       <div className="flex flex-1 flex-col p-4">
         <Link to={`/catalogo/${product.id}`}>
-          <h3 className="font-semibold text-[#1A1A1A] transition hover:text-[#1B3A6B]">{product.name}</h3>
+          <h3 className="font-semibold text-[#1A1A1A] transition hover:text-[#5F84BA]">{product.name}</h3>
         </Link>
         {product.description && (
           <p className="mt-1 line-clamp-2 flex-1 text-sm text-[#64748B]">{product.description}</p>
         )}
         {weightSize && <p className="mt-2 text-xs text-[#94A3B8]">{weightSize}</p>}
-        <p className="mt-2 text-lg font-bold text-[#1B3A6B]">{formatPrice(product.price, i18n.language)}</p>
+        <p className="mt-2 text-lg font-bold text-[#C78F50]">{formatPrice(product.price, i18n.language)}</p>
         <button
           onClick={handleAdd}
-          className="mt-3 rounded-lg bg-[#1B3A6B] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#152D54]"
+          className="mt-3 rounded-lg bg-[#C78F50] px-4 py-2 text-sm font-semibold text-[#010B1A] transition hover:bg-[#B37D3F]"
         >
           {t("productCard.addToOrder")}
         </button>

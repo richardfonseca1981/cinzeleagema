@@ -13,10 +13,10 @@ export function Faq() {
   const items = t("faq.items", { returnObjects: true }) as FaqItem[];
 
   return (
-    <section id="faq" className="bg-[#EFF6FF] py-16 sm:py-24">
+    <section id="faq" className="bg-[#C78F50]/10 py-16 sm:py-24">
       <div className="mx-auto max-w-3xl px-4">
         <div className="text-center">
-          <p className="text-sm font-semibold uppercase tracking-widest text-[#1B3A6B]">{t("faq.eyebrow")}</p>
+          <p className="text-sm font-semibold uppercase tracking-widest text-[#C78F50]">{t("faq.eyebrow")}</p>
           <h2 className="mt-2 text-2xl font-bold text-[#1A1A1A] sm:text-3xl">{t("faq.title")}</h2>
           <p className="mt-4 text-[#64748B]">{t("faq.subtitle")}</p>
         </div>

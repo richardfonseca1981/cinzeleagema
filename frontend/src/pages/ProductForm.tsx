@@ -17,7 +17,7 @@ function slugify(value: string) {
 }
 
 const inputClass =
-  "mt-1 w-full rounded-lg border border-[#E2E8F0] px-3 py-2 outline-none transition focus:border-[#1B3A6B] focus:ring-2 focus:ring-[#EFF6FF]";
+  "mt-1 w-full rounded-lg border border-[#E2E8F0] px-3 py-2 outline-none transition focus:border-[#C78F50] focus:ring-2 focus:ring-[#C78F50]/20";
 const labelClass = "block text-sm font-medium text-[#1A1A1A]";
 
 export function ProductForm() {
@@ -270,7 +270,7 @@ export function ProductForm() {
                       type="checkbox"
                       checked={trackStock}
                       onChange={(e) => setTrackStock(e.target.checked)}
-                      className="h-4 w-4 accent-[#1B3A6B]"
+                      className="h-4 w-4 accent-[#C78F50]"
                     />
                     Controlar estoque
                   </label>
@@ -297,7 +297,7 @@ export function ProductForm() {
           <button
             type="submit"
             disabled={saving}
-            className="rounded-lg bg-[#1B3A6B] px-4 py-2 font-medium text-white transition hover:bg-[#152D54] disabled:opacity-50"
+            className="rounded-lg bg-[#C78F50] px-4 py-2 font-medium text-[#010B1A] transition hover:bg-[#B37D3F] disabled:opacity-50"
           >
             {saving ? "Salvando..." : "Salvar produto"}
           </button>

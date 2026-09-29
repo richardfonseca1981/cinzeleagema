@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import logo from "../assets/logo.png";
+import logo from "../assets/logo.webp";
 import { clearSession, getSession } from "../lib/auth";
 
 export function AdminLayout() {
@@ -22,10 +22,10 @@ export function AdminLayout() {
 
   return (
     <div className="flex min-h-screen bg-[#F8FAFC]">
-      <aside className="flex w-56 flex-shrink-0 flex-col bg-[#1B3A6B] text-white">
-        <div className="border-b border-white/10 px-5 py-5">
-          <img src={logo} alt="Cinzel e a Gema" className="w-28 object-contain" />
-          <div className="mt-1 text-xs font-medium text-white/60">Admin</div>
+      <aside className="flex w-60 flex-shrink-0 flex-col bg-[#010B1A] text-white">
+        <div className="border-b border-white/10 px-4 py-6">
+          <img src={logo} alt="Cinzel e a Gema" className="w-full object-contain" />
+          <div className="mt-2 text-xs font-medium text-white/60">Admin</div>
         </div>
         <nav className="mt-2 flex flex-col gap-1 px-3">
           <Link

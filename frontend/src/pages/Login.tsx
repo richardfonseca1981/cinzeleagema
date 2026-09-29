@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import logo from "../assets/logo.png";
+import logo from "../assets/logo.webp";
 import { api, ApiError } from "../lib/api";
 import { getSession, setSession } from "../lib/auth";
 
@@ -39,9 +39,9 @@ export function Login() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-[#F8FAFC] px-4">
-      <div className="mb-6 flex flex-col items-center text-center">
-        <img src={logo} alt="Cinzel e a Gema" className="h-20 w-auto object-contain" />
-        <div className="mt-1 text-xs font-medium text-[#64748B]">Admin</div>
+      <div className="mb-8 flex flex-col items-center text-center">
+        <img src={logo} alt="Cinzel e a Gema" className="h-36 w-auto object-contain" />
+        <div className="mt-2 text-xs font-medium text-[#64748B]">Admin</div>
       </div>
 
       <form
@@ -67,7 +67,7 @@ export function Login() {
             placeholder="Digite seu usuário"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-[#E2E8F0] px-3 py-2 outline-none transition focus:border-[#1B3A6B] focus:ring-2 focus:ring-[#EFF6FF]"
+            className="mt-1 w-full rounded-lg border border-[#E2E8F0] px-3 py-2 outline-none transition focus:border-[#C78F50] focus:ring-2 focus:ring-[#C78F50]/20"
           />
         </div>
 
@@ -79,14 +79,14 @@ export function Login() {
             autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-[#E2E8F0] px-3 py-2 outline-none transition focus:border-[#1B3A6B] focus:ring-2 focus:ring-[#EFF6FF]"
+            className="mt-1 w-full rounded-lg border border-[#E2E8F0] px-3 py-2 outline-none transition focus:border-[#C78F50] focus:ring-2 focus:ring-[#C78F50]/20"
           />
         </div>
 
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-lg bg-[#1B3A6B] py-2 font-medium text-white transition hover:bg-[#152D54] disabled:opacity-50"
+          className="w-full rounded-lg bg-[#C78F50] py-2 font-medium text-[#010B1A] transition hover:bg-[#B37D3F] disabled:opacity-50"
         >
           {loading ? "Entrando..." : "Entrar"}
         </button>

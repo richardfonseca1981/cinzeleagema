@@ -52,7 +52,7 @@ export function LanguageSwitcher({ className = "" }: { className?: string }) {
             aria-pressed={active}
             className={`rounded-sm transition ${
               active
-                ? "opacity-100 ring-2 ring-[#1B3A6B] ring-offset-1"
+                ? "opacity-100 ring-2 ring-[#C78F50] ring-offset-1"
                 : "opacity-50 hover:opacity-80"
             }`}
           >

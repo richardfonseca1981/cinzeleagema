@@ -10,7 +10,7 @@ export function FloatingCartButton() {
     <Link
       to="/carrinho"
       aria-label={t("cartButton.ariaLabel")}
-      className="fixed bottom-24 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#1B3A6B] text-white shadow-lg transition hover:scale-105"
+      className="fixed bottom-24 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#C78F50] text-[#010B1A] shadow-lg transition hover:scale-105 hover:bg-[#B37D3F]"
     >
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-6 w-6">
         <path

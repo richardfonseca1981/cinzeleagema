@@ -13,7 +13,7 @@ export function Certification() {
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-[#94A3B8]">{t("certification.badge")}</p>
           <h2 className="mt-1 text-xl font-bold text-[#1A1A1A] sm:text-2xl">{t("certification.title")}</h2>
-          <p className="mt-1 text-sm font-semibold text-[#1B3A6B]">{t("certification.subtitle")}</p>
+          <p className="mt-1 text-sm font-semibold text-[#C78F50]">{t("certification.subtitle")}</p>
           <p className="mt-3 leading-relaxed text-[#64748B]">{t("certification.description")}</p>
         </div>
       </div>

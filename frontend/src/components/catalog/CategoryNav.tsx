@@ -23,7 +23,7 @@ export function CategoryNav({
       <button
         onClick={() => onSelectCategory("")}
         className={`block text-left text-base font-bold transition ${
-          !categoryId ? "text-[#1B3A6B]" : "text-[#1A1A1A] hover:text-[#1B3A6B]"
+          !categoryId ? "text-[#C78F50]" : "text-[#1A1A1A] hover:text-[#5F84BA]"
         }`}
       >
         {t("catalog.allProducts")}
@@ -34,7 +34,7 @@ export function CategoryNav({
           <button
             onClick={() => onSelectCategory(category.id)}
             className={`block text-left text-base font-bold uppercase tracking-wide transition ${
-              categoryId === category.id ? "text-[#1B3A6B]" : "text-[#1A1A1A] hover:text-[#1B3A6B]"
+              categoryId === category.id ? "text-[#C78F50]" : "text-[#1A1A1A] hover:text-[#5F84BA]"
             }`}
           >
             {category.name}
@@ -49,7 +49,7 @@ export function CategoryNav({
                     <button
                       onClick={() => onSelectSubcategory(category.id, subcategory.id)}
                       className={`text-left text-sm font-normal transition ${
-                        active ? "font-medium text-[#1B3A6B]" : "text-[#64748B] hover:text-[#1B3A6B]"
+                        active ? "font-medium text-[#C78F50]" : "text-[#64748B] hover:text-[#5F84BA]"
                       }`}
                     >
                       {subcategory.name}

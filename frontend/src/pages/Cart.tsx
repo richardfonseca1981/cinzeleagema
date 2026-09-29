@@ -22,7 +22,7 @@ export function Cart() {
             <p className="text-[#64748B]">{t("cart.empty")}</p>
             <Link
               to="/catalogo"
-              className="mt-4 inline-block rounded-lg bg-[#1B3A6B] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#152D54]"
+              className="mt-4 inline-block rounded-lg bg-[#C78F50] px-4 py-2 text-sm font-semibold text-[#010B1A] transition hover:bg-[#B37D3F]"
             >
               {t("cart.viewCatalog")}
             </Link>
@@ -50,7 +50,7 @@ export function Cart() {
                     min={1}
                     value={item.quantity}
                     onChange={(e) => updateQuantity(item.productId, Math.max(1, Number(e.target.value)))}
-                    className="w-16 rounded-lg border border-[#E2E8F0] px-2 py-1 text-center text-sm outline-none transition focus:border-[#1B3A6B] focus:ring-2 focus:ring-[#EFF6FF]"
+                    className="w-16 rounded-lg border border-[#E2E8F0] px-2 py-1 text-center text-sm outline-none transition focus:border-[#C78F50] focus:ring-2 focus:ring-[#C78F50]/20"
                   />
                   <p className="w-24 text-right font-semibold text-[#1A1A1A]">
                     {formatPrice(item.unitPrice * item.quantity, i18n.language)}
@@ -67,12 +67,12 @@ export function Cart() {
 
             <div className="mt-6 flex items-center justify-between rounded-lg border border-[#E2E8F0] bg-white p-4">
               <span className="font-medium">{t("cart.total")}</span>
-              <span className="text-xl font-bold text-[#1B3A6B]">{formatPrice(totalEstimate, i18n.language)}</span>
+              <span className="text-xl font-bold text-[#C78F50]">{formatPrice(totalEstimate, i18n.language)}</span>
             </div>
 
             <button
               onClick={() => navigate("/finalizar")}
-              className="mt-6 w-full rounded-lg bg-[#1B3A6B] px-4 py-3 font-semibold text-white transition hover:bg-[#152D54]"
+              className="mt-6 w-full rounded-lg bg-[#C78F50] px-4 py-3 font-semibold text-[#010B1A] transition hover:bg-[#B37D3F]"
             >
               {t("cart.checkout")}
             </button>

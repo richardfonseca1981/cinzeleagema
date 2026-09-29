@@ -46,7 +46,7 @@ export function ProductList() {
         <h1 className="text-lg font-semibold text-[#1A1A1A]">Produtos</h1>
         <Link
           to="/admin/produtos/novo"
-          className="rounded-lg bg-[#1B3A6B] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#152D54]"
+          className="rounded-lg bg-[#C78F50] px-4 py-2 text-sm font-medium text-[#010B1A] transition hover:bg-[#B37D3F]"
         >
           Novo produto
         </Link>
@@ -58,12 +58,12 @@ export function ProductList() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Buscar por nome..."
-          className="min-w-[220px] flex-1 rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm outline-none focus:border-[#1B3A6B] focus:ring-2 focus:ring-[#EFF6FF]"
+          className="min-w-[220px] flex-1 rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm outline-none focus:border-[#C78F50] focus:ring-2 focus:ring-[#C78F50]/20"
         />
         <select
           value={categoryId}
           onChange={(e) => setCategoryId(e.target.value)}
-          className="rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm outline-none focus:border-[#1B3A6B] focus:ring-2 focus:ring-[#EFF6FF]"
+          className="rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm outline-none focus:border-[#C78F50] focus:ring-2 focus:ring-[#C78F50]/20"
         >
           <option value="">Todas as categorias</option>
           {categories.map((category) => (
@@ -128,7 +128,7 @@ export function ProductList() {
                   </span>
                 </td>
                 <td className="px-4 py-2 text-right">
-                  <Link to={`/admin/produtos/${product.id}`} className="mr-3 text-[#1B3A6B] hover:underline">
+                  <Link to={`/admin/produtos/${product.id}`} className="mr-3 text-[#5F84BA] hover:underline">
                     Editar
                   </Link>
                   <button onClick={() => handleToggleActive(product)} className="text-[#64748B] hover:underline">

@@ -27,7 +27,7 @@ export function FeaturedProducts() {
     <section id="produtos" className="bg-[#F8FAFC] py-16 sm:py-24">
       <div className="mx-auto max-w-6xl px-4">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-semibold uppercase tracking-widest text-[#1B3A6B]">{t("featuredProducts.eyebrow")}</p>
+          <p className="text-sm font-semibold uppercase tracking-widest text-[#C78F50]">{t("featuredProducts.eyebrow")}</p>
           <h2 className="mt-2 text-2xl font-bold text-[#1A1A1A] sm:text-3xl">{t("featuredProducts.title")}</h2>
         </div>
 
@@ -46,7 +46,7 @@ export function FeaturedProducts() {
         <div className="mt-10 text-center">
           <Link
             to="/catalogo"
-            className="inline-flex items-center justify-center rounded-full bg-[#1B3A6B] px-8 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#152D54]"
+            className="inline-flex items-center justify-center rounded-full bg-[#C78F50] px-8 py-3 text-sm font-semibold text-[#010B1A] shadow-sm transition hover:bg-[#B37D3F]"
           >
             {t("featuredProducts.cta")}
           </Link>

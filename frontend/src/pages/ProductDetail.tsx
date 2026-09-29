@@ -51,7 +51,7 @@ export function ProductDetail() {
     <div className="min-h-screen bg-[#F8FAFC] text-[#1A1A1A]">
       <PublicHeader />
       <div className="mx-auto max-w-4xl px-4 py-8">
-        <Link to="/catalogo" className="text-sm font-medium text-[#1B3A6B] hover:underline">
+        <Link to="/catalogo" className="text-sm font-medium text-[#5F84BA] hover:underline">
           {t("productDetail.back")}
         </Link>
 
@@ -81,7 +81,7 @@ export function ProductDetail() {
               <h1 className="mt-1 text-2xl font-bold">{product.name}</h1>
               {product.description && <p className="mt-4 text-[#1A1A1A]">{product.description}</p>}
               {weightSize && <p className="mt-4 text-sm text-[#64748B]">{weightSize}</p>}
-              <p className="mt-2 text-2xl font-bold text-[#1B3A6B]">{formatPrice(product.price, i18n.language)}</p>
+              <p className="mt-2 text-2xl font-bold text-[#C78F50]">{formatPrice(product.price, i18n.language)}</p>
 
               <div className="mt-6 flex items-center gap-3">
                 <label htmlFor="quantity" className="text-sm font-medium text-[#1A1A1A]">
@@ -93,13 +93,13 @@ export function ProductDetail() {
                   min={1}
                   value={quantity}
                   onChange={(e) => setQuantity(Math.max(1, Number(e.target.value)))}
-                  className="w-20 rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm outline-none transition focus:border-[#1B3A6B] focus:ring-2 focus:ring-[#EFF6FF]"
+                  className="w-20 rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm outline-none transition focus:border-[#C78F50] focus:ring-2 focus:ring-[#C78F50]/20"
                 />
               </div>
 
               <button
                 onClick={handleAdd}
-                className="mt-4 w-full rounded-lg bg-[#1B3A6B] px-4 py-3 font-semibold text-white transition hover:bg-[#152D54] sm:w-auto"
+                className="mt-4 w-full rounded-lg bg-[#C78F50] px-4 py-3 font-semibold text-[#010B1A] transition hover:bg-[#B37D3F] sm:w-auto"
               >
                 {t("productCard.addToOrder")}
               </button>

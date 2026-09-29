@@ -34,7 +34,7 @@ function describeOperation(op: PhotoTreatmentOperation): string {
 
 function Spinner({ className = "h-5 w-5" }: { className?: string }) {
   return (
-    <svg className={`animate-spin text-[#1B3A6B] ${className}`} viewBox="0 0 24 24" fill="none">
+    <svg className={`animate-spin text-[#5F84BA] ${className}`} viewBox="0 0 24 24" fill="none">
       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
     </svg>
@@ -242,7 +242,7 @@ function ImageTreatmentPanel({ productId, image, onUpdated, showToast }: ImageTr
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="text-[#1B3A6B] underline decoration-dotted"
+          className="text-[#5F84BA] underline decoration-dotted"
         >
           {open ? "fechar" : "tratar com IA"}
         </button>
@@ -261,17 +261,17 @@ function ImageTreatmentPanel({ productId, image, onUpdated, showToast }: ImageTr
             disabled={loading}
             placeholder='Ex: "remove o fundo e deixa mais nítida"'
             rows={2}
-            className="w-full rounded border border-[#E2E8F0] p-1 text-xs outline-none focus:border-[#1B3A6B]"
+            className="w-full rounded border border-[#E2E8F0] p-1 text-xs outline-none focus:border-[#C78F50]"
           />
           <button
             type="button"
             onClick={handleApply}
             disabled={loading || !instruction.trim()}
-            className="flex w-full items-center justify-center gap-2 rounded bg-[#1B3A6B] px-2 py-1 text-white hover:bg-[#152D54] disabled:opacity-40"
+            className="flex w-full items-center justify-center gap-2 rounded bg-[#C78F50] px-2 py-1 text-[#010B1A] hover:bg-[#B37D3F] disabled:opacity-40"
           >
             {loading ? (
               <>
-                <Spinner className="h-3.5 w-3.5 text-white" /> Processando...
+                <Spinner className="h-3.5 w-3.5 text-[#010B1A]" /> Processando...
               </>
             ) : (
               "Aplicar"

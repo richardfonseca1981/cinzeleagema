@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import logo from "../../assets/logo.png";
+import logo from "../../assets/logo.webp";
 import { NAV_LINKS } from "./data";
 import { CloseIcon, MenuIcon } from "./icons";
 import { LanguageSwitcher } from "./LanguageSwitcher";
@@ -55,9 +55,9 @@ export function Header({ onOpenContact }: { onOpenContact: () => void }) {
 
   return (
     <header className="sticky top-0 z-50 border-b border-[#E2E8F0] bg-white/95 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 lg:py-5">
         <a href="/#home" className="flex items-center">
-          <img src={logo} alt={t("header.logoAlt")} className="h-12 w-auto object-contain" />
+          <img src={logo} alt={t("header.logoAlt")} className="h-16 w-auto object-contain lg:h-24" />
         </a>
 
         <nav className="hidden items-center gap-8 lg:flex">
@@ -67,7 +67,7 @@ export function Header({ onOpenContact }: { onOpenContact: () => void }) {
               link={link}
               onOpenContact={onOpenContact}
               onNavigate={() => {}}
-              className="text-sm font-medium text-[#64748B] transition hover:text-[#1B3A6B]"
+              className="text-sm font-medium text-[#64748B] transition hover:text-[#5F84BA]"
             />
           ))}
           <LanguageSwitcher className="ml-2 border-l border-[#E2E8F0] pl-4" />

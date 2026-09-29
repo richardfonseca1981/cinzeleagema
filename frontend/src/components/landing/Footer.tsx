@@ -17,28 +17,28 @@ export function Footer({
   const year = new Date().getFullYear();
 
   return (
-    <footer className="bg-[#1B3A6B] py-12 text-[#93B4D9]">
+    <footer className="bg-[#010B1A] py-12 text-[#5F84BA]">
       <div className="mx-auto max-w-6xl px-4">
         <div className="grid gap-10 sm:grid-cols-3">
           <div>
             <span className="text-lg font-bold text-white">Cinzel e a Gema</span>
-            <p className="mt-3 text-sm leading-relaxed text-[#93B4D9]">{t("footer.tagline")}</p>
+            <p className="mt-3 text-sm leading-relaxed text-[#5F84BA]">{t("footer.tagline")}</p>
             <div className="mt-4 flex gap-3">
               {/* Redes sociais placeholder — sem links reais ainda */}
-              <span className="rounded-full border border-[#93B4D9]/40 p-2 text-[#93B4D9]">
+              <span className="rounded-full border border-[#5F84BA]/40 p-2 text-[#5F84BA]">
                 <InstagramIcon className="h-4 w-4" />
               </span>
-              <span className="rounded-full border border-[#93B4D9]/40 p-2 text-[#93B4D9]">
+              <span className="rounded-full border border-[#5F84BA]/40 p-2 text-[#5F84BA]">
                 <FacebookIcon className="h-4 w-4" />
               </span>
-              <span className="rounded-full border border-[#93B4D9]/40 p-2 text-[#93B4D9]">
+              <span className="rounded-full border border-[#5F84BA]/40 p-2 text-[#5F84BA]">
                 <LinkedinIcon className="h-4 w-4" />
               </span>
             </div>
           </div>
 
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-widest text-[#93B4D9]">{t("footer.contactTitle")}</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-widest text-[#5F84BA]">{t("footer.contactTitle")}</h3>
             <ul className="mt-3 space-y-2 text-sm">
               {whatsappHref && whatsappNumber && (
                 <li>
@@ -56,7 +56,7 @@ export function Footer({
                   </a>
                 </li>
               )}
-              <li className="flex items-center gap-2 text-[#93B4D9]">
+              <li className="flex items-center gap-2 text-[#5F84BA]">
                 <MapPinIcon className="h-4 w-4 flex-shrink-0" />
                 {t("footer.addressPlaceholder")}
               </li>
@@ -64,7 +64,7 @@ export function Footer({
           </div>
 
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-widest text-[#93B4D9]">{t("footer.navTitle")}</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-widest text-[#5F84BA]">{t("footer.navTitle")}</h3>
             <ul className="mt-3 space-y-2 text-sm">
               <li><a href="/#sobre" className="hover:text-white">{t("footer.about")}</a></li>
               <li><Link to="/catalogo" className="hover:text-white">{t("footer.products")}</Link></li>
@@ -78,7 +78,7 @@ export function Footer({
           </div>
         </div>
 
-        <div className="mt-10 border-t border-[#93B4D9]/20 pt-6 text-center text-xs text-[#93B4D9]">
+        <div className="mt-10 border-t border-[#5F84BA]/20 pt-6 text-center text-xs text-[#5F84BA]">
           {t("footer.copyright", { year })}
         </div>
       </div>
