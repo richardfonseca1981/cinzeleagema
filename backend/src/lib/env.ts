@@ -5,7 +5,11 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(3334),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   DATABASE_URL: z.string().min(1, "DATABASE_URL é obrigatório"),
-  CORS_ORIGIN: z.string().min(1).default("http://localhost:5174"),
+  CORS_ORIGIN: z
+    .string()
+    .min(1)
+    .default("http://localhost:5174,http://localhost:5173,https://cinzeleagema.com.br,https://www.cinzeleagema.com.br")
+    .transform((value) => value.split(",").map((origin) => origin.trim()).filter(Boolean)),
   JWT_SECRET: z.string().min(1, "JWT_SECRET é obrigatório"),
   JWT_EXPIRES_IN: z.string().default("8h"),
   R2_ACCOUNT_ID: z.string().optional().default(""),
