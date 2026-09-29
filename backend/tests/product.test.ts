@@ -294,4 +294,42 @@ describe("Product routes", () => {
     expect(res.body.items).toHaveLength(1);
     expect(res.body.items[0].slug).toBe("peca-bruta");
   });
+
+  it("creates a product without blocking on translation (nameEn stays null when Claude isn't configured)", async () => {
+    const res = await request(app)
+      .post("/api/products")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        name: "Turmalina Verde",
+        slug: "turmalina-verde",
+        price: 300,
+        weightGrams: 2,
+        sizeCm: 1.5,
+        categoryId: categoryWithoutSubId,
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.nameEn).toBeNull();
+  });
+
+  it("rejects an unauthenticated retranslate request", async () => {
+    const product = await prisma.product.create({
+      data: { name: "Granada Vermelha", slug: "granada-vermelha", price: 50, categoryId: categoryWithoutSubId },
+    });
+
+    const res = await request(app).post(`/api/products/${product.id}/retranslate`);
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 502 from retranslate when the Claude API isn't configured", async () => {
+    const product = await prisma.product.create({
+      data: { name: "Quartzo Rosa", slug: "quartzo-rosa", price: 50, categoryId: categoryWithoutSubId },
+    });
+
+    const res = await request(app)
+      .post(`/api/products/${product.id}/retranslate`)
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(502);
+  });
 });

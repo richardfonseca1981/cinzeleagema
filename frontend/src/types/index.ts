@@ -51,6 +51,10 @@ export interface Product {
   name: string;
   slug: string;
   description: string | null;
+  // Tradução automática (Claude) — null quando ainda não traduzido ou a
+  // tradução falhou; o site público cai para name/description nesse caso.
+  nameEn: string | null;
+  descriptionEn: string | null;
   categoryId: string;
   subcategoryId: string | null;
   category?: { id: string; name: string; slug: string };
@@ -90,8 +94,11 @@ export interface AdminUserSummary {
 export interface CartItem {
   productId: string;
   name: string;
+  nameEn: string | null;
   unitPrice: number;
   imageUrl: string | null;
+  weightGrams: number;
+  sizeCm: number;
   quantity: number;
 }
 

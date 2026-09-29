@@ -4,30 +4,32 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { useCart } from "../lib/cart";
 import { api } from "../lib/api";
-import { formatPrice } from "../lib/format";
+import { formatPrice, formatWeightSize, localizeText } from "../lib/format";
 import { PublicHeader } from "../components/landing/PublicHeader";
 import { WhatsAppFloatingButton } from "../components/landing/WhatsAppFloatingButton";
 import { WHATSAPP_HREF } from "../lib/whatsapp";
+import type { CartItem } from "../types";
 
 const WHATSAPP_NUMBER = import.meta.env.VITE_WHATSAPP_NUMBER;
 
 function buildWhatsAppMessage(
   t: TFunction,
   lang: string,
-  items: { name: string; quantity: number; unitPrice: number }[],
+  items: CartItem[],
   totalEstimate: number,
   customerName: string,
   customerPhone: string
 ) {
   const lines = [
     t("checkout.whatsappMessage.intro"),
-    ...items.map((item) =>
-      t("checkout.whatsappMessage.item", {
-        quantity: item.quantity,
-        name: item.name,
-        price: formatPrice(item.unitPrice * item.quantity, lang),
-      })
-    ),
+    ...items.map((item) => {
+      const name = localizeText(item.name, item.nameEn, lang);
+      const price = formatPrice(item.unitPrice * item.quantity, lang);
+      const size = formatWeightSize(item.weightGrams, item.sizeCm, lang);
+      return size
+        ? t("checkout.whatsappMessage.itemWithSize", { quantity: item.quantity, name, size, price })
+        : t("checkout.whatsappMessage.item", { quantity: item.quantity, name, price });
+    }),
     t("checkout.whatsappMessage.total", { total: formatPrice(totalEstimate, lang) }),
     t("checkout.whatsappMessage.name", { name: customerName }),
     t("checkout.whatsappMessage.phone", { phone: customerPhone }),
@@ -69,7 +71,7 @@ export function Checkout() {
       setSentVia("fluxiodesk");
     } else {
       if (WHATSAPP_NUMBER) {
-        const message = buildWhatsAppMessage(t, i18n.language, orderItems, totalEstimate, customerName, customerPhone);
+        const message = buildWhatsAppMessage(t, i18n.language, items, totalEstimate, customerName, customerPhone);
         window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
       }
       clear();
@@ -122,11 +124,16 @@ export function Checkout() {
         <div className="mt-6 rounded-lg border border-[#E2E8F0] bg-white p-4">
           <p className="text-sm font-medium text-[#1A1A1A]">{t("checkout.summary")}</p>
           <ul className="mt-2 space-y-1 text-sm text-[#64748B]">
-            {items.map((item) => (
-              <li key={item.productId}>
-                {item.quantity}x {item.name}
-              </li>
-            ))}
+            {items.map((item) => {
+              const itemName = localizeText(item.name, item.nameEn, i18n.language);
+              const weightSize = formatWeightSize(item.weightGrams, item.sizeCm, i18n.language);
+              return (
+                <li key={item.productId}>
+                  {item.quantity}x {itemName}
+                  {weightSize && <span className="text-[#94A3B8]"> ({weightSize})</span>}
+                </li>
+              );
+            })}
           </ul>
           <div className="mt-3 flex items-center justify-between border-t border-[#E2E8F0] pt-3 font-semibold">
             <span>{t("checkout.total")}</span>

@@ -186,6 +186,7 @@
     "whatsappMessage": {
       "intro": "Hi! I'd like to place an order:",
       "item": "• {{quantity}}x {{name}} — {{price}}",
+      "itemWithSize": "• {{quantity}}x {{name}} ({{size}}) — {{price}}",
       "total": "Estimated total: {{total}}",
       "name": "Name: {{name}}",
       "phone": "Phone: {{phone}}"
@@ -196,5 +197,22 @@
   },
   "cartButton": {
     "ariaLabel": "View my order"
+  },
+  "categoryNames": {
+    "Pedras Brutas": "Rough Stones",
+    "Pedras Polidas": "Polished Stones",
+    "Big": "Big Pieces",
+    "Homedecor": "Home Decor",
+    "Acessorios": "Accessories",
+    "Pedras Brutas Peça": "Rough Stone Piece",
+    "Capelas de Ametista": "Amethyst Geodes",
+    "Capelas de Citrino": "Citrine Geodes",
+    "Pedras Exclusivas": "Exclusive Stones",
+    "Pedras Roladas": "Tumbled Stones",
+    "Pedras Polidas Exclusivas": "Exclusive Polished Stones",
+    "Ametistas": "Amethysts",
+    "Calcitas": "Calcites",
+    "Citrinos": "Citrines",
+    "Formas": "Shapes"
   }
 }

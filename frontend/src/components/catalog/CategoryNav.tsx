@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import type { Category } from "../../types";
+import { localizeCategoryName } from "../../lib/format";
 
 interface CategoryNavProps {
   categories: Category[];
@@ -37,7 +38,7 @@ export function CategoryNav({
               categoryId === category.id ? "text-[#C78F50]" : "text-[#1A1A1A] hover:text-[#5F84BA]"
             }`}
           >
-            {category.name}
+            {localizeCategoryName(t, category.name)}
           </button>
 
           {category.subcategories.length > 0 && (
@@ -52,7 +53,7 @@ export function CategoryNav({
                         active ? "font-medium text-[#C78F50]" : "text-[#64748B] hover:text-[#5F84BA]"
                       }`}
                     >
-                      {subcategory.name}
+                      {localizeCategoryName(t, subcategory.name)}
                     </button>
                   </li>
                 );
