@@ -6,7 +6,7 @@ import type { Product } from "../types";
 import { PublicHeader } from "../components/landing/PublicHeader";
 import { WhatsAppFloatingButton } from "../components/landing/WhatsAppFloatingButton";
 import { FloatingCartButton } from "../components/catalog/FloatingCartButton";
-import { formatPrice, formatWeightSize } from "../lib/format";
+import { formatPrice, formatWeightSize, localizeText } from "../lib/format";
 import { WHATSAPP_HREF } from "../lib/whatsapp";
 import { useCart } from "../lib/cart";
 import { useToast } from "../components/Toast";
@@ -21,6 +21,10 @@ export function ProductDetail() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const weightSize = product ? formatWeightSize(product.weightGrams, product.sizeCm, i18n.language) : null;
+  const displayName = product ? localizeText(product.name, product.nameEn, i18n.language) : "";
+  const displayDescription = product
+    ? localizeText(product.description ?? "", product.descriptionEn, i18n.language)
+    : "";
 
   useEffect(() => {
     if (!id) return;
@@ -39,8 +43,11 @@ export function ProductDetail() {
       {
         productId: product.id,
         name: product.name,
+        nameEn: product.nameEn,
         unitPrice: Number(product.price),
         imageUrl: product.images[0]?.url ?? null,
+        weightGrams: Number(product.weightGrams),
+        sizeCm: Number(product.sizeCm),
       },
       quantity
     );
@@ -63,7 +70,7 @@ export function ProductDetail() {
             {product.images[0] ? (
               <img
                 src={product.images[0].url}
-                alt={product.name}
+                alt={displayName}
                 className="aspect-square w-full rounded-xl border border-[#E2E8F0] object-cover"
               />
             ) : (
@@ -78,8 +85,8 @@ export function ProductDetail() {
                   {[product.category?.name, product.subcategory?.name].filter(Boolean).join(" · ")}
                 </p>
               )}
-              <h1 className="mt-1 text-2xl font-bold">{product.name}</h1>
-              {product.description && <p className="mt-4 text-[#1A1A1A]">{product.description}</p>}
+              <h1 className="mt-1 text-2xl font-bold">{displayName}</h1>
+              {displayDescription && <p className="mt-4 text-[#1A1A1A]">{displayDescription}</p>}
               {weightSize && <p className="mt-4 text-sm text-[#64748B]">{weightSize}</p>}
               <p className="mt-2 text-2xl font-bold text-[#1B3A6B]">{formatPrice(product.price, i18n.language)}</p>
 

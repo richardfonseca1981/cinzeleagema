@@ -140,3 +140,70 @@ export async function interpretPhotoInstruction(instruction: string): Promise<Cl
 
   return { unclear: false, operations: input.operations ?? [] };
 }
+
+// Tradução automática de nome/descrição de produto (PT -> EN) para o site
+// público bilíngue. Mesmo modelo do tratamento de foto; chamada disparada
+// pela rota de produtos (fire-and-forget após salvar) e pela rota manual de
+// retradução.
+const TRANSLATE_TOOL_NAME = "translate_product";
+
+const TRANSLATE_SYSTEM_PROMPT = `Você traduz nome e descrição de peças de joalheria/pedras preciosas do português para o inglês, para o catálogo bilíngue de uma loja online chamada "Cinzel e a Gema". A tradução deve ser natural e fluente, nunca literal palavra por palavra, mantendo o tom institucional e confiável da marca. Nomes de espécies minerais e termos gemológicos devem usar o termo em inglês reconhecido no mercado de gemas quando existir (ex: "Topázio Imperial" -> "Imperial Topaz", "lapidação" -> "cut"/"faceting"). Nunca responda com texto livre — sempre use a ferramenta translate_product.`;
+
+const TRANSLATE_TOOL: Anthropic.Tool = {
+  name: TRANSLATE_TOOL_NAME,
+  description: "Registra a tradução do nome e (quando houver) da descrição de um produto, do português para o inglês.",
+  input_schema: {
+    type: "object",
+    properties: {
+      nameEn: { type: "string", description: "Nome do produto traduzido para o inglês" },
+      descriptionEn: {
+        type: "string",
+        description: "Descrição do produto traduzida para o inglês — omitir se não houver descrição em português",
+      },
+    },
+    required: ["nameEn"],
+  },
+};
+
+export interface ProductTranslation {
+  nameEn: string;
+  descriptionEn: string | null;
+}
+
+// Retorna null (em vez de lançar) sempre que a tradução não puder ser obtida
+// — chave ausente, erro de rede, resposta inesperada — para que quem chamar
+// nunca deixe isso bloquear o cadastro/edição do produto.
+export async function translateProductText(name: string, description: string | null): Promise<ProductTranslation | null> {
+  if (!isAnthropicConfigured()) return null;
+
+  try {
+    const response = await getClient().messages.create({
+      model: MODEL,
+      max_tokens: 1024,
+      system: TRANSLATE_SYSTEM_PROMPT,
+      tools: [TRANSLATE_TOOL],
+      tool_choice: { type: "tool", name: TRANSLATE_TOOL_NAME },
+      messages: [
+        {
+          role: "user",
+          content: `Nome: ${name}\nDescrição: ${description && description.trim() ? description : "(sem descrição)"}`,
+        },
+      ],
+    });
+
+    const toolUse = response.content.find(
+      (block): block is Anthropic.ToolUseBlock => block.type === "tool_use" && block.name === TRANSLATE_TOOL_NAME
+    );
+    if (!toolUse) return null;
+
+    const input = toolUse.input as { nameEn?: string; descriptionEn?: string };
+    if (!input.nameEn) return null;
+
+    return {
+      nameEn: input.nameEn,
+      descriptionEn: description && description.trim() ? input.descriptionEn ?? null : null,
+    };
+  } catch {
+    return null;
+  }
+}

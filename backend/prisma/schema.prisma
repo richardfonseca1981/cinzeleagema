@@ -57,6 +57,13 @@ model Product {
   slug        String  @unique
   description String?
 
+  // Tradução automática (Claude Haiku 4.5) disparada ao criar/editar o
+  // produto — null quando ainda não traduzido ou quando a tradução falhou;
+  // nesse caso o site público cai para name/description (PT) mesmo com
+  // idioma em EN. Nunca preenchidos manualmente pelo admin.
+  nameEn        String?
+  descriptionEn String?
+
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id])
 

@@ -186,6 +186,7 @@
     "whatsappMessage": {
       "intro": "Hi! I'd like to place an order:",
       "item": "• {{quantity}}x {{name}} — {{price}}",
+      "itemWithSize": "• {{quantity}}x {{name}} ({{size}}) — {{price}}",
       "total": "Estimated total: {{total}}",
       "name": "Name: {{name}}",
       "phone": "Phone: {{phone}}"

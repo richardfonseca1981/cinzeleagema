@@ -12,8 +12,21 @@ export function formatPrice(value: string | number, lang: string = "pt-BR") {
   return Number(value).toLocaleString(toIntlLocale(lang), { style: "currency", currency: "BRL" });
 }
 
+const GRAMS_PER_OUNCE = 0.035274;
+const INCHES_PER_CM = 0.393701;
+
+export function gramsToOunces(grams: number): number {
+  return Math.round(grams * GRAMS_PER_OUNCE * 100) / 100;
+}
+
+export function cmToInches(cm: number): number {
+  return Math.round(cm * INCHES_PER_CM * 100) / 100;
+}
+
 // Retorna null quando não há peso nem tamanho válidos (produto incompleto) —
 // nesse caso o card/detalhe simplesmente não mostra a linha, em vez de "0g · 0cm".
+// O banco sempre guarda em gramas/centímetros (fonte de verdade, usada no
+// admin); a conversão para onças/polegadas em EN é só de exibição.
 export function formatWeightSize(
   weightGrams: string | number,
   sizeCm: string | number,
@@ -22,6 +35,13 @@ export function formatWeightSize(
   const locale = toIntlLocale(lang);
   const grams = Number(weightGrams);
   const cm = Number(sizeCm);
+
+  if (lang === "en") {
+    const weightLabel = grams > 0 ? `${gramsToOunces(grams).toLocaleString(locale, { maximumFractionDigits: 2 })}oz` : null;
+    const sizeLabel = cm > 0 ? `${cmToInches(cm).toLocaleString(locale, { maximumFractionDigits: 2 })}in` : null;
+    if (!weightLabel && !sizeLabel) return null;
+    return [weightLabel, sizeLabel].filter(Boolean).join(" · ");
+  }
 
   // Pedras lapidadas pesam frações de grama; peças bruta/big podem passar de
   // 1kg. Convertendo tudo para kg com 3 casas, as primeiras arredondam para
@@ -37,4 +57,10 @@ export function formatWeightSize(
 
   if (!weightLabel && !sizeLabel) return null;
   return [weightLabel, sizeLabel].filter(Boolean).join(" · ");
+}
+
+// Fallback para português sempre que a tradução (EN) estiver ausente/vazia —
+// nunca mostra vazio no site público.
+export function localizeText(pt: string, en: string | null | undefined, lang: string): string {
+  return lang === "en" && en ? en : pt;
 }

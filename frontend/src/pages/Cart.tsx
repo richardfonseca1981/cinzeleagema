@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useCart } from "../lib/cart";
-import { formatPrice } from "../lib/format";
+import { formatPrice, formatWeightSize, localizeText } from "../lib/format";
 import { PublicHeader } from "../components/landing/PublicHeader";
 import { WhatsAppFloatingButton } from "../components/landing/WhatsAppFloatingButton";
 import { WHATSAPP_HREF } from "../lib/whatsapp";
@@ -30,39 +30,45 @@ export function Cart() {
         ) : (
           <>
             <div className="mt-6 divide-y divide-[#E2E8F0] rounded-lg border border-[#E2E8F0] bg-white">
-              {items.map((item) => (
-                <div key={item.productId} className="flex flex-wrap items-center gap-4 p-4">
-                  {item.imageUrl ? (
-                    <img src={item.imageUrl} alt={item.name} className="h-16 w-16 rounded-lg object-cover" />
-                  ) : (
-                    <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-[#F1F5F9] text-xs text-[#94A3B8]">
-                      {t("productCard.noPhoto")}
+              {items.map((item) => {
+                const itemName = localizeText(item.name, item.nameEn, i18n.language);
+                const weightSize = formatWeightSize(item.weightGrams, item.sizeCm, i18n.language);
+
+                return (
+                  <div key={item.productId} className="flex flex-wrap items-center gap-4 p-4">
+                    {item.imageUrl ? (
+                      <img src={item.imageUrl} alt={itemName} className="h-16 w-16 rounded-lg object-cover" />
+                    ) : (
+                      <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-[#F1F5F9] text-xs text-[#94A3B8]">
+                        {t("productCard.noPhoto")}
+                      </div>
+                    )}
+                    <div className="min-w-[140px] flex-1">
+                      <p className="font-medium text-[#1A1A1A]">{itemName}</p>
+                      {weightSize && <p className="text-xs text-[#94A3B8]">{weightSize}</p>}
+                      <p className="text-sm text-[#64748B]">
+                        {formatPrice(item.unitPrice, i18n.language)} {t("cart.perUnit")}
+                      </p>
                     </div>
-                  )}
-                  <div className="min-w-[140px] flex-1">
-                    <p className="font-medium text-[#1A1A1A]">{item.name}</p>
-                    <p className="text-sm text-[#64748B]">
-                      {formatPrice(item.unitPrice, i18n.language)} {t("cart.perUnit")}
+                    <input
+                      type="number"
+                      min={1}
+                      value={item.quantity}
+                      onChange={(e) => updateQuantity(item.productId, Math.max(1, Number(e.target.value)))}
+                      className="w-16 rounded-lg border border-[#E2E8F0] px-2 py-1 text-center text-sm outline-none transition focus:border-[#1B3A6B] focus:ring-2 focus:ring-[#EFF6FF]"
+                    />
+                    <p className="w-24 text-right font-semibold text-[#1A1A1A]">
+                      {formatPrice(item.unitPrice * item.quantity, i18n.language)}
                     </p>
+                    <button
+                      onClick={() => removeItem(item.productId)}
+                      className="text-sm text-[#64748B] transition hover:text-[#DC2626]"
+                    >
+                      {t("cart.remove")}
+                    </button>
                   </div>
-                  <input
-                    type="number"
-                    min={1}
-                    value={item.quantity}
-                    onChange={(e) => updateQuantity(item.productId, Math.max(1, Number(e.target.value)))}
-                    className="w-16 rounded-lg border border-[#E2E8F0] px-2 py-1 text-center text-sm outline-none transition focus:border-[#1B3A6B] focus:ring-2 focus:ring-[#EFF6FF]"
-                  />
-                  <p className="w-24 text-right font-semibold text-[#1A1A1A]">
-                    {formatPrice(item.unitPrice * item.quantity, i18n.language)}
-                  </p>
-                  <button
-                    onClick={() => removeItem(item.productId)}
-                    className="text-sm text-[#64748B] transition hover:text-[#DC2626]"
-                  >
-                    {t("cart.remove")}
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <div className="mt-6 flex items-center justify-between rounded-lg border border-[#E2E8F0] bg-white p-4">

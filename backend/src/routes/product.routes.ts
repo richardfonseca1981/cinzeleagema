@@ -4,6 +4,7 @@ import { requireAuth } from "../middleware/auth";
 import { asyncHandler } from "../utils/asyncHandler";
 import { HttpError } from "../middleware/errorHandler";
 import { createProductSchema, listProductsQuerySchema, updateProductSchema } from "../schemas/product.schema";
+import { translateAndSaveProduct, translateProductInBackground } from "../lib/productTranslation";
 
 export const productRouter = Router();
 
@@ -87,6 +88,10 @@ productRouter.post(
       include: { images: true, category: true, subcategory: true },
     });
     res.status(201).json(product);
+
+    // Produto novo: sempre traduz. Não bloqueia a resposta nem falha o
+    // cadastro se a tradução der errado (ver translateProductInBackground).
+    translateProductInBackground(product.id, product.name, product.description);
   })
 );
 
@@ -96,18 +101,21 @@ productRouter.patch(
   asyncHandler(async (req, res) => {
     const data = updateProductSchema.parse(req.body);
 
+    const existing = await prisma.product.findUnique({ where: { id: req.params.id } });
+    if (!existing) throw new HttpError(404, "Produto não encontrado");
+
     if (data.trackStock === false) {
       data.stockQty = null;
     }
 
     if (data.categoryId !== undefined || data.subcategoryId !== undefined) {
-      const existing = await prisma.product.findUnique({ where: { id: req.params.id } });
-      if (!existing) throw new HttpError(404, "Produto não encontrado");
-
       const categoryId = data.categoryId ?? existing.categoryId;
       const subcategoryId = data.subcategoryId !== undefined ? data.subcategoryId : existing.subcategoryId;
       data.subcategoryId = await resolveSubcategoryId(categoryId, subcategoryId);
     }
+
+    const nameChanged = data.name !== undefined && data.name !== existing.name;
+    const descriptionChanged = data.description !== undefined && data.description !== existing.description;
 
     const product = await prisma.product.update({
       where: { id: req.params.id },
@@ -115,6 +123,26 @@ productRouter.patch(
       include: { images: { orderBy: { position: "asc" } }, category: true, subcategory: true },
     });
     res.json(product);
+
+    // Só retraduz quando nome ou descrição de fato mudaram — evita chamar a
+    // IA à toa em edições que não tocam nesses campos (ex: só preço).
+    if (nameChanged || descriptionChanged) {
+      translateProductInBackground(product.id, product.name, product.description);
+    }
+  })
+);
+
+productRouter.post(
+  "/:id/retranslate",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const product = await prisma.product.findUnique({ where: { id: req.params.id } });
+    if (!product) throw new HttpError(404, "Produto não encontrado");
+
+    const updated = await translateAndSaveProduct(product.id, product.name, product.description);
+    if (!updated) throw new HttpError(502, "Não foi possível traduzir o produto agora, tente novamente");
+
+    res.json(updated);
   })
 );
 
