@@ -13,7 +13,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:seed": "tsx prisma/seed.ts",
-    "translate:backfill": "tsx src/scripts/backfillProductTranslations.ts"
+    "translate:backfill": "tsx src/scripts/backfillProductTranslations.ts",
+    "reset-password": "tsx src/scripts/resetAdminPassword.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
