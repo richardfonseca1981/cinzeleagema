@@ -1,30 +1,62 @@
 import { useTranslation } from "react-i18next";
 import { setLanguage, type SupportedLanguage } from "../../i18n";
 
-const LANGUAGE_OPTIONS: { code: SupportedLanguage; flag: string }[] = [
-  { code: "pt-BR", flag: "🇧🇷" },
-  { code: "en", flag: "🇺🇸" },
+// Bandeiras simples em SVG inline — emoji de bandeira não renderiza no
+// Windows (vira texto tipo "BR"/"US" ou some). Não precisam ser oficiais,
+// só reconhecíveis.
+function BrazilFlagIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 16" className={className} aria-hidden="true">
+      <rect width="24" height="16" fill="#009C3B" />
+      <polygon points="12,2 22,8 12,14 2,8" fill="#FFDF00" />
+      <circle cx="12" cy="8" r="3.2" fill="#002776" />
+    </svg>
+  );
+}
+
+function UsaFlagIcon({ className = "" }: { className?: string }) {
+  const stripeHeight = 16 / 7;
+  return (
+    <svg viewBox="0 0 24 16" className={className} aria-hidden="true">
+      <rect width="24" height="16" fill="#FFFFFF" />
+      {[0, 2, 4, 6].map((i) => (
+        <rect key={i} x="0" y={i * stripeHeight} width="24" height={stripeHeight} fill="#B22234" />
+      ))}
+      <rect width="10" height={stripeHeight * 4} fill="#3C3B6E" />
+    </svg>
+  );
+}
+
+const LANGUAGE_OPTIONS: {
+  code: SupportedLanguage;
+  Flag: typeof BrazilFlagIcon;
+  ariaLabel: string;
+}[] = [
+  { code: "pt-BR", Flag: BrazilFlagIcon, ariaLabel: "Mudar para português" },
+  { code: "en", Flag: UsaFlagIcon, ariaLabel: "Switch to English" },
 ];
 
 export function LanguageSwitcher({ className = "" }: { className?: string }) {
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
 
   return (
-    <div className={`flex items-center gap-1 ${className}`}>
-      {LANGUAGE_OPTIONS.map((option) => {
-        const active = i18n.language === option.code;
+    <div className={`flex items-center gap-1.5 ${className}`}>
+      {LANGUAGE_OPTIONS.map(({ code, Flag, ariaLabel }) => {
+        const active = i18n.language === code;
         return (
           <button
-            key={option.code}
+            key={code}
             type="button"
-            onClick={() => setLanguage(option.code)}
+            onClick={() => setLanguage(code)}
+            aria-label={ariaLabel}
             aria-pressed={active}
-            className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium transition ${
-              active ? "bg-[#EFF6FF] text-[#1B3A6B]" : "text-[#64748B] hover:text-[#1B3A6B]"
+            className={`rounded-sm transition ${
+              active
+                ? "opacity-100 ring-2 ring-[#1B3A6B] ring-offset-1"
+                : "opacity-50 hover:opacity-80"
             }`}
           >
-            <span aria-hidden="true">{option.flag}</span>
-            {t(`languageSwitcher.${option.code === "pt-BR" ? "pt" : "en"}`)}
+            <Flag className="h-4 w-6 rounded-[2px]" />
           </button>
         );
       })}
