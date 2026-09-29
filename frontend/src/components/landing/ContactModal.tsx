@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { Modal } from "./Modal";
 import { WhatsAppIcon } from "./icons";
 
@@ -11,6 +12,7 @@ export function ContactModal({
   onClose: () => void;
   whatsappHref: string | null;
 }) {
+  const { t } = useTranslation();
   const [submitted, setSubmitted] = useState(false);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -27,15 +29,12 @@ export function ContactModal({
   }
 
   return (
-    <Modal open={open} onClose={handleClose} title="Fale Conosco">
+    <Modal open={open} onClose={handleClose} title={t("contactModal.title")}>
       {submitted ? (
         <div className="text-center">
           <div className="rounded-lg bg-[#F0FDF4] p-4">
-            <p className="text-sm font-semibold text-[#22C55E]">Mensagem recebida</p>
-            <p className="mt-1 text-sm text-[#1A1A1A]">
-              Em breve você poderá enviar mensagens por aqui. Por enquanto, fale conosco pelo
-              WhatsApp.
-            </p>
+            <p className="text-sm font-semibold text-[#22C55E]">{t("contactModal.submittedTitle")}</p>
+            <p className="mt-1 text-sm text-[#1A1A1A]">{t("contactModal.submittedBody")}</p>
           </div>
           {whatsappHref && (
             <a
@@ -45,7 +44,7 @@ export function ContactModal({
               className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#1B3A6B] px-6 py-3 font-semibold text-white transition hover:bg-[#152D54]"
             >
               <WhatsAppIcon className="h-4 w-4" />
-              Falar no WhatsApp
+              {t("contactModal.whatsappCta")}
             </a>
           )}
         </div>
@@ -53,7 +52,7 @@ export function ContactModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="contact-name" className="block text-sm font-medium text-[#1A1A1A]">
-              Nome completo
+              {t("contactModal.nameLabel")}
             </label>
             <input
               id="contact-name"
@@ -64,7 +63,7 @@ export function ContactModal({
           </div>
           <div>
             <label htmlFor="contact-email" className="block text-sm font-medium text-[#1A1A1A]">
-              E-mail
+              {t("contactModal.emailLabel")}
             </label>
             <input
               id="contact-email"
@@ -75,7 +74,7 @@ export function ContactModal({
           </div>
           <div>
             <label htmlFor="contact-subject" className="block text-sm font-medium text-[#1A1A1A]">
-              Assunto
+              {t("contactModal.subjectLabel")}
             </label>
             <input
               id="contact-subject"
@@ -86,7 +85,7 @@ export function ContactModal({
           </div>
           <div>
             <label htmlFor="contact-message" className="block text-sm font-medium text-[#1A1A1A]">
-              Mensagem
+              {t("contactModal.messageLabel")}
             </label>
             <textarea
               id="contact-message"
@@ -99,7 +98,7 @@ export function ContactModal({
             type="submit"
             className="w-full rounded-lg bg-[#1B3A6B] px-4 py-2.5 font-semibold text-white transition hover:bg-[#152D54]"
           >
-            Enviar
+            {t("contactModal.submit")}
           </button>
         </form>
       )}

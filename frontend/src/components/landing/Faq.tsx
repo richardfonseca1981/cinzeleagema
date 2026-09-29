@@ -1,23 +1,28 @@
 import { useState } from "react";
-import { FAQ_ITEMS } from "./data";
+import { useTranslation } from "react-i18next";
 import { ChevronDownIcon } from "./icons";
 
+interface FaqItem {
+  question: string;
+  answer: string;
+}
+
 export function Faq() {
+  const { t } = useTranslation();
   const [openIndex, setOpenIndex] = useState<number | null>(0);
+  const items = t("faq.items", { returnObjects: true }) as FaqItem[];
 
   return (
     <section id="faq" className="bg-[#EFF6FF] py-16 sm:py-24">
       <div className="mx-auto max-w-3xl px-4">
         <div className="text-center">
-          <p className="text-sm font-semibold uppercase tracking-widest text-[#1B3A6B]">FAQ</p>
-          <h2 className="mt-2 text-2xl font-bold text-[#1A1A1A] sm:text-3xl">Perguntas frequentes sobre pedras preciosas</h2>
-          <p className="mt-4 text-[#64748B]">
-            Tire suas dúvidas técnicas sobre pedras preciosas antes de fazer o seu pedido.
-          </p>
+          <p className="text-sm font-semibold uppercase tracking-widest text-[#1B3A6B]">{t("faq.eyebrow")}</p>
+          <h2 className="mt-2 text-2xl font-bold text-[#1A1A1A] sm:text-3xl">{t("faq.title")}</h2>
+          <p className="mt-4 text-[#64748B]">{t("faq.subtitle")}</p>
         </div>
 
         <div className="mt-10 divide-y divide-[#E2E8F0] rounded-xl border border-[#E2E8F0] bg-white">
-          {FAQ_ITEMS.map((item, index) => {
+          {items.map((item, index) => {
             const isOpen = openIndex === index;
             return (
               <div key={item.question}>

@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { api } from "../../lib/api";
 import type { Product } from "../../types";
 import { ProductCard } from "../catalog/ProductCard";
 
 export function FeaturedProducts() {
+  const { t } = useTranslation();
   const [products, setProducts] = useState<Product[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
 
@@ -25,12 +27,12 @@ export function FeaturedProducts() {
     <section id="produtos" className="bg-[#F8FAFC] py-16 sm:py-24">
       <div className="mx-auto max-w-6xl px-4">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-semibold uppercase tracking-widest text-[#1B3A6B]">Peças em destaque</p>
-          <h2 className="mt-2 text-2xl font-bold text-[#1A1A1A] sm:text-3xl">Conheça algumas de nossas peças</h2>
+          <p className="text-sm font-semibold uppercase tracking-widest text-[#1B3A6B]">{t("featuredProducts.eyebrow")}</p>
+          <h2 className="mt-2 text-2xl font-bold text-[#1A1A1A] sm:text-3xl">{t("featuredProducts.title")}</h2>
         </div>
 
         {status === "ready" && products.length === 0 && (
-          <p className="mt-10 text-center text-[#64748B]">Novidades chegando em breve — volte para conferir.</p>
+          <p className="mt-10 text-center text-[#64748B]">{t("featuredProducts.empty")}</p>
         )}
 
         {products.length > 0 && (
@@ -46,7 +48,7 @@ export function FeaturedProducts() {
             to="/catalogo"
             className="inline-flex items-center justify-center rounded-full bg-[#1B3A6B] px-8 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#152D54]"
           >
-            Visualizar todos os produtos
+            {t("featuredProducts.cta")}
           </Link>
         </div>
       </div>

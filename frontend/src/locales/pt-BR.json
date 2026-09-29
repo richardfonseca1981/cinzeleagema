@@ -1,0 +1,204 @@
+{
+  "common": {
+    "close": "Fechar"
+  },
+  "header": {
+    "logoAlt": "Cinzel e a Gema",
+    "openMenu": "Abrir menu",
+    "closeMenu": "Fechar menu",
+    "nav": {
+      "home": "Home",
+      "about": "Sobre Nós",
+      "products": "Produtos",
+      "blog": "Blog",
+      "faq": "FAQ",
+      "contact": "Contato"
+    }
+  },
+  "languageSwitcher": {
+    "pt": "PT",
+    "en": "EN"
+  },
+  "hero": {
+    "eyebrow": "Curadoria de pedras preciosas",
+    "title": "Pedras preciosas selecionadas com curadoria e procedência",
+    "subtitle": "Peças únicas, com atenção à qualidade, à origem e à documentação de cada pedra.",
+    "cta": "Ver catálogo",
+    "imageAlt": "Peça em destaque da Cinzel e a Gema (placeholder)"
+  },
+  "featuredProducts": {
+    "eyebrow": "Peças em destaque",
+    "title": "Conheça algumas de nossas peças",
+    "empty": "Novidades chegando em breve — volte para conferir.",
+    "cta": "Visualizar todos os produtos"
+  },
+  "trustBanner": {
+    "title": "Uma curadoria dedicada à comercialização de pedras preciosas",
+    "description": "Selecionamos cada peça com atenção à autenticidade, à procedência e à qualidade, construindo relações de confiança com colecionadores e apaixonados por joalheria.",
+    "cta": "Saiba mais"
+  },
+  "faq": {
+    "eyebrow": "FAQ",
+    "title": "Perguntas frequentes sobre pedras preciosas",
+    "subtitle": "Tire suas dúvidas técnicas sobre pedras preciosas antes de fazer o seu pedido.",
+    "items": [
+      {
+        "question": "O que é quilate de uma pedra preciosa?",
+        "answer": "Quilate (ct) é uma unidade de massa, não de tamanho — 1 quilate equivale a 200 miligramas. É comum confundir com \"quilate\" de ouro (que mede pureza, em partes de 24), mas para pedras preciosas o quilate é sempre peso. Duas pedras do mesmo peso em quilates podem ter tamanhos visuais diferentes dependendo da densidade do mineral e da forma como foram lapidadas — por isso o quilate sozinho não define o valor de uma peça, ele é sempre avaliado junto com corte, cor e claridade."
+      },
+      {
+        "question": "Qual a diferença entre corte e lapidação?",
+        "answer": "Lapidação é o processo completo de transformar a pedra bruta na peça final — inclui o desbaste, o polimento e a definição da forma. Corte é o resultado desse processo: o formato geométrico e o conjunto de facetas aplicados (redondo, oval, esmeralda, pera, cushion, entre outros), além das proporções e simetria entre essas facetas. Um corte bem executado influencia diretamente como a pedra reflete e refrata a luz — duas pedras da mesma espécie mineral e do mesmo peso podem ter brilho muito diferente dependendo da qualidade do corte aplicado na lapidação."
+      },
+      {
+        "question": "O que significa a claridade (ou pureza) de uma pedra?",
+        "answer": "Claridade descreve a presença de inclusões — pequenas imperfeições internas ou externas, naturais da formação geológica da pedra — e o quanto elas são visíveis a olho nu ou em ampliação. Escalas gemológicas (como FL/IF para pedras sem inclusões visíveis, VVS, VS, SI e I, em ordem decrescente de pureza) classificam esse aspecto. Pedras com claridade mais alta tendem a ser mais raras e valorizadas, mas para várias espécies as inclusões fazem parte do caráter natural da peça e não comprometem sua beleza ou durabilidade."
+      },
+      {
+        "question": "Como identificar um certificado ou laudo gemológico confiável?",
+        "answer": "Um laudo gemológico confiável é emitido por um laboratório ou instituto reconhecido no setor (no Brasil, o IBGM — Instituto Brasileiro de Gemas e Metais Preciosos — é uma referência), e deve trazer, no mínimo: identificação da espécie mineral, peso em quilates, dimensões, descrição do corte, observações sobre claridade e cor, e qualquer tratamento identificado na pedra. Para peças de maior valor, vale sempre solicitar o laudo antes da compra — ele é o que garante, de forma independente, que as características informadas correspondem à pedra física."
+      },
+      {
+        "question": "Qual a diferença entre pedra natural, sintética e tratada?",
+        "answer": "Pedra natural se forma por processos geológicos ao longo de milhares a milhões de anos. Pedra sintética (ou \"de laboratório\") tem a mesma composição química e estrutura cristalina da natural, mas é produzida artificialmente em um intervalo de tempo muito menor — não deve ser confundida com simulantes (como zircônia cúbica), que imitam a aparência mas têm composição diferente. Já uma pedra tratada é uma pedra natural que passou por algum processo para realçar cor ou claridade (aquecimento e óleo são os mais comuns, por exemplo em esmeraldas). Tratamentos são uma prática comum e aceita no mercado, desde que informados — por isso o laudo gemológico costuma registrar quando um tratamento foi identificado."
+      },
+      {
+        "question": "Como cuidar e limpar joias com pedras preciosas?",
+        "answer": "Os cuidados variam por espécie mineral: pedras mais porosas ou tratadas com óleo, como algumas esmeraldas, não devem ir a limpadores ultrassônicos nem ter contato com produtos químicos agressivos, que podem remover o tratamento e escurecer fissuras internas. Como regra geral e segura para a maioria das peças: limpe com água morna, sabão neutro e uma escova de cerdas macias, seque com pano macio, evite variações bruscas de temperatura e guarde cada peça separadamente para não riscar outras joias. Na dúvida sobre uma pedra específica, o mais seguro é perguntar antes de usar qualquer método de limpeza."
+      },
+      {
+        "question": "Por que pedras da mesma \"cor nominal\" variam de tom?",
+        "answer": "A cor de uma pedra preciosa vem de traços de elementos químicos presentes durante sua formação geológica — por exemplo, cromo e vanádio dão à esmeralda seu verde característico, enquanto variações na proporção desses elementos (e a presença de ferro) mudam o tom entre um verde mais azulado ou mais amarelado. Como a concentração desses elementos varia de jazida para jazida — e até dentro da mesma jazida — duas pedras da mesma espécie mineral e da mesma classificação de cor nominal podem apresentar tons visivelmente diferentes. É também por isso que a origem geográfica costuma constar no laudo gemológico de peças de maior valor."
+      }
+    ]
+  },
+  "about": {
+    "eyebrow": "Quem somos nós",
+    "title": "Curadoria e procedência em cada pedra preciosa",
+    "paragraph1": "A Cinzel e a Gema trabalha com a curadoria e comercialização de pedras preciosas, unindo qualidade e procedência em cada peça selecionada. Como cada pedra costuma ser um item único, tratamos o catálogo com o mesmo cuidado que se dedica a uma coleção — não a um estoque padronizado.",
+    "paragraph2": "Nosso objetivo é ser uma referência de confiança para colecionadores e apaixonados por joalheria, unindo transparência sobre a origem e as características de cada pedra a um atendimento próximo e atencioso."
+  },
+  "certification": {
+    "badge": "Selo de certificação gemológica (placeholder — em obtenção)",
+    "title": "Procedência e transparência em cada peça",
+    "subtitle": "Autenticidade documentada",
+    "description": "Trabalhamos para atender aos padrões de referência do setor gemológico, buscando alinhamento com instituições como o IBGM (Instituto Brasileiro de Gemas e Metais Preciosos). O laudo gemológico de cada peça, quando disponível, será exibido nesta seção assim que o processo de padronização da documentação for concluído."
+  },
+  "gallery": {
+    "eyebrow": "Galeria",
+    "title": "Peças e bastidores",
+    "items": [
+      "Peças em destaque",
+      "Processo de lapidação",
+      "Certificação gemológica",
+      "Curadoria",
+      "Atendimento",
+      "Embalagem e apresentação"
+    ]
+  },
+  "blog": {
+    "eyebrow": "Blog",
+    "title": "Conteúdo sobre pedras preciosas",
+    "subtitle": "Em breve, artigos completos aqui. Confira uma prévia do que está por vir.",
+    "comingSoon": "Em breve",
+    "imageAlt": "Imagem do artigo (placeholder)",
+    "posts": [
+      {
+        "title": "Como identificar um certificado gemológico confiável",
+        "excerpt": "O que um laudo sério precisa informar antes de você fechar a compra de uma peça."
+      },
+      {
+        "title": "Pedra natural, sintética e tratada: entenda as diferenças",
+        "excerpt": "Três conceitos que costumam ser confundidos — e por que essa distinção importa."
+      },
+      {
+        "title": "Cuidados essenciais para joias com pedras preciosas",
+        "excerpt": "Boas práticas de limpeza e armazenamento para preservar cada peça por mais tempo."
+      }
+    ]
+  },
+  "footer": {
+    "tagline": "Curadoria e comercialização de pedras preciosas com foco em qualidade e procedência.",
+    "contactTitle": "Contato",
+    "addressPlaceholder": "Endereço a definir",
+    "navTitle": "Navegação",
+    "about": "Sobre Nós",
+    "products": "Produtos",
+    "faq": "FAQ",
+    "qualityPolicy": "Política de Qualidade",
+    "copyright": "© {{year}} Cinzel e a Gema. Todos os direitos reservados."
+  },
+  "contactModal": {
+    "title": "Fale Conosco",
+    "submittedTitle": "Mensagem recebida",
+    "submittedBody": "Em breve você poderá enviar mensagens por aqui. Por enquanto, fale conosco pelo WhatsApp.",
+    "whatsappCta": "Falar no WhatsApp",
+    "nameLabel": "Nome completo",
+    "emailLabel": "E-mail",
+    "subjectLabel": "Assunto",
+    "messageLabel": "Mensagem",
+    "submit": "Enviar"
+  },
+  "qualityPolicyModal": {
+    "title": "Política de Qualidade",
+    "paragraph1": "A Cinzel e a Gema tem o compromisso de representar cada pedra preciosa com precisão — peso, corte, origem, claridade e demais características técnicas são descritos com base nas informações disponíveis para cada peça, buscando a confiança de todos os nossos clientes e parceiros.",
+    "paragraph2": "Como a cor de uma pedra é sensível a distorções por iluminação, as fotos de cada peça são produzidas sob luz neutra, com o objetivo de representar o tom real da pedra da forma mais fiel possível — sem correção de cor por edição digital.",
+    "paragraph3": "Buscamos a melhoria contínua da nossa curadoria — revisando processos, ouvindo o retorno de clientes e acompanhando as referências do setor gemológico — como parte do nosso compromisso permanente com a qualidade e a transparência."
+  },
+  "catalog": {
+    "title": "Catálogo",
+    "subtitle": "Conheça as peças disponíveis, organizadas por categoria.",
+    "allProducts": "Todas as peças",
+    "loading": "Carregando...",
+    "empty": "Nenhuma peça encontrada nessa categoria."
+  },
+  "productCard": {
+    "noPhoto": "Sem foto",
+    "addToOrder": "Adicionar ao pedido",
+    "addedToast": "Adicionado ao pedido"
+  },
+  "productDetail": {
+    "back": "← Voltar ao catálogo",
+    "loading": "Carregando...",
+    "notFound": "Peça não encontrada.",
+    "quantity": "Quantidade"
+  },
+  "cart": {
+    "title": "Seu pedido",
+    "empty": "Seu pedido está vazio.",
+    "viewCatalog": "Ver catálogo",
+    "perUnit": "/ unidade",
+    "remove": "Remover",
+    "total": "Total estimado",
+    "checkout": "Finalizar pedido"
+  },
+  "checkout": {
+    "title": "Finalizar pedido",
+    "subtitle": "Quase lá! Informe seus dados e confirme o pedido. Em breve nossa equipe fala com você pelo WhatsApp para combinar pagamento e entrega.",
+    "emptyCart": "Seu pedido está vazio.",
+    "summary": "Resumo",
+    "total": "Total estimado",
+    "nameLabel": "Nome",
+    "phoneLabel": "Telefone/WhatsApp",
+    "phonePlaceholder": "(14) 99999-0000",
+    "submit": "Confirmar pedido",
+    "sending": "Enviando...",
+    "successTitle": "Pedido enviado!",
+    "successFluxio": "Recebemos seu pedido e nossa equipe vai entrar em contato em breve.",
+    "successWhatsapp": "Abrimos o WhatsApp com os detalhes do seu pedido — é só enviar a mensagem para confirmarmos com você.",
+    "backToCatalog": "Voltar ao catálogo",
+    "whatsappMessage": {
+      "intro": "Olá! Gostaria de fazer um pedido:",
+      "item": "• {{quantity}}x {{name}} — {{price}}",
+      "total": "Total estimado: {{total}}",
+      "name": "Nome: {{name}}",
+      "phone": "Telefone: {{phone}}"
+    }
+  },
+  "whatsapp": {
+    "ariaLabel": "Falar no WhatsApp"
+  },
+  "cartButton": {
+    "ariaLabel": "Ver meu pedido"
+  }
+}

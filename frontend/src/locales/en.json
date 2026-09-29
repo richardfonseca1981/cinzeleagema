@@ -1,0 +1,204 @@
+{
+  "common": {
+    "close": "Close"
+  },
+  "header": {
+    "logoAlt": "Cinzel e a Gema",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "nav": {
+      "home": "Home",
+      "about": "About Us",
+      "products": "Products",
+      "blog": "Blog",
+      "faq": "FAQ",
+      "contact": "Contact"
+    }
+  },
+  "languageSwitcher": {
+    "pt": "PT",
+    "en": "EN"
+  },
+  "hero": {
+    "eyebrow": "Curated fine gemstones",
+    "title": "Fine gemstones, hand-picked for quality and provenance",
+    "subtitle": "One-of-a-kind pieces, chosen with care for quality, origin, and documentation.",
+    "cta": "View catalog",
+    "imageAlt": "Featured piece from Cinzel e a Gema (placeholder)"
+  },
+  "featuredProducts": {
+    "eyebrow": "Featured pieces",
+    "title": "Discover some of our gemstones",
+    "empty": "New arrivals coming soon — check back shortly.",
+    "cta": "View all products"
+  },
+  "trustBanner": {
+    "title": "A curation dedicated to fine gemstones",
+    "description": "We select every piece with an eye for authenticity, provenance, and quality, building lasting trust with collectors and jewelry lovers alike.",
+    "cta": "Learn more"
+  },
+  "faq": {
+    "eyebrow": "FAQ",
+    "title": "Frequently asked questions about gemstones",
+    "subtitle": "Get your technical questions answered before placing an order.",
+    "items": [
+      {
+        "question": "What does carat mean for a gemstone?",
+        "answer": "Carat (ct) is a unit of mass, not size — one carat equals 200 milligrams. It's often confused with gold \"karat\" (which measures purity, in parts of 24), but for gemstones, carat is always weight. Two stones of the same carat weight can look different in size depending on the mineral's density and how they were cut — that's why carat weight alone never sets a piece's value; it's always weighed alongside cut, color, and clarity."
+      },
+      {
+        "question": "What's the difference between cut and cutting (lapidary work)?",
+        "answer": "Lapidary work is the full process of turning a rough stone into the finished piece — shaping, polishing, and defining its final form. Cut is the outcome of that process: the geometric shape and facet arrangement (round, oval, emerald, pear, cushion, among others), plus the proportions and symmetry between those facets. A well-executed cut directly affects how a stone reflects and refracts light — two stones of the same mineral and the same weight can look strikingly different in brilliance depending on the quality of the cut."
+      },
+      {
+        "question": "What does a stone's clarity (or purity) mean?",
+        "answer": "Clarity describes the presence of inclusions — small internal or external imperfections that occur naturally during a stone's geological formation — and how visible they are to the naked eye or under magnification. Gemological scales (such as FL/IF for stones with no visible inclusions, VVS, VS, SI, and I, in decreasing order of purity) classify this aspect. Higher-clarity stones tend to be rarer and more valuable, but for several species, inclusions are simply part of the stone's natural character and don't affect its beauty or durability."
+      },
+      {
+        "question": "How do I recognize a trustworthy gemological certificate?",
+        "answer": "A trustworthy gemological report is issued by a laboratory or institute recognized in the field (in Brazil, IBGM — the Brazilian Institute of Gems and Precious Metals — is a reference), and should include, at minimum: mineral species identification, carat weight, dimensions, cut description, clarity and color notes, and any treatment identified in the stone. For higher-value pieces, it's always worth requesting the report before purchase — it's the independent confirmation that the stated characteristics match the physical stone."
+      },
+      {
+        "question": "What's the difference between a natural, synthetic, and treated stone?",
+        "answer": "A natural stone forms through geological processes over thousands to millions of years. A synthetic (or \"lab-grown\") stone has the same chemical composition and crystal structure as its natural counterpart, but is produced artificially over a much shorter time — it shouldn't be confused with simulants (like cubic zirconia), which only imitate the appearance but have a different composition. A treated stone, meanwhile, is a natural stone that went through a process to enhance color or clarity (heating and oiling are the most common, for example in emeralds). Treatments are a common, accepted market practice as long as they're disclosed — which is why gemological reports typically note when a treatment has been identified."
+      },
+      {
+        "question": "How should I care for and clean jewelry with gemstones?",
+        "answer": "Care varies by mineral species: more porous or oil-treated stones, like some emeralds, shouldn't go in ultrasonic cleaners or come into contact with harsh chemicals, which can strip the treatment and darken internal fissures. As a general, safe rule for most pieces: clean with lukewarm water, mild soap, and a soft-bristle brush, dry with a soft cloth, avoid sudden temperature changes, and store each piece separately to prevent scratching other jewelry. If you're unsure about a specific stone, it's always safest to ask before using any cleaning method."
+      },
+      {
+        "question": "Why do stones of the same \"nominal color\" vary in tone?",
+        "answer": "A gemstone's color comes from trace chemical elements present during its geological formation — for example, chromium and vanadium give emeralds their characteristic green, while variations in the proportion of these elements (and the presence of iron) shift the tone between a more bluish or more yellowish green. Because the concentration of these elements varies from deposit to deposit — and even within the same deposit — two stones of the same mineral species and the same nominal color grade can show visibly different tones. That's also why geographic origin is often noted on the gemological report for higher-value pieces."
+      }
+    ]
+  },
+  "about": {
+    "eyebrow": "About us",
+    "title": "Curation and provenance in every gemstone",
+    "paragraph1": "Cinzel e a Gema curates and sells fine gemstones, pairing quality with provenance in every piece we select. Since each stone is typically a one-of-a-kind item, we treat our catalog with the same care given to a collection — not a standardized inventory.",
+    "paragraph2": "Our goal is to be a trusted reference for collectors and jewelry lovers, pairing transparency about each stone's origin and characteristics with close, attentive service."
+  },
+  "certification": {
+    "badge": "Gemological certification seal (placeholder — in progress)",
+    "title": "Provenance and transparency in every piece",
+    "subtitle": "Documented authenticity",
+    "description": "We work to meet the gemological industry's reference standards, aligning with institutions such as IBGM (the Brazilian Institute of Gems and Precious Metals). Each piece's gemological report, when available, will be displayed in this section once our documentation standardization process is complete."
+  },
+  "gallery": {
+    "eyebrow": "Gallery",
+    "title": "Pieces and behind the scenes",
+    "items": [
+      "Featured pieces",
+      "Cutting process",
+      "Gemological certification",
+      "Curation",
+      "Customer service",
+      "Packaging and presentation"
+    ]
+  },
+  "blog": {
+    "eyebrow": "Blog",
+    "title": "Gemstone insights",
+    "subtitle": "Full articles are coming soon. Here's a preview of what's ahead.",
+    "comingSoon": "Coming soon",
+    "imageAlt": "Article image (placeholder)",
+    "posts": [
+      {
+        "title": "How to recognize a trustworthy gemological certificate",
+        "excerpt": "What a serious report needs to disclose before you close on a piece."
+      },
+      {
+        "title": "Natural, synthetic, and treated stones: know the difference",
+        "excerpt": "Three concepts that are often mixed up — and why the distinction matters."
+      },
+      {
+        "title": "Essential care for jewelry with gemstones",
+        "excerpt": "Good cleaning and storage practices to keep every piece looking its best for longer."
+      }
+    ]
+  },
+  "footer": {
+    "tagline": "Curation and sale of fine gemstones, focused on quality and provenance.",
+    "contactTitle": "Contact",
+    "addressPlaceholder": "Address to be announced",
+    "navTitle": "Navigation",
+    "about": "About Us",
+    "products": "Products",
+    "faq": "FAQ",
+    "qualityPolicy": "Quality Policy",
+    "copyright": "© {{year}} Cinzel e a Gema. All rights reserved."
+  },
+  "contactModal": {
+    "title": "Contact Us",
+    "submittedTitle": "Message received",
+    "submittedBody": "Soon you'll be able to send messages directly from here. For now, reach us on WhatsApp.",
+    "whatsappCta": "Chat on WhatsApp",
+    "nameLabel": "Full name",
+    "emailLabel": "Email",
+    "subjectLabel": "Subject",
+    "messageLabel": "Message",
+    "submit": "Send"
+  },
+  "qualityPolicyModal": {
+    "title": "Quality Policy",
+    "paragraph1": "Cinzel e a Gema is committed to representing every gemstone accurately — weight, cut, origin, clarity, and other technical characteristics are described based on the information available for each piece, in the interest of earning the trust of all our customers and partners.",
+    "paragraph2": "Because a stone's color is sensitive to lighting distortion, photos of every piece are taken under neutral light, aiming to represent the stone's true tone as faithfully as possible — without digital color correction.",
+    "paragraph3": "We pursue continuous improvement in our curation — reviewing our processes, listening to customer feedback, and following gemological industry standards — as part of our ongoing commitment to quality and transparency."
+  },
+  "catalog": {
+    "title": "Catalog",
+    "subtitle": "Browse our available pieces, organized by category.",
+    "allProducts": "All pieces",
+    "loading": "Loading...",
+    "empty": "No pieces found in this category."
+  },
+  "productCard": {
+    "noPhoto": "No photo",
+    "addToOrder": "Add to order",
+    "addedToast": "Added to your order"
+  },
+  "productDetail": {
+    "back": "← Back to catalog",
+    "loading": "Loading...",
+    "notFound": "Piece not found.",
+    "quantity": "Quantity"
+  },
+  "cart": {
+    "title": "Your order",
+    "empty": "Your order is empty.",
+    "viewCatalog": "View catalog",
+    "perUnit": "/ unit",
+    "remove": "Remove",
+    "total": "Estimated total",
+    "checkout": "Checkout"
+  },
+  "checkout": {
+    "title": "Checkout",
+    "subtitle": "Almost there! Enter your details and confirm your order. Our team will reach out on WhatsApp shortly to arrange payment and delivery.",
+    "emptyCart": "Your order is empty.",
+    "summary": "Summary",
+    "total": "Estimated total",
+    "nameLabel": "Name",
+    "phoneLabel": "Phone/WhatsApp",
+    "phonePlaceholder": "(14) 99999-0000",
+    "submit": "Confirm order",
+    "sending": "Sending...",
+    "successTitle": "Order sent!",
+    "successFluxio": "We've received your order and our team will be in touch shortly.",
+    "successWhatsapp": "We've opened WhatsApp with your order details — just send the message and we'll confirm with you.",
+    "backToCatalog": "Back to catalog",
+    "whatsappMessage": {
+      "intro": "Hi! I'd like to place an order:",
+      "item": "• {{quantity}}x {{name}} — {{price}}",
+      "total": "Estimated total: {{total}}",
+      "name": "Name: {{name}}",
+      "phone": "Phone: {{phone}}"
+    }
+  },
+  "whatsapp": {
+    "ariaLabel": "Chat on WhatsApp"
+  },
+  "cartButton": {
+    "ariaLabel": "View my order"
+  }
+}

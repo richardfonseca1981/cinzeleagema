@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { api, ApiError } from "../lib/api";
 import type { Product } from "../types";
 import { PublicHeader } from "../components/landing/PublicHeader";
@@ -11,6 +12,7 @@ import { useCart } from "../lib/cart";
 import { useToast } from "../components/Toast";
 
 export function ProductDetail() {
+  const { t, i18n } = useTranslation();
   const { id } = useParams();
   const { addItem } = useCart();
   const { showToast } = useToast();
@@ -18,7 +20,7 @@ export function ProductDetail() {
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
-  const weightSize = product ? formatWeightSize(product.weightGrams, product.sizeCm) : null;
+  const weightSize = product ? formatWeightSize(product.weightGrams, product.sizeCm, i18n.language) : null;
 
   useEffect(() => {
     if (!id) return;
@@ -42,7 +44,7 @@ export function ProductDetail() {
       },
       quantity
     );
-    showToast("success", "Adicionado ao pedido");
+    showToast("success", t("productCard.addedToast"));
   }
 
   return (
@@ -50,11 +52,11 @@ export function ProductDetail() {
       <PublicHeader />
       <div className="mx-auto max-w-4xl px-4 py-8">
         <Link to="/catalogo" className="text-sm font-medium text-[#1B3A6B] hover:underline">
-          ← Voltar ao catálogo
+          {t("productDetail.back")}
         </Link>
 
-        {loading && <p className="mt-6 text-[#64748B]">Carregando...</p>}
-        {notFound && <p className="mt-6 text-[#64748B]">Peça não encontrada.</p>}
+        {loading && <p className="mt-6 text-[#64748B]">{t("productDetail.loading")}</p>}
+        {notFound && <p className="mt-6 text-[#64748B]">{t("productDetail.notFound")}</p>}
 
         {product && (
           <div className="mt-6 grid gap-8 sm:grid-cols-2">
@@ -66,7 +68,7 @@ export function ProductDetail() {
               />
             ) : (
               <div className="flex aspect-square w-full items-center justify-center rounded-xl border border-[#E2E8F0] bg-[#F1F5F9] text-sm text-[#94A3B8]">
-                Sem foto
+                {t("productCard.noPhoto")}
               </div>
             )}
 
@@ -79,11 +81,11 @@ export function ProductDetail() {
               <h1 className="mt-1 text-2xl font-bold">{product.name}</h1>
               {product.description && <p className="mt-4 text-[#1A1A1A]">{product.description}</p>}
               {weightSize && <p className="mt-4 text-sm text-[#64748B]">{weightSize}</p>}
-              <p className="mt-2 text-2xl font-bold text-[#1B3A6B]">{formatPrice(product.price)}</p>
+              <p className="mt-2 text-2xl font-bold text-[#1B3A6B]">{formatPrice(product.price, i18n.language)}</p>
 
               <div className="mt-6 flex items-center gap-3">
                 <label htmlFor="quantity" className="text-sm font-medium text-[#1A1A1A]">
-                  Quantidade
+                  {t("productDetail.quantity")}
                 </label>
                 <input
                   id="quantity"
@@ -99,7 +101,7 @@ export function ProductDetail() {
                 onClick={handleAdd}
                 className="mt-4 w-full rounded-lg bg-[#1B3A6B] px-4 py-3 font-semibold text-white transition hover:bg-[#152D54] sm:w-auto"
               >
-                Adicionar ao pedido
+                {t("productCard.addToOrder")}
               </button>
             </div>
           </div>

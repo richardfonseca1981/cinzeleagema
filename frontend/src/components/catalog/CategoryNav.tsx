@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { Category } from "../../types";
 
 interface CategoryNavProps {
@@ -15,6 +16,8 @@ export function CategoryNav({
   onSelectCategory,
   onSelectSubcategory,
 }: CategoryNavProps) {
+  const { t } = useTranslation();
+
   return (
     <nav className="space-y-5">
       <button
@@ -23,7 +26,7 @@ export function CategoryNav({
           !categoryId ? "text-[#1B3A6B]" : "text-[#1A1A1A] hover:text-[#1B3A6B]"
         }`}
       >
-        Todas as peças
+        {t("catalog.allProducts")}
       </button>
 
       {categories.map((category) => (

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { api } from "../lib/api";
 import type { Category, Product } from "../types";
 import { PublicHeader } from "../components/landing/PublicHeader";
@@ -10,6 +11,7 @@ import { FloatingCartButton } from "../components/catalog/FloatingCartButton";
 import { WHATSAPP_HREF } from "../lib/whatsapp";
 
 export function Catalog() {
+  const { t } = useTranslation();
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,8 +49,8 @@ export function Catalog() {
       <PublicHeader />
 
       <div className="mx-auto max-w-6xl px-4 py-8">
-        <h1 className="text-2xl font-bold">Catálogo</h1>
-        <p className="mt-1 text-[#64748B]">Conheça as peças disponíveis, organizadas por categoria.</p>
+        <h1 className="text-2xl font-bold">{t("catalog.title")}</h1>
+        <p className="mt-1 text-[#64748B]">{t("catalog.subtitle")}</p>
 
         <div className="mt-8 grid gap-8 lg:grid-cols-[220px_1fr]">
           <CategoryNav
@@ -60,10 +62,8 @@ export function Catalog() {
           />
 
           <div>
-            {loading && <p className="text-[#64748B]">Carregando...</p>}
-            {!loading && products.length === 0 && (
-              <p className="text-[#64748B]">Nenhuma peça encontrada nessa categoria.</p>
-            )}
+            {loading && <p className="text-[#64748B]">{t("catalog.loading")}</p>}
+            {!loading && products.length === 0 && <p className="text-[#64748B]">{t("catalog.empty")}</p>}
 
             {!loading && products.length > 0 && (
               <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">

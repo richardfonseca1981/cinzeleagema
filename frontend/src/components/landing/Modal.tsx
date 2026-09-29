@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { CloseIcon } from "./icons";
 
 export function Modal({
@@ -12,6 +13,8 @@ export function Modal({
   title: string;
   children: ReactNode;
 }) {
+  const { t } = useTranslation();
+
   useEffect(() => {
     if (!open) return;
     function handleKeyDown(event: KeyboardEvent) {
@@ -41,7 +44,7 @@ export function Modal({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Fechar"
+            aria-label={t("common.close")}
             className="flex-shrink-0 text-[#94A3B8] transition hover:text-[#1A1A1A]"
           >
             <CloseIcon className="h-5 w-5" />

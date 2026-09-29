@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import logo from "../../assets/logo.png";
 import { NAV_LINKS } from "./data";
 import { CloseIcon, MenuIcon } from "./icons";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 
 function NavItem({
   link,
@@ -15,6 +17,8 @@ function NavItem({
   onNavigate: () => void;
   className: string;
 }) {
+  const { t } = useTranslation();
+
   if (link.kind === "modal") {
     return (
       <button
@@ -25,7 +29,7 @@ function NavItem({
         }}
         className={className}
       >
-        {link.label}
+        {t(link.labelKey)}
       </button>
     );
   }
@@ -33,49 +37,54 @@ function NavItem({
   if (link.kind === "route") {
     return (
       <Link to={link.to} onClick={onNavigate} className={className}>
-        {link.label}
+        {t(link.labelKey)}
       </Link>
     );
   }
 
   return (
     <a href={link.href} onClick={onNavigate} className={className}>
-      {link.label}
+      {t(link.labelKey)}
     </a>
   );
 }
 
 export function Header({ onOpenContact }: { onOpenContact: () => void }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-50 border-b border-[#E2E8F0] bg-white/95 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
         <a href="/#home" className="flex items-center">
-          <img src={logo} alt="Cinzel e a Gema" className="h-12 w-auto object-contain" />
+          <img src={logo} alt={t("header.logoAlt")} className="h-12 w-auto object-contain" />
         </a>
 
         <nav className="hidden items-center gap-8 lg:flex">
           {NAV_LINKS.map((link) => (
             <NavItem
-              key={link.label}
+              key={link.labelKey}
               link={link}
               onOpenContact={onOpenContact}
               onNavigate={() => {}}
               className="text-sm font-medium text-[#64748B] transition hover:text-[#1B3A6B]"
             />
           ))}
+          <LanguageSwitcher className="ml-2 border-l border-[#E2E8F0] pl-4" />
         </nav>
 
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          aria-label={open ? "Fechar menu" : "Abrir menu"}
-          aria-expanded={open}
-          className="text-[#1A1A1A] lg:hidden"
-        >
-          {open ? <CloseIcon className="h-6 w-6" /> : <MenuIcon className="h-6 w-6" />}
-        </button>
+        <div className="flex items-center gap-3 lg:hidden">
+          <LanguageSwitcher />
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-label={open ? t("header.closeMenu") : t("header.openMenu")}
+            aria-expanded={open}
+            className="text-[#1A1A1A]"
+          >
+            {open ? <CloseIcon className="h-6 w-6" /> : <MenuIcon className="h-6 w-6" />}
+          </button>
+        </div>
       </div>
 
       {open && (
@@ -83,7 +92,7 @@ export function Header({ onOpenContact }: { onOpenContact: () => void }) {
           <div className="flex flex-col gap-1 pt-2">
             {NAV_LINKS.map((link) => (
               <NavItem
-                key={link.label}
+                key={link.labelKey}
                 link={link}
                 onOpenContact={onOpenContact}
                 onNavigate={() => setOpen(false)}
