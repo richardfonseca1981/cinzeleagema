@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { PlaceholderImage } from "./PlaceholderImage";
+import heroLogo from "../../assets/logo-hero.webp";
 
 // Textura de fundo do Hero: padrão SVG de pontos discreto (data URI, sem
 // rede/dependência nova) sobreposto por uma camada #010B1A semi-transparente,
@@ -12,7 +12,7 @@ export function Hero() {
   const { t } = useTranslation();
 
   return (
-    <section id="home" className="grid lg:min-h-[600px] lg:grid-cols-2">
+    <section id="home" className="grid lg:min-h-[600px] lg:grid-cols-2 lg:items-center">
       <div className="relative order-1 flex flex-col justify-center overflow-hidden px-6 py-16 text-white sm:px-10 lg:order-1 lg:py-20">
         <div
           className="absolute inset-0 bg-[#010B1A]"
@@ -35,8 +35,8 @@ export function Hero() {
         </div>
       </div>
 
-      <div className="order-2 lg:order-2">
-        <PlaceholderImage label={t("hero.imageAlt")} className="h-64 w-full sm:h-80 lg:h-full" />
+      <div className="order-2 flex h-64 w-full items-center justify-center overflow-hidden bg-[#010B1A] sm:h-80 lg:order-2 lg:h-full">
+        <img src={heroLogo} alt={t("hero.imageAlt")} className="h-full w-full object-contain" />
       </div>
     </section>
   );

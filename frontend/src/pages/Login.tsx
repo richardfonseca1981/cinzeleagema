@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import logo from "../assets/logo.webp";
+import logo from "../assets/logo-topo.webp";
 import { api, ApiError } from "../lib/api";
 import { getSession, setSession } from "../lib/auth";
 
@@ -40,7 +40,7 @@ export function Login() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-[#F8FAFC] px-4">
       <div className="mb-8 flex flex-col items-center text-center">
-        <img src={logo} alt="Cinzel e a Gema" className="h-36 w-auto object-contain" />
+        <img src={logo} alt="Cinzel e a Gema" className="h-[168px] w-auto object-contain" />
         <div className="mt-2 text-xs font-medium text-[#64748B]">Admin</div>
       </div>
 
