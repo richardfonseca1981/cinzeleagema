@@ -7,7 +7,6 @@ import { PublicHeader } from "../components/landing/PublicHeader";
 import { WhatsAppFloatingButton } from "../components/landing/WhatsAppFloatingButton";
 import { CategoryNav } from "../components/catalog/CategoryNav";
 import { ProductCard } from "../components/catalog/ProductCard";
-import { FloatingCartButton } from "../components/catalog/FloatingCartButton";
 import { WHATSAPP_HREF } from "../lib/whatsapp";
 
 export function Catalog() {
@@ -76,7 +75,6 @@ export function Catalog() {
         </div>
       </div>
 
-      <FloatingCartButton />
       <WhatsAppFloatingButton whatsappHref={WHATSAPP_HREF} />
     </div>
   );

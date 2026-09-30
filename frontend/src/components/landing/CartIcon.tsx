@@ -2,7 +2,9 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useCart } from "../../lib/cart";
 
-export function FloatingCartButton() {
+// Ícone de carrinho fixo no header (substitui o antigo FloatingCartButton) —
+// visível em todas as páginas do site público, já que o Header é compartilhado.
+export function CartIcon({ className = "" }: { className?: string }) {
   const { t } = useTranslation();
   const { totalCount } = useCart();
 
@@ -10,7 +12,7 @@ export function FloatingCartButton() {
     <Link
       to="/carrinho"
       aria-label={t("cartButton.ariaLabel")}
-      className="fixed bottom-24 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#1B3A6B] text-white shadow-lg transition hover:scale-105"
+      className={`relative flex items-center text-[#1A1A1A] transition hover:text-[#1B3A6B] ${className}`}
     >
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-6 w-6">
         <path
@@ -20,7 +22,7 @@ export function FloatingCartButton() {
         />
       </svg>
       {totalCount > 0 && (
-        <span className="absolute -right-1 -top-1 flex h-6 min-w-6 items-center justify-center rounded-full bg-[#DC2626] px-1 text-xs font-bold text-white">
+        <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#DC2626] px-1 text-[10px] font-bold text-white">
           {totalCount}
         </span>
       )}
