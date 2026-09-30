@@ -54,7 +54,7 @@ export function Header({ onOpenContact }: { onOpenContact: () => void }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#010B1A]/95 backdrop-blur">
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#00020C]">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-2 lg:py-3">
         <a href="/#home" className="flex items-center">
           <img src={logo} alt={t("header.logoAlt")} className="h-12 w-auto object-contain lg:h-14" />
@@ -88,7 +88,7 @@ export function Header({ onOpenContact }: { onOpenContact: () => void }) {
       </div>
 
       {open && (
-        <nav className="border-t border-white/10 bg-[#010B1A] px-4 pb-4 lg:hidden">
+        <nav className="border-t border-white/10 bg-[#00020C] px-4 pb-4 lg:hidden">
           <div className="flex flex-col gap-1 pt-2">
             {NAV_LINKS.map((link) => (
               <NavItem

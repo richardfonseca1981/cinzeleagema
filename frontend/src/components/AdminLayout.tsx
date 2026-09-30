@@ -22,7 +22,7 @@ export function AdminLayout() {
 
   return (
     <div className="flex min-h-screen bg-[#F8FAFC]">
-      <aside className="flex w-64 flex-shrink-0 flex-col bg-[#010B1A] text-white">
+      <aside className="flex w-64 flex-shrink-0 flex-col bg-[#00020C] text-white">
         <div className="border-b border-white/10 px-2 py-5">
           <img src={logo} alt="Cinzel e a Gema" className="w-full object-contain" />
           <div className="mt-2 text-xs font-medium text-white/60">Admin</div>
