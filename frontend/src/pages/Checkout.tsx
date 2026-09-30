@@ -5,6 +5,7 @@ import type { TFunction } from "i18next";
 import { useCart } from "../lib/cart";
 import { api } from "../lib/api";
 import { formatPrice, formatWeightSize, localizeText } from "../lib/format";
+import { normalizePhone, sanitizePhoneInput } from "../lib/phone";
 import { PublicHeader } from "../components/landing/PublicHeader";
 import { WhatsAppFloatingButton } from "../components/landing/WhatsAppFloatingButton";
 import { WHATSAPP_HREF } from "../lib/whatsapp";
@@ -43,12 +44,20 @@ export function Checkout() {
   const navigate = useNavigate();
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [phoneError, setPhoneError] = useState(false);
   const [sending, setSending] = useState(false);
   const [sentVia, setSentVia] = useState<"fluxiodesk" | "whatsapp" | null>(null);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (items.length === 0) return;
+
+    const normalizedPhone = normalizePhone(customerPhone);
+    if (!normalizedPhone) {
+      setPhoneError(true);
+      return;
+    }
+    setPhoneError(false);
     setSending(true);
 
     const orderItems = items.map((item) => ({
@@ -60,7 +69,12 @@ export function Checkout() {
 
     let delivered = false;
     try {
-      const result = await api.createOrder({ customerName, customerPhone, items: orderItems, totalEstimate });
+      const result = await api.createOrder({
+        customerName,
+        customerPhone: normalizedPhone,
+        items: orderItems,
+        totalEstimate,
+      });
       delivered = result.delivered;
     } catch {
       delivered = false;
@@ -71,7 +85,7 @@ export function Checkout() {
       setSentVia("fluxiodesk");
     } else {
       if (WHATSAPP_NUMBER) {
-        const message = buildWhatsAppMessage(t, i18n.language, items, totalEstimate, customerName, customerPhone);
+        const message = buildWhatsAppMessage(t, i18n.language, items, totalEstimate, customerName, normalizedPhone);
         window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
       }
       clear();
@@ -155,11 +169,20 @@ export function Checkout() {
             <label className="block text-sm font-medium text-[#1A1A1A]">{t("checkout.phoneLabel")}</label>
             <input
               required
+              type="tel"
+              inputMode="tel"
               value={customerPhone}
-              onChange={(e) => setCustomerPhone(e.target.value)}
+              onChange={(e) => {
+                setCustomerPhone(sanitizePhoneInput(e.target.value));
+                if (phoneError) setPhoneError(false);
+              }}
               placeholder={t("checkout.phonePlaceholder")}
-              className="mt-1 w-full rounded-lg border border-[#E2E8F0] px-3 py-2 outline-none transition focus:border-[#1B3A6B] focus:ring-2 focus:ring-[#EFF6FF]"
+              aria-invalid={phoneError}
+              className={`mt-1 w-full rounded-lg border px-3 py-2 outline-none transition focus:ring-2 focus:ring-[#EFF6FF] ${
+                phoneError ? "border-[#DC2626]" : "border-[#E2E8F0] focus:border-[#1B3A6B]"
+              }`}
             />
+            {phoneError && <p className="mt-1 text-sm text-[#DC2626]">{t("checkout.phoneError")}</p>}
           </div>
           <button
             type="submit"
