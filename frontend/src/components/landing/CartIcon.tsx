@@ -12,7 +12,7 @@ export function CartIcon({ className = "" }: { className?: string }) {
     <Link
       to="/carrinho"
       aria-label={t("cartButton.ariaLabel")}
-      className={`relative flex items-center text-[#1A1A1A] transition hover:text-[#1B3A6B] ${className}`}
+      className={`relative flex items-center text-[#E5E5E5] transition hover:text-[#C78F50] ${className}`}
     >
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-6 w-6">
         <path

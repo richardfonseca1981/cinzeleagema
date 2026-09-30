@@ -71,15 +71,17 @@ export function Header({ onOpenContact }: { onOpenContact: () => void }) {
               className="text-sm font-medium text-[#E5E5E5] transition hover:text-[#C78F50]"
             />
           ))}
-          <div className="ml-2 flex items-center gap-4 border-l border-white/20 pl-4">
+          <div className="ml-2 flex items-center gap-6 border-l border-white/20 pl-4">
             <LanguageSwitcher />
             <CartIcon />
           </div>
         </nav>
 
         <div className="flex items-center gap-3 lg:hidden">
-          <LanguageSwitcher />
-          <CartIcon />
+          <div className="flex items-center gap-5">
+            <LanguageSwitcher />
+            <CartIcon />
+          </div>
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
