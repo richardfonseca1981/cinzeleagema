@@ -5,6 +5,7 @@ import type { TFunction } from "i18next";
 import { useCart } from "../lib/cart";
 import { api } from "../lib/api";
 import { formatPrice, formatWeightSize, localizeText } from "../lib/format";
+import { useExchangeRate } from "../lib/exchangeRate";
 import { PublicHeader } from "../components/landing/PublicHeader";
 import { WhatsAppFloatingButton } from "../components/landing/WhatsAppFloatingButton";
 import { WHATSAPP_HREF } from "../lib/whatsapp";
@@ -15,6 +16,7 @@ const WHATSAPP_NUMBER = import.meta.env.VITE_WHATSAPP_NUMBER;
 function buildWhatsAppMessage(
   t: TFunction,
   lang: string,
+  exchangeRate: number | null,
   items: CartItem[],
   totalEstimate: number,
   customerName: string,
@@ -24,13 +26,13 @@ function buildWhatsAppMessage(
     t("checkout.whatsappMessage.intro"),
     ...items.map((item) => {
       const name = localizeText(item.name, item.nameEn, lang);
-      const price = formatPrice(item.unitPrice * item.quantity, lang);
+      const price = formatPrice(item.unitPrice * item.quantity, lang, exchangeRate);
       const size = formatWeightSize(item.weightGrams, item.sizeCm, lang);
       return size
         ? t("checkout.whatsappMessage.itemWithSize", { quantity: item.quantity, name, size, price })
         : t("checkout.whatsappMessage.item", { quantity: item.quantity, name, price });
     }),
-    t("checkout.whatsappMessage.total", { total: formatPrice(totalEstimate, lang) }),
+    t("checkout.whatsappMessage.total", { total: formatPrice(totalEstimate, lang, exchangeRate) }),
     t("checkout.whatsappMessage.name", { name: customerName }),
     t("checkout.whatsappMessage.phone", { phone: customerPhone }),
   ];
@@ -41,6 +43,7 @@ export function Checkout() {
   const { t, i18n } = useTranslation();
   const { items, totalEstimate, clear } = useCart();
   const navigate = useNavigate();
+  const exchangeRate = useExchangeRate();
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [sending, setSending] = useState(false);
@@ -71,7 +74,15 @@ export function Checkout() {
       setSentVia("fluxiodesk");
     } else {
       if (WHATSAPP_NUMBER) {
-        const message = buildWhatsAppMessage(t, i18n.language, items, totalEstimate, customerName, customerPhone);
+        const message = buildWhatsAppMessage(
+          t,
+          i18n.language,
+          exchangeRate,
+          items,
+          totalEstimate,
+          customerName,
+          customerPhone
+        );
         window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
       }
       clear();
@@ -137,7 +148,7 @@ export function Checkout() {
           </ul>
           <div className="mt-3 flex items-center justify-between border-t border-[#E2E8F0] pt-3 font-semibold">
             <span>{t("checkout.total")}</span>
-            <span className="text-[#C78F50]">{formatPrice(totalEstimate, i18n.language)}</span>
+            <span className="text-[#C78F50]">{formatPrice(totalEstimate, i18n.language, exchangeRate)}</span>
           </div>
         </div>
 

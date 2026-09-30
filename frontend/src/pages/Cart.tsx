@@ -2,6 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useCart } from "../lib/cart";
 import { formatPrice, formatWeightSize, localizeText } from "../lib/format";
+import { useExchangeRate } from "../lib/exchangeRate";
 import { PublicHeader } from "../components/landing/PublicHeader";
 import { WhatsAppFloatingButton } from "../components/landing/WhatsAppFloatingButton";
 import { WHATSAPP_HREF } from "../lib/whatsapp";
@@ -10,6 +11,7 @@ export function Cart() {
   const { t, i18n } = useTranslation();
   const { items, removeItem, updateQuantity, totalEstimate } = useCart();
   const navigate = useNavigate();
+  const exchangeRate = useExchangeRate();
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#1A1A1A]">
@@ -47,7 +49,7 @@ export function Cart() {
                       <p className="font-medium text-[#1A1A1A]">{itemName}</p>
                       {weightSize && <p className="text-xs text-[#94A3B8]">{weightSize}</p>}
                       <p className="text-sm text-[#64748B]">
-                        {formatPrice(item.unitPrice, i18n.language)} {t("cart.perUnit")}
+                        {formatPrice(item.unitPrice, i18n.language, exchangeRate)} {t("cart.perUnit")}
                       </p>
                     </div>
                     <input
@@ -58,7 +60,7 @@ export function Cart() {
                       className="w-16 rounded-lg border border-[#E2E8F0] px-2 py-1 text-center text-sm outline-none transition focus:border-[#C78F50] focus:ring-2 focus:ring-[#C78F50]/20"
                     />
                     <p className="w-24 text-right font-semibold text-[#1A1A1A]">
-                      {formatPrice(item.unitPrice * item.quantity, i18n.language)}
+                      {formatPrice(item.unitPrice * item.quantity, i18n.language, exchangeRate)}
                     </p>
                     <button
                       onClick={() => removeItem(item.productId)}
@@ -73,7 +75,7 @@ export function Cart() {
 
             <div className="mt-6 flex items-center justify-between rounded-lg border border-[#E2E8F0] bg-white p-4">
               <span className="font-medium">{t("cart.total")}</span>
-              <span className="text-xl font-bold text-[#C78F50]">{formatPrice(totalEstimate, i18n.language)}</span>
+              <span className="text-xl font-bold text-[#C78F50]">{formatPrice(totalEstimate, i18n.language, exchangeRate)}</span>
             </div>
 
             <button

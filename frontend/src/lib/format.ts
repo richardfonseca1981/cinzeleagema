@@ -6,10 +6,19 @@ function toIntlLocale(lang: string): string {
   return lang === "en" ? "en-US" : "pt-BR";
 }
 
-export function formatPrice(value: string | number, lang: string = "pt-BR") {
-  // A moeda continua Real (BRL) nos dois idiomas — só o idioma da interface
-  // muda, não a moeda em que a peça é vendida.
-  return Number(value).toLocaleString(toIntlLocale(lang), { style: "currency", currency: "BRL" });
+// O preço é sempre CADASTRADO em Real (fonte de verdade, usada no admin).
+// Em PT, exibe direto em BRL. Em EN, converte para USD usando a cotação do
+// dia (buscada uma vez por sessão via ExchangeRateProvider/useExchangeRate)
+// — se a cotação não estiver disponível (ainda carregando, API fora do ar),
+// cai de volta para BRL em vez de travar a exibição do preço.
+export function formatPrice(value: string | number, lang: string = "pt-BR", exchangeRate?: number | null) {
+  const amount = Number(value);
+
+  if (lang === "en" && exchangeRate && exchangeRate > 0) {
+    return (amount / exchangeRate).toLocaleString("en-US", { style: "currency", currency: "USD" });
+  }
+
+  return amount.toLocaleString(toIntlLocale(lang), { style: "currency", currency: "BRL" });
 }
 
 // Retorna null quando não há peso nem tamanho válidos (produto incompleto) —

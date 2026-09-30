@@ -61,6 +61,8 @@ export const api = {
 
   listCategories: () => request<Category[]>("/api/categories"),
 
+  getExchangeRate: () => request<{ rate: number; updatedAt: string }>("/api/exchange-rate"),
+
   listProducts: (params: { active?: boolean; categoryId?: string; subcategoryId?: string; pageSize?: number } = {}) => {
     const query = new URLSearchParams();
     if (params.active !== undefined) query.set("active", String(params.active));

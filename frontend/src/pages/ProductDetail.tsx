@@ -9,6 +9,7 @@ import { FloatingCartButton } from "../components/catalog/FloatingCartButton";
 import { formatPrice, formatWeightSize, localizeCategoryName, localizeText } from "../lib/format";
 import { WHATSAPP_HREF } from "../lib/whatsapp";
 import { useCart } from "../lib/cart";
+import { useExchangeRate } from "../lib/exchangeRate";
 import { useToast } from "../components/Toast";
 
 export function ProductDetail() {
@@ -16,6 +17,7 @@ export function ProductDetail() {
   const { id } = useParams();
   const { addItem } = useCart();
   const { showToast } = useToast();
+  const exchangeRate = useExchangeRate();
   const [product, setProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -93,7 +95,7 @@ export function ProductDetail() {
               <h1 className="mt-1 text-2xl font-bold">{displayName}</h1>
               {displayDescription && <p className="mt-4 text-[#1A1A1A]">{displayDescription}</p>}
               {weightSize && <p className="mt-4 text-sm text-[#64748B]">{weightSize}</p>}
-              <p className="mt-2 text-2xl font-bold text-[#C78F50]">{formatPrice(product.price, i18n.language)}</p>
+              <p className="mt-2 text-2xl font-bold text-[#C78F50]">{formatPrice(product.price, i18n.language, exchangeRate)}</p>
 
               <div className="mt-6 flex items-center gap-3">
                 <label htmlFor="quantity" className="text-sm font-medium text-[#1A1A1A]">

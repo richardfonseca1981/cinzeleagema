@@ -12,35 +12,38 @@ import { AdminLayout } from "./components/AdminLayout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { ToastProvider } from "./components/Toast";
 import { CartProvider } from "./lib/cart";
+import { ExchangeRateProvider } from "./lib/exchangeRate";
 
 export default function App() {
   return (
     <BrowserRouter>
       <CartProvider>
-        <ToastProvider>
-          <Routes>
-            <Route path="/" element={<Landing />} />
+        <ExchangeRateProvider>
+          <ToastProvider>
+            <Routes>
+              <Route path="/" element={<Landing />} />
 
-            <Route path="/catalogo" element={<Catalog />} />
-            <Route path="/catalogo/:id" element={<ProductDetail />} />
-            <Route path="/carrinho" element={<Cart />} />
-            <Route path="/finalizar" element={<Checkout />} />
+              <Route path="/catalogo" element={<Catalog />} />
+              <Route path="/catalogo/:id" element={<ProductDetail />} />
+              <Route path="/carrinho" element={<Cart />} />
+              <Route path="/finalizar" element={<Checkout />} />
 
-            <Route path="/admin" element={<Login />} />
-            <Route path="/login" element={<Navigate to="/admin" replace />} />
+              <Route path="/admin" element={<Login />} />
+              <Route path="/login" element={<Navigate to="/admin" replace />} />
 
-            <Route element={<ProtectedRoute />}>
-              <Route element={<AdminLayout />}>
-                <Route path="/admin/produtos" element={<ProductList />} />
-                <Route path="/admin/produtos/novo" element={<ProductForm />} />
-                <Route path="/admin/produtos/:id" element={<ProductForm />} />
-                <Route path="/admin/usuarios" element={<AdminUsers />} />
+              <Route element={<ProtectedRoute />}>
+                <Route element={<AdminLayout />}>
+                  <Route path="/admin/produtos" element={<ProductList />} />
+                  <Route path="/admin/produtos/novo" element={<ProductForm />} />
+                  <Route path="/admin/produtos/:id" element={<ProductForm />} />
+                  <Route path="/admin/usuarios" element={<AdminUsers />} />
+                </Route>
               </Route>
-            </Route>
 
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </ToastProvider>
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </ToastProvider>
+        </ExchangeRateProvider>
       </CartProvider>
     </BrowserRouter>
   );

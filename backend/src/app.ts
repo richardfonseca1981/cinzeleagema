@@ -9,6 +9,7 @@ import { productRouter } from "./routes/product.routes";
 import { imageRouter } from "./routes/upload.routes";
 import { imageTreatmentRouter } from "./routes/imageTreatment.routes";
 import { adminUserRouter } from "./routes/adminUser.routes";
+import { exchangeRateRouter } from "./routes/exchangeRate.routes";
 
 export function createApp() {
   const app = express();
@@ -21,6 +22,7 @@ export function createApp() {
   app.use("/api/auth", authRouter);
   app.use("/api/admin-users", adminUserRouter);
   app.use("/api/categories", categoryRouter);
+  app.use("/api/exchange-rate", exchangeRateRouter);
   app.use("/api/products", productRouter);
   app.use("/api/orders", orderRouter);
   app.use("/api/products/:productId/images", imageRouter);
