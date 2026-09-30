@@ -54,7 +54,7 @@ export function Header({ onOpenContact }: { onOpenContact: () => void }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[#E2E8F0] bg-white/95 backdrop-blur">
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#010B1A]/95 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-2 lg:py-3">
         <a href="/#home" className="flex items-center">
           <img src={logo} alt={t("header.logoAlt")} className="h-12 w-auto object-contain lg:h-14" />
@@ -67,10 +67,10 @@ export function Header({ onOpenContact }: { onOpenContact: () => void }) {
               link={link}
               onOpenContact={onOpenContact}
               onNavigate={() => {}}
-              className="text-sm font-medium text-[#64748B] transition hover:text-[#5F84BA]"
+              className="text-sm font-medium text-[#E5E5E5] transition hover:text-[#C78F50]"
             />
           ))}
-          <LanguageSwitcher className="ml-2 border-l border-[#E2E8F0] pl-4" />
+          <LanguageSwitcher className="ml-2 border-l border-white/20 pl-4" />
         </nav>
 
         <div className="flex items-center gap-3 lg:hidden">
@@ -80,7 +80,7 @@ export function Header({ onOpenContact }: { onOpenContact: () => void }) {
             onClick={() => setOpen((v) => !v)}
             aria-label={open ? t("header.closeMenu") : t("header.openMenu")}
             aria-expanded={open}
-            className="text-[#1A1A1A]"
+            className="text-white"
           >
             {open ? <CloseIcon className="h-6 w-6" /> : <MenuIcon className="h-6 w-6" />}
           </button>
@@ -88,7 +88,7 @@ export function Header({ onOpenContact }: { onOpenContact: () => void }) {
       </div>
 
       {open && (
-        <nav className="border-t border-[#E2E8F0] bg-white px-4 pb-4 lg:hidden">
+        <nav className="border-t border-white/10 bg-[#010B1A] px-4 pb-4 lg:hidden">
           <div className="flex flex-col gap-1 pt-2">
             {NAV_LINKS.map((link) => (
               <NavItem
@@ -96,7 +96,7 @@ export function Header({ onOpenContact }: { onOpenContact: () => void }) {
                 link={link}
                 onOpenContact={onOpenContact}
                 onNavigate={() => setOpen(false)}
-                className="rounded-md px-2 py-2 text-left text-sm font-medium text-[#1A1A1A] hover:bg-[#F1F5F9]"
+                className="rounded-md px-2 py-2 text-left text-sm font-medium text-[#E5E5E5] transition hover:bg-white/10 hover:text-[#C78F50]"
               />
             ))}
           </div>
