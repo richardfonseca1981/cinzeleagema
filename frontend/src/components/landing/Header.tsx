@@ -5,6 +5,7 @@ import logo from "../../assets/logo-topo.webp";
 import { NAV_LINKS } from "./data";
 import { CloseIcon, MenuIcon } from "./icons";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { CartIcon } from "./CartIcon";
 
 function NavItem({
   link,
@@ -70,11 +71,15 @@ export function Header({ onOpenContact }: { onOpenContact: () => void }) {
               className="text-sm font-medium text-[#E5E5E5] transition hover:text-[#C78F50]"
             />
           ))}
-          <LanguageSwitcher className="ml-2 border-l border-white/20 pl-4" />
+          <div className="ml-2 flex items-center gap-4 border-l border-white/20 pl-4">
+            <LanguageSwitcher />
+            <CartIcon />
+          </div>
         </nav>
 
         <div className="flex items-center gap-3 lg:hidden">
           <LanguageSwitcher />
+          <CartIcon />
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}

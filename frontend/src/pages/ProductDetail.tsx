@@ -5,7 +5,6 @@ import { api, ApiError } from "../lib/api";
 import type { Product } from "../types";
 import { PublicHeader } from "../components/landing/PublicHeader";
 import { WhatsAppFloatingButton } from "../components/landing/WhatsAppFloatingButton";
-import { FloatingCartButton } from "../components/catalog/FloatingCartButton";
 import { formatPrice, formatWeightSize, localizeCategoryName, localizeText } from "../lib/format";
 import { WHATSAPP_HREF } from "../lib/whatsapp";
 import { useCart } from "../lib/cart";
@@ -121,7 +120,6 @@ export function ProductDetail() {
           </div>
         )}
       </div>
-      <FloatingCartButton />
       <WhatsAppFloatingButton whatsappHref={WHATSAPP_HREF} />
     </div>
   );
