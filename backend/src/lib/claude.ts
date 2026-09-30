@@ -170,6 +170,20 @@ export interface ProductTranslation {
   descriptionEn: string | null;
 }
 
+// A IA às vezes devolve um marcador de erro/placeholder (ex: "<UNKNOWN>",
+// "N/A") em vez de recusar via `unclear` ou lançar — normalmente quando o
+// texto de origem é curto/ambíguo demais para traduzir com confiança. Sem
+// essa validação, esses marcadores eram salvos como se fossem tradução real
+// e apareciam literalmente no site público. Aceita variações com/sem
+// colchetes/ângulos e maiúsculas/minúsculas.
+const INVALID_TRANSLATION_PATTERN = /^[<[{]?\s*(unknown|n\/?a|null|undefined|none|unavailable|error)\s*[>\]}]?$/i;
+
+export function isValidTranslation(value: string | null | undefined): value is string {
+  if (!value) return false;
+  const trimmed = value.trim();
+  return trimmed.length > 0 && !INVALID_TRANSLATION_PATTERN.test(trimmed);
+}
+
 // Retorna null (em vez de lançar) sempre que a tradução não puder ser obtida
 // — chave ausente, erro de rede, resposta inesperada — para que quem chamar
 // nunca deixe isso bloquear o cadastro/edição do produto.
@@ -197,12 +211,12 @@ export async function translateProductText(name: string, description: string | n
     if (!toolUse) return null;
 
     const input = toolUse.input as { nameEn?: string; descriptionEn?: string };
-    if (!input.nameEn) return null;
+    if (!isValidTranslation(input.nameEn)) return null;
 
-    return {
-      nameEn: input.nameEn,
-      descriptionEn: description && description.trim() ? input.descriptionEn ?? null : null,
-    };
+    const hasOriginalDescription = Boolean(description && description.trim());
+    const descriptionEn = hasOriginalDescription && isValidTranslation(input.descriptionEn) ? input.descriptionEn : null;
+
+    return { nameEn: input.nameEn, descriptionEn };
   } catch {
     return null;
   }
