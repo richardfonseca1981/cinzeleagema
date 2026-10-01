@@ -1,7 +1,22 @@
-import { useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { api, uploadImageToR2 } from "../lib/api";
+import {
+  addNewEntry,
+  commitImageChanges,
+  entriesFromImages,
+  hasPendingChanges,
+  moveEntry,
+  removeEntryAt,
+  updateExistingImage,
+  type ImageEntry,
+} from "../lib/imageStaging";
 import type { PhotoTreatmentOperation, PhotoTreatmentPreviewResult, ProductImage } from "../types";
 import { useToast } from "./Toast";
+
+export interface ImageManagerHandle {
+  /** Processa as mudanças de foto pendentes (upload, exclusão, reordenação). Chamado só no "Salvar produto". */
+  commit: () => Promise<ProductImage[]>;
+}
 
 interface ImageManagerProps {
   productId: string;
@@ -41,113 +56,162 @@ function Spinner({ className = "h-5 w-5" }: { className?: string }) {
   );
 }
 
-export function ImageManager({ productId, images, onChange }: ImageManagerProps) {
+export const ImageManager = forwardRef<ImageManagerHandle, ImageManagerProps>(function ImageManager(
+  { productId, images, onChange },
+  ref
+) {
   const { showToast } = useToast();
-  const [uploading, setUploading] = useState(false);
+  const [entries, setEntries] = useState<ImageEntry[]>(() => entriesFromImages(images));
+  const [committing, setCommitting] = useState(false);
+  const deletedIdsRef = useRef<Set<string>>(new Set());
+  const entriesRef = useRef(entries);
+  entriesRef.current = entries;
+  const localIdCounter = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+  // Ao desmontar (navegação / "Cancelar") sem ter salvo, descarta os previews
+  // locais das fotos novas ainda staged — nenhuma chamada de rede ocorreu.
+  useEffect(() => {
+    return () => {
+      entriesRef.current.forEach((entry) => {
+        if (entry.kind === "new") URL.revokeObjectURL(entry.previewUrl);
+      });
+    };
+  }, []);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      commit: async () => {
+        if (!hasPendingChanges(entries, images, deletedIdsRef.current)) {
+          return images;
+        }
+        setCommitting(true);
+        try {
+          const result = await commitImageChanges(entries, deletedIdsRef.current, {
+            upload: (file) => uploadImageToR2(productId, file),
+            deleteImage: (imageId) => api.deleteImage(productId, imageId),
+            reorder: (order) => api.reorderImages(productId, order),
+          });
+          entries.forEach((entry) => {
+            if (entry.kind === "new") URL.revokeObjectURL(entry.previewUrl);
+          });
+          deletedIdsRef.current = new Set();
+          setEntries(entriesFromImages(result));
+          onChange(result);
+          return result;
+        } finally {
+          setCommitting(false);
+        }
+      },
+    }),
+    [entries, images, onChange, productId]
+  );
+
+  function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setUploading(true);
-    try {
-      const image = await uploadImageToR2(productId, file);
-      onChange([...images, image].sort((a, b) => a.position - b.position));
-      showToast("success", "Imagem enviada com sucesso");
-    } catch {
-      showToast("error", "Não foi possível enviar a imagem. Verifique a configuração do R2.");
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+    const localId = `local-${Date.now()}-${localIdCounter.current++}`;
+    const previewUrl = URL.createObjectURL(file);
+    setEntries((prev) => addNewEntry(prev, localId, file, previewUrl));
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  function handleMove(index: number, direction: -1 | 1) {
+    setEntries((prev) => moveEntry(prev, index, direction));
+  }
+
+  function handleRemove(index: number) {
+    const entry = entries[index];
+    if (!entry) return;
+
+    setEntries((prev) => removeEntryAt(prev, index));
+    if (entry.kind === "new") {
+      URL.revokeObjectURL(entry.previewUrl);
+    } else {
+      deletedIdsRef.current.add(entry.image.id);
+      showToast("success", "Foto marcada para remoção — será excluída ao salvar o produto");
     }
   }
 
-  async function handleMove(index: number, direction: -1 | 1) {
-    const targetIndex = index + direction;
-    if (targetIndex < 0 || targetIndex >= images.length) return;
-
-    const reordered = [...images];
-    [reordered[index], reordered[targetIndex]] = [reordered[targetIndex], reordered[index]];
-    onChange(reordered);
-
-    await api.reorderImages(
-      productId,
-      reordered.map((img) => img.id)
-    );
-  }
-
-  async function handleDelete(imageId: string) {
-    await api.deleteImage(productId, imageId);
-    onChange(images.filter((img) => img.id !== imageId));
-    showToast("success", "Imagem removida");
-  }
-
   function handleImageUpdated(updated: ProductImage) {
-    onChange(images.map((img) => (img.id === updated.id ? updated : img)));
+    const next = updateExistingImage(entries, updated);
+    setEntries(next);
+    onChange(
+      next.filter((entry): entry is Extract<ImageEntry, { kind: "existing" }> => entry.kind === "existing").map((entry) => entry.image)
+    );
   }
 
   return (
     <div>
       <div className="mb-3 flex flex-wrap gap-3">
-        {images.map((image, index) => (
-          <div key={image.id} className="relative w-56 rounded-lg border border-[#E2E8F0] bg-white p-2 shadow-sm">
-            <img src={image.url} alt="" className="h-32 w-full rounded object-cover" />
+        {entries.map((entry, index) => (
+          <div
+            key={entry.kind === "existing" ? entry.image.id : entry.localId}
+            className="relative w-56 rounded-lg border border-[#E2E8F0] bg-white p-2 shadow-sm"
+          >
+            {entry.kind === "new" && (
+              <span className="absolute left-3 top-3 rounded bg-[#1B3A6B] px-1.5 py-0.5 text-[10px] font-medium text-white">
+                nova — salva ao confirmar
+              </span>
+            )}
+            <img
+              src={entry.kind === "existing" ? entry.image.url : entry.previewUrl}
+              alt=""
+              className="h-32 w-full rounded object-cover"
+            />
             <div className="mt-1 flex items-center justify-between text-xs text-[#64748B]">
               <button
                 type="button"
-                disabled={index === 0}
+                disabled={index === 0 || committing}
                 onClick={() => handleMove(index, -1)}
                 className="disabled:opacity-30"
               >
                 ↑
               </button>
-              <button type="button" onClick={() => handleDelete(image.id)} className="text-[#EF4444]">
+              <button type="button" disabled={committing} onClick={() => handleRemove(index)} className="text-[#EF4444] disabled:opacity-30">
                 remover
               </button>
               <button
                 type="button"
-                disabled={index === images.length - 1}
+                disabled={index === entries.length - 1 || committing}
                 onClick={() => handleMove(index, 1)}
                 className="disabled:opacity-30"
               >
                 ↓
               </button>
             </div>
-            <ImageTreatmentPanel
-              productId={productId}
-              image={image}
-              onUpdated={handleImageUpdated}
-              showToast={showToast}
-            />
+            {entry.kind === "existing" && (
+              <ImageTreatmentPanel productId={productId} image={entry.image} onUpdated={handleImageUpdated} showToast={showToast} />
+            )}
           </div>
         ))}
-
-        {uploading && (
-          <div className="flex w-56 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[#E2E8F0] bg-[#F8FAFC] p-2">
-            <div className="h-32 w-full animate-pulse rounded bg-[#E2E8F0]" />
-            <div className="flex items-center gap-2 text-xs text-[#64748B]">
-              <Spinner className="h-4 w-4" /> Enviando imagem...
-            </div>
-          </div>
-        )}
       </div>
 
+      {committing && (
+        <p className="mb-3 flex items-center gap-2 text-sm text-[#64748B]">
+          <Spinner className="h-4 w-4" /> Salvando fotos... isso pode levar alguns segundos.
+        </p>
+      )}
+
       <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm text-[#1A1A1A] hover:bg-[#F8FAFC]">
-        {uploading && <Spinner className="h-4 w-4" />}
-        <span>{uploading ? "Enviando..." : "Adicionar foto"}</span>
+        <span>Adicionar foto</span>
         <input
           ref={fileInputRef}
           type="file"
           accept="image/*"
           onChange={handleFileSelected}
-          disabled={uploading}
+          disabled={committing}
           className="hidden"
         />
       </label>
+      <p className="mt-1 text-xs text-[#64748B]">
+        As fotos só são enviadas e as exclusões só são aplicadas quando você clicar em "Salvar produto".
+      </p>
     </div>
   );
-}
+});
 
 interface ImageTreatmentPanelProps {
   productId: string;

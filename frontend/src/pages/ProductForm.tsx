@@ -1,8 +1,8 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, ApiError } from "../lib/api";
 import type { Category, ProductImage } from "../types";
-import { ImageManager } from "../components/ImageManager";
+import { ImageManager, type ImageManagerHandle } from "../components/ImageManager";
 import { useToast } from "../components/Toast";
 
 const DIACRITICS_REGEX = new RegExp("[̀-ͯ]", "g");
@@ -44,7 +44,9 @@ export function ProductForm() {
   const [stockQty, setStockQty] = useState("");
 
   const [saving, setSaving] = useState(false);
+  const [savingPhase, setSavingPhase] = useState<"data" | "images" | null>(null);
   const [loading, setLoading] = useState(isEditing);
+  const imageManagerRef = useRef<ImageManagerHandle>(null);
 
   useEffect(() => {
     api.listCategories().then(setCategories);
@@ -88,6 +90,7 @@ export function ProductForm() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSaving(true);
+    setSavingPhase("data");
 
     const payload = {
       name,
@@ -106,6 +109,14 @@ export function ProductForm() {
     try {
       if (productId) {
         await api.updateProduct(productId, payload);
+
+        // Dados do produto já salvos — agora processa as fotos pendentes
+        // (upload das novas staged, exclusões marcadas e ordem final).
+        if (imageManagerRef.current) {
+          setSavingPhase("images");
+          await imageManagerRef.current.commit();
+        }
+
         showToast("success", "Produto atualizado com sucesso");
         navigate("/admin/produtos");
       } else {
@@ -118,7 +129,12 @@ export function ProductForm() {
       showToast("error", err instanceof ApiError ? err.message : "Não foi possível salvar o produto");
     } finally {
       setSaving(false);
+      setSavingPhase(null);
     }
+  }
+
+  function handleCancel() {
+    navigate("/admin/produtos");
   }
 
   if (loading) {
@@ -132,7 +148,7 @@ export function ProductForm() {
       <div className="mb-6 rounded-lg border border-[#E2E8F0] bg-white p-6">
         <h2 className="mb-3 text-sm font-semibold text-[#1A1A1A]">Fotos</h2>
         {productId ? (
-          <ImageManager productId={productId} images={images} onChange={setImages} />
+          <ImageManager ref={imageManagerRef} productId={productId} images={images} onChange={setImages} />
         ) : (
           <p className="text-sm text-[#64748B]">Salve o produto para poder adicionar fotos.</p>
         )}
@@ -293,13 +309,21 @@ export function ProductForm() {
           </div>
         </section>
 
-        <div>
+        <div className="flex items-center gap-3">
           <button
             type="submit"
             disabled={saving}
             className="rounded-lg bg-[#C78F50] px-4 py-2 font-medium text-[#010B1A] transition hover:bg-[#B37D3F] disabled:opacity-50"
           >
-            {saving ? "Salvando..." : "Salvar produto"}
+            {saving ? (savingPhase === "images" ? "Salvando fotos..." : "Salvando...") : "Salvar produto"}
+          </button>
+          <button
+            type="button"
+            onClick={handleCancel}
+            disabled={saving}
+            className="rounded-lg border border-[#E2E8F0] px-4 py-2 font-medium text-[#1A1A1A] transition hover:bg-[#F8FAFC] disabled:opacity-50"
+          >
+            Cancelar
           </button>
         </div>
       </form>
