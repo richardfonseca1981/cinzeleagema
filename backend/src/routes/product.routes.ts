@@ -49,7 +49,11 @@ productRouter.get(
       prisma.product.findMany({
         where,
         include: { images: { orderBy: { position: "asc" } }, category: true, subcategory: true },
-        orderBy: { createdAt: "desc" },
+        // "id" como desempate: dois produtos com o mesmo createdAt (ex:
+        // seed em lote) teriam ordem indefinida entre si só com createdAt,
+        // o que pode pular ou repetir peças ao paginar (uma mesma posição
+        // "na borda" entre duas páginas ora aparece numa, ora na outra).
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),

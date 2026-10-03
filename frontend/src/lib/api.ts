@@ -64,11 +64,14 @@ export const api = {
 
   getExchangeRate: () => request<{ rate: number; updatedAt: string }>("/api/exchange-rate"),
 
-  listProducts: (params: { active?: boolean; categoryId?: string; subcategoryId?: string; pageSize?: number } = {}) => {
+  listProducts: (
+    params: { active?: boolean; categoryId?: string; subcategoryId?: string; page?: number; pageSize?: number } = {}
+  ) => {
     const query = new URLSearchParams();
     if (params.active !== undefined) query.set("active", String(params.active));
     if (params.categoryId) query.set("categoryId", params.categoryId);
     if (params.subcategoryId) query.set("subcategoryId", params.subcategoryId);
+    if (params.page !== undefined) query.set("page", String(params.page));
     if (params.pageSize !== undefined) query.set("pageSize", String(params.pageSize));
     return request<ProductListResponse>(`/api/products?${query.toString()}`);
   },

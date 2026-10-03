@@ -134,7 +134,12 @@
     "subtitle": "Conheça as peças disponíveis, organizadas por categoria.",
     "allProducts": "Todas as peças",
     "loading": "Carregando...",
-    "empty": "Nenhuma peça encontrada nessa categoria."
+    "empty": "Nenhuma peça encontrada nessa categoria.",
+    "showingCount": "Mostrando {{shown}} de {{total}} peças",
+    "loadMore": "Carregar mais",
+    "loadingMore": "Carregando...",
+    "loadMoreError": "Não foi possível carregar mais peças.",
+    "retry": "Tentar novamente"
   },
   "productCard": {
     "noPhoto": "Sem foto",
