@@ -10,6 +10,11 @@ export interface NewEntry {
   localId: string;
   file: File;
   previewUrl: string;
+  // Guarda o File/preview de antes do último tratamento por IA confirmado,
+  // para permitir desfazer (um único nível, igual ao previousUrl/Key das
+  // fotos já salvas) — null quando nunca houve tratamento ou já foi desfeito.
+  previousFile: File | null;
+  previousPreviewUrl: string | null;
 }
 
 export type ImageEntry = ExistingEntry | NewEntry;
@@ -21,7 +26,33 @@ export function entriesFromImages(images: ProductImage[]): ImageEntry[] {
 }
 
 export function addNewEntry(entries: ImageEntry[], localId: string, file: File, previewUrl: string): ImageEntry[] {
-  return [...entries, { kind: "new", localId, file, previewUrl }];
+  return [...entries, { kind: "new", localId, file, previewUrl, previousFile: null, previousPreviewUrl: null }];
+}
+
+// Aplica (confirma) um tratamento por IA numa foto staged: o File/preview
+// atual vira "anterior" (para desfazer) e o tratado passa a ser o atual.
+export function withNewEntryTreatment(entry: NewEntry, treated: { file: File; previewUrl: string }): NewEntry {
+  return {
+    ...entry,
+    previousFile: entry.file,
+    previousPreviewUrl: entry.previewUrl,
+    file: treated.file,
+    previewUrl: treated.previewUrl,
+  };
+}
+
+// Desfaz o último tratamento confirmado numa foto staged — um único nível,
+// sem redo, igual ao /undo das fotos já salvas.
+export function withNewEntryUndo(entry: NewEntry): NewEntry {
+  if (!entry.previousFile || !entry.previousPreviewUrl) return entry;
+  return {
+    kind: "new",
+    localId: entry.localId,
+    file: entry.previousFile,
+    previewUrl: entry.previousPreviewUrl,
+    previousFile: null,
+    previousPreviewUrl: null,
+  };
 }
 
 export function removeEntryAt(entries: ImageEntry[], index: number): ImageEntry[] {

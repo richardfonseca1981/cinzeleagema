@@ -15,7 +15,8 @@
     "prisma:seed": "tsx prisma/seed.ts",
     "translate:backfill": "tsx src/scripts/backfillProductTranslations.ts",
     "reset-password": "tsx src/scripts/resetAdminPassword.ts",
-    "fix-invalid-translations": "tsx src/scripts/fixInvalidTranslations.ts"
+    "fix-invalid-translations": "tsx src/scripts/fixInvalidTranslations.ts",
+    "wipe-product-data": "tsx src/scripts/wipeProductData.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -30,6 +31,7 @@
     "dotenv": "^16.4.5",
     "express": "^4.21.0",
     "jsonwebtoken": "^9.0.2",
+    "multer": "^2.4.0",
     "sharp": "^0.35.3",
     "zod": "^3.23.8"
   },
@@ -38,6 +40,7 @@
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/jsonwebtoken": "^9.0.7",
+    "@types/multer": "^2.3.0",
     "@types/node": "^20.16.10",
     "@types/supertest": "^6.0.2",
     "prisma": "5.22.0",

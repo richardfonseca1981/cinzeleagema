@@ -5,6 +5,7 @@ import type {
   Category,
   CreateOrderResult,
   PhotoTreatmentPreviewResult,
+  PhotoTreatmentRawPreviewResult,
   Product,
   ProductImage,
   ProductListResponse,
@@ -122,6 +123,33 @@ export const api = {
   undoPhotoTreatment: (productId: string, imageId: string) =>
     request<ProductImage>(`/api/products/${productId}/images/${imageId}/undo`, { method: "POST" }),
 };
+
+// Versão stateless do tratamento por IA, para fotos staged (sem productId/
+// imageId reais ainda) — envia o arquivo bruto por multipart e recebe a
+// imagem já tratada embutida na resposta; nunca grava nada no backend.
+export async function previewPhotoTreatmentRaw(file: File, instruction: string): Promise<PhotoTreatmentRawPreviewResult> {
+  const session = getSession();
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("instruction", instruction);
+
+  const res = await fetch(`${API_URL}/api/images/treatment-preview-raw`, {
+    method: "POST",
+    headers: session ? { Authorization: `Bearer ${session.token}` } : {},
+    body: formData,
+  });
+
+  if (res.status === 401) {
+    clearSession();
+    window.location.href = "/admin";
+    throw new ApiError(401, "Sessão expirada");
+  }
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, body.error ?? "Erro na requisição", body.details);
+  }
+  return res.json();
+}
 
 export async function uploadImageToR2(productId: string, file: File): Promise<ProductImage> {
   const { uploadUrl, key, publicUrl } = await api.presignImageUpload(productId, file.name, file.type);

@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
-import { api, uploadImageToR2 } from "../lib/api";
+import { api, previewPhotoTreatmentRaw, uploadImageToR2 } from "../lib/api";
 import {
   addNewEntry,
   commitImageChanges,
@@ -8,9 +8,17 @@ import {
   moveEntry,
   removeEntryAt,
   updateExistingImage,
+  withNewEntryTreatment,
+  withNewEntryUndo,
   type ImageEntry,
+  type NewEntry,
 } from "../lib/imageStaging";
-import type { PhotoTreatmentOperation, PhotoTreatmentPreviewResult, ProductImage } from "../types";
+import type {
+  PhotoTreatmentOperation,
+  PhotoTreatmentPreviewResult,
+  PhotoTreatmentRawPreviewResult,
+  ProductImage,
+} from "../types";
 import { useToast } from "./Toast";
 
 export interface ImageManagerHandle {
@@ -23,6 +31,8 @@ interface ImageManagerProps {
   images: ProductImage[];
   onChange: (images: ProductImage[]) => void;
 }
+
+type ToastFn = (type: "success" | "error" | "warning", message: string) => void;
 
 function describeOperation(op: PhotoTreatmentOperation): string {
   switch (op.operation) {
@@ -56,6 +66,11 @@ function Spinner({ className = "h-5 w-5" }: { className?: string }) {
   );
 }
 
+function revokeNewEntryUrls(entry: NewEntry) {
+  URL.revokeObjectURL(entry.previewUrl);
+  if (entry.previousPreviewUrl) URL.revokeObjectURL(entry.previousPreviewUrl);
+}
+
 export const ImageManager = forwardRef<ImageManagerHandle, ImageManagerProps>(function ImageManager(
   { productId, images, onChange },
   ref
@@ -74,7 +89,7 @@ export const ImageManager = forwardRef<ImageManagerHandle, ImageManagerProps>(fu
   useEffect(() => {
     return () => {
       entriesRef.current.forEach((entry) => {
-        if (entry.kind === "new") URL.revokeObjectURL(entry.previewUrl);
+        if (entry.kind === "new") revokeNewEntryUrls(entry);
       });
     };
   }, []);
@@ -94,7 +109,7 @@ export const ImageManager = forwardRef<ImageManagerHandle, ImageManagerProps>(fu
             reorder: (order) => api.reorderImages(productId, order),
           });
           entries.forEach((entry) => {
-            if (entry.kind === "new") URL.revokeObjectURL(entry.previewUrl);
+            if (entry.kind === "new") revokeNewEntryUrls(entry);
           });
           deletedIdsRef.current = new Set();
           setEntries(entriesFromImages(result));
@@ -128,7 +143,7 @@ export const ImageManager = forwardRef<ImageManagerHandle, ImageManagerProps>(fu
 
     setEntries((prev) => removeEntryAt(prev, index));
     if (entry.kind === "new") {
-      URL.revokeObjectURL(entry.previewUrl);
+      revokeNewEntryUrls(entry);
     } else {
       deletedIdsRef.current.add(entry.image.id);
       showToast("success", "Foto marcada para remoção — será excluída ao salvar o produto");
@@ -141,6 +156,18 @@ export const ImageManager = forwardRef<ImageManagerHandle, ImageManagerProps>(fu
     onChange(
       next.filter((entry): entry is Extract<ImageEntry, { kind: "existing" }> => entry.kind === "existing").map((entry) => entry.image)
     );
+  }
+
+  function handleStagedEntryChange(next: NewEntry) {
+    setEntries((prev) => prev.map((e) => (e.kind === "new" && e.localId === next.localId ? next : e)));
+  }
+
+  function handleStagedUndo(entry: NewEntry) {
+    if (!entry.previousFile || !entry.previousPreviewUrl) return;
+    const discardedPreviewUrl = entry.previewUrl;
+    const next = withNewEntryUndo(entry);
+    handleStagedEntryChange(next);
+    URL.revokeObjectURL(discardedPreviewUrl);
   }
 
   return (
@@ -182,8 +209,16 @@ export const ImageManager = forwardRef<ImageManagerHandle, ImageManagerProps>(fu
                 ↓
               </button>
             </div>
-            {entry.kind === "existing" && (
-              <ImageTreatmentPanel productId={productId} image={entry.image} onUpdated={handleImageUpdated} showToast={showToast} />
+            {entry.kind === "existing" ? (
+              <ImageTreatmentPanel
+                target={{ kind: "existing", productId, image: entry.image, onUpdated: handleImageUpdated }}
+                showToast={showToast}
+              />
+            ) : (
+              <ImageTreatmentPanel
+                target={{ kind: "staged", entry, onChange: handleStagedEntryChange, onUndo: () => handleStagedUndo(entry) }}
+                showToast={showToast}
+              />
             )}
           </div>
         ))}
@@ -213,24 +248,39 @@ export const ImageManager = forwardRef<ImageManagerHandle, ImageManagerProps>(fu
   );
 });
 
+type TreatmentTarget =
+  | { kind: "existing"; productId: string; image: ProductImage; onUpdated: (image: ProductImage) => void }
+  | { kind: "staged"; entry: NewEntry; onChange: (next: NewEntry) => void; onUndo: () => void };
+
 interface ImageTreatmentPanelProps {
-  productId: string;
-  image: ProductImage;
-  onUpdated: (image: ProductImage) => void;
-  showToast: (type: "success" | "error" | "warning", message: string) => void;
+  target: TreatmentTarget;
+  showToast: ToastFn;
 }
 
-function ImageTreatmentPanel({ productId, image, onUpdated, showToast }: ImageTreatmentPanelProps) {
+// Painel de tratamento por IA, compartilhado entre fotos já salvas (target
+// "existing", via rota com estado + R2) e fotos staged ainda não enviadas
+// (target "staged", via rota stateless + File/Blob em memória). A UI
+// (textarea, antes/depois, fundo quadriculado p/ transparência, confirmar/
+// descartar/desfazer) é idêntica — só a forma de buscar e aplicar o preview
+// muda conforme o target.
+function ImageTreatmentPanel({ target, showToast }: ImageTreatmentPanelProps) {
   const [open, setOpen] = useState(false);
   const [instruction, setInstruction] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [preview, setPreview] = useState<Extract<PhotoTreatmentPreviewResult, { unclear: false }> | null>(null);
+  const [preview, setPreview] = useState<{ operations: PhotoTreatmentOperation[]; displayUrl: string } | null>(null);
+  const [pendingRaw, setPendingRaw] = useState<
+    Extract<PhotoTreatmentPreviewResult, { unclear: false }> | Extract<PhotoTreatmentRawPreviewResult, { unclear: false }> | null
+  >(null);
   const [suggestion, setSuggestion] = useState<string | null>(null);
+
+  const currentUrl = target.kind === "existing" ? target.image.url : target.entry.previewUrl;
+  const canUndo = target.kind === "existing" ? Boolean(target.image.previousUrl) : Boolean(target.entry.previousFile);
 
   function resetPanel() {
     setInstruction("");
     setPreview(null);
+    setPendingRaw(null);
     setSuggestion(null);
     setError(null);
   }
@@ -241,12 +291,24 @@ function ImageTreatmentPanel({ productId, image, onUpdated, showToast }: ImageTr
     setError(null);
     setSuggestion(null);
     setPreview(null);
+    setPendingRaw(null);
     try {
-      const result = await api.previewPhotoTreatment(productId, image.id, instruction);
-      if (result.unclear) {
-        setSuggestion(result.suggestion ?? "Tente descrever o tratamento de outra forma.");
+      if (target.kind === "existing") {
+        const result = await api.previewPhotoTreatment(target.productId, target.image.id, instruction);
+        if (result.unclear) {
+          setSuggestion(result.suggestion ?? "Tente descrever o tratamento de outra forma.");
+        } else {
+          setPreview({ operations: result.operations, displayUrl: result.previewUrl });
+          setPendingRaw(result);
+        }
       } else {
-        setPreview(result);
+        const result = await previewPhotoTreatmentRaw(target.entry.file, instruction);
+        if (result.unclear) {
+          setSuggestion(result.suggestion ?? "Tente descrever o tratamento de outra forma.");
+        } else {
+          setPreview({ operations: result.operations, displayUrl: result.previewDataUrl });
+          setPendingRaw(result);
+        }
       }
     } catch {
       setError("Não foi possível interpretar o pedido. Tente novamente.");
@@ -256,12 +318,21 @@ function ImageTreatmentPanel({ productId, image, onUpdated, showToast }: ImageTr
   }
 
   async function handleConfirm() {
-    if (!preview) return;
+    if (!preview || !pendingRaw) return;
     setLoading(true);
     setError(null);
     try {
-      const updated = await api.confirmPhotoTreatment(productId, image.id, preview.previewUrl, preview.previewKey);
-      onUpdated(updated);
+      if (target.kind === "existing") {
+        const raw = pendingRaw as Extract<PhotoTreatmentPreviewResult, { unclear: false }>;
+        const updated = await api.confirmPhotoTreatment(target.productId, target.image.id, raw.previewUrl, raw.previewKey);
+        target.onUpdated(updated);
+      } else {
+        const raw = pendingRaw as Extract<PhotoTreatmentRawPreviewResult, { unclear: false }>;
+        const blob = await fetch(raw.previewDataUrl).then((r) => r.blob());
+        const treatedFile = new File([blob], target.entry.file.name, { type: blob.type });
+        const treatedPreviewUrl = URL.createObjectURL(blob);
+        target.onChange(withNewEntryTreatment(target.entry, { file: treatedFile, previewUrl: treatedPreviewUrl }));
+      }
       resetPanel();
       setOpen(false);
       showToast("success", "Tratamento aplicado com sucesso");
@@ -273,30 +344,42 @@ function ImageTreatmentPanel({ productId, image, onUpdated, showToast }: ImageTr
   }
 
   async function handleDiscard() {
-    if (!preview) return;
-    setLoading(true);
-    setError(null);
-    try {
-      await api.discardPhotoTreatment(productId, image.id, preview.previewKey);
+    if (!preview || !pendingRaw) return;
+    // Foto staged: o preview nunca saiu da memória do navegador, não há nada
+    // para limpar no servidor — só reseta o painel local.
+    if (target.kind === "existing") {
+      setLoading(true);
+      setError(null);
+      try {
+        const raw = pendingRaw as Extract<PhotoTreatmentPreviewResult, { unclear: false }>;
+        await api.discardPhotoTreatment(target.productId, target.image.id, raw.previewKey);
+        resetPanel();
+      } catch {
+        setError("Não foi possível descartar a prévia.");
+      } finally {
+        setLoading(false);
+      }
+    } else {
       resetPanel();
-    } catch {
-      setError("Não foi possível descartar a prévia.");
-    } finally {
-      setLoading(false);
     }
   }
 
   async function handleUndo() {
-    setLoading(true);
-    setError(null);
-    try {
-      const updated = await api.undoPhotoTreatment(productId, image.id);
-      onUpdated(updated);
+    if (target.kind === "existing") {
+      setLoading(true);
+      setError(null);
+      try {
+        const updated = await api.undoPhotoTreatment(target.productId, target.image.id);
+        target.onUpdated(updated);
+        showToast("success", "Tratamento desfeito");
+      } catch {
+        showToast("error", "Não foi possível desfazer o tratamento.");
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      target.onUndo();
       showToast("success", "Tratamento desfeito");
-    } catch {
-      showToast("error", "Não foi possível desfazer o tratamento.");
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -310,7 +393,7 @@ function ImageTreatmentPanel({ productId, image, onUpdated, showToast }: ImageTr
         >
           {open ? "fechar" : "tratar com IA"}
         </button>
-        {image.previousUrl && (
+        {canUndo && (
           <button type="button" disabled={loading} onClick={handleUndo} className="text-[#64748B] underline">
             desfazer
           </button>
@@ -356,12 +439,12 @@ function ImageTreatmentPanel({ productId, image, onUpdated, showToast }: ImageTr
               <div className="flex gap-2">
                 <div>
                   <p className="text-[#64748B]">antes</p>
-                  <img src={image.url} alt="" className="h-28 w-28 rounded object-contain" />
+                  <img src={currentUrl} alt="" className="h-28 w-28 rounded object-contain" />
                 </div>
                 <div>
                   <p className="text-[#64748B]">depois</p>
                   <img
-                    src={preview.previewUrl}
+                    src={preview.displayUrl}
                     alt=""
                     className="h-28 w-28 rounded object-contain"
                     style={{

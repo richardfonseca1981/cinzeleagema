@@ -6,7 +6,10 @@ import {
   hasPendingChanges,
   moveEntry,
   removeEntryAt,
+  withNewEntryTreatment,
+  withNewEntryUndo,
   type CommitDeps,
+  type NewEntry,
 } from "./imageStaging";
 import type { ProductImage } from "../types";
 
@@ -195,5 +198,57 @@ describe("commit sem mudanças pendentes", () => {
     expect(deps.upload).not.toHaveBeenCalled();
     expect(deps.deleteImage).not.toHaveBeenCalled();
     expect(deps.reorder).not.toHaveBeenCalled();
+  });
+});
+
+describe("tratamento por IA em foto staged (sem backend com estado)", () => {
+  function makeNewEntry(overrides: Partial<NewEntry> = {}): NewEntry {
+    return {
+      kind: "new",
+      localId: "local-1",
+      file: makeFile("original.jpg"),
+      previewUrl: "blob:original",
+      previousFile: null,
+      previousPreviewUrl: null,
+      ...overrides,
+    };
+  }
+
+  it("confirmar um tratamento guarda o File/preview anterior e troca para o tratado", () => {
+    const entry = makeNewEntry();
+    const treatedFile = makeFile("tratado.jpg");
+
+    const next = withNewEntryTreatment(entry, { file: treatedFile, previewUrl: "blob:tratado" });
+
+    expect(next.file).toBe(treatedFile);
+    expect(next.previewUrl).toBe("blob:tratado");
+    expect(next.previousFile).toBe(entry.file);
+    expect(next.previousPreviewUrl).toBe("blob:original");
+  });
+
+  it("desfazer depois de confirmar volta ao File/preview anterior e não deixa mais nada para desfazer", () => {
+    const original = makeNewEntry();
+    const treated = withNewEntryTreatment(original, { file: makeFile("tratado.jpg"), previewUrl: "blob:tratado" });
+
+    const undone = withNewEntryUndo(treated);
+
+    expect(undone.file).toBe(original.file);
+    expect(undone.previewUrl).toBe("blob:original");
+    expect(undone.previousFile).toBeNull();
+    expect(undone.previousPreviewUrl).toBeNull();
+  });
+
+  it("desfazer sem tratamento prévio é um no-op", () => {
+    const entry = makeNewEntry();
+    expect(withNewEntryUndo(entry)).toBe(entry);
+  });
+
+  it("descartar (não confirmar) não altera a entrada — simplesmente não se chama withNewEntryTreatment", () => {
+    const entry = makeNewEntry();
+    // "Descartar" no componente real não chama nenhuma função de staging —
+    // o preview tratado só existe localmente até a confirmação. Este teste
+    // documenta que a entrada staged permanece byte-a-byte a mesma.
+    expect(entry.file.name).toBe("original.jpg");
+    expect(entry.previewUrl).toBe("blob:original");
   });
 });

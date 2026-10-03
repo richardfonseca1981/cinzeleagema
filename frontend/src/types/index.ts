@@ -32,6 +32,13 @@ export type PhotoTreatmentPreviewResult =
   | { unclear: true; suggestion?: string }
   | { unclear: false; operations: PhotoTreatmentOperation[]; previewUrl: string; previewKey: string };
 
+// Resultado da rota stateless (/api/images/treatment-preview-raw), usada para
+// tratar fotos staged (ainda não enviadas ao R2) — a imagem tratada volta
+// embutida na resposta em vez de uma URL já hospedada.
+export type PhotoTreatmentRawPreviewResult =
+  | { unclear: true; suggestion?: string }
+  | { unclear: false; operations: PhotoTreatmentOperation[]; previewDataUrl: string };
+
 export interface Subcategory {
   id: string;
   name: string;

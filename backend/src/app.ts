@@ -8,6 +8,7 @@ import { orderRouter } from "./routes/order.routes";
 import { productRouter } from "./routes/product.routes";
 import { imageRouter } from "./routes/upload.routes";
 import { imageTreatmentRouter } from "./routes/imageTreatment.routes";
+import { imageTreatmentRawRouter } from "./routes/imageTreatmentRaw.routes";
 import { adminUserRouter } from "./routes/adminUser.routes";
 import { exchangeRateRouter } from "./routes/exchangeRate.routes";
 
@@ -27,6 +28,7 @@ export function createApp() {
   app.use("/api/orders", orderRouter);
   app.use("/api/products/:productId/images", imageRouter);
   app.use("/api/products/:productId/images/:imageId", imageTreatmentRouter);
+  app.use("/api/images", imageTreatmentRawRouter);
 
   app.use(errorHandler);
 
