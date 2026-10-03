@@ -70,6 +70,11 @@ export interface Product {
   sku: string | null;
   weightGrams: string;
   sizeCm: string;
+  // Dimensões reais da caixa de envio — opcionais, só corrigem a estimativa
+  // automática de frete (ver backend lib/shipping/packageEstimator.ts).
+  packageLengthCm: string | null;
+  packageWidthCm: string | null;
+  packageHeightCm: string | null;
   trackStock: boolean;
   stockQty: number | null;
   images: ProductImage[];
@@ -111,4 +116,16 @@ export interface CartItem {
 
 export interface CreateOrderResult {
   delivered: boolean;
+}
+
+// GET /api/shipping/status (admin, somente leitura) — nunca traz valores de
+// variáveis, só se estão configuradas. `international` fica null até a
+// Parte 1B (frete internacional) implementar essa seção.
+export interface ShippingStatus {
+  domestic: {
+    melhorEnvioTokenConfigured: boolean;
+    originCepConfigured: boolean;
+    sandbox: boolean;
+  };
+  international: null;
 }

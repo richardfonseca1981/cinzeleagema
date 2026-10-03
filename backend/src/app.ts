@@ -11,6 +11,7 @@ import { imageTreatmentRouter } from "./routes/imageTreatment.routes";
 import { imageTreatmentRawRouter } from "./routes/imageTreatmentRaw.routes";
 import { adminUserRouter } from "./routes/adminUser.routes";
 import { exchangeRateRouter } from "./routes/exchangeRate.routes";
+import { shippingRouter } from "./routes/shipping.routes";
 
 export function createApp() {
   const app = express();
@@ -24,6 +25,7 @@ export function createApp() {
   app.use("/api/admin-users", adminUserRouter);
   app.use("/api/categories", categoryRouter);
   app.use("/api/exchange-rate", exchangeRateRouter);
+  app.use("/api/shipping", shippingRouter);
   app.use("/api/products", productRouter);
   app.use("/api/orders", orderRouter);
   app.use("/api/products/:productId/images", imageRouter);

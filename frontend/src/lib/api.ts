@@ -9,6 +9,7 @@ import type {
   Product,
   ProductImage,
   ProductListResponse,
+  ShippingStatus,
 } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -63,6 +64,8 @@ export const api = {
   listCategories: () => request<Category[]>("/api/categories"),
 
   getExchangeRate: () => request<{ rate: number; updatedAt: string }>("/api/exchange-rate"),
+
+  getShippingStatus: () => request<ShippingStatus>("/api/shipping/status"),
 
   listProducts: (params: { active?: boolean; categoryId?: string; subcategoryId?: string; pageSize?: number } = {}) => {
     const query = new URLSearchParams();

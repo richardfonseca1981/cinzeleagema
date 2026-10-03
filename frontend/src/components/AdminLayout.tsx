@@ -18,6 +18,7 @@ export function AdminLayout() {
   }
 
   const isProductsSection = location.pathname.startsWith("/admin/produtos");
+  const isShippingSection = location.pathname.startsWith("/admin/frete");
   const isUsersSection = location.pathname.startsWith("/admin/usuarios");
 
   return (
@@ -35,6 +36,14 @@ export function AdminLayout() {
             }`}
           >
             Produtos
+          </Link>
+          <Link
+            to="/admin/frete"
+            className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+              isShippingSection ? "bg-white/15 text-white" : "text-white/80 hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            Frete
           </Link>
           <Link
             to="/admin/usuarios"
