@@ -45,7 +45,7 @@ Diferente do que se poderia supor, esta funcionalidade **já está construída e
 ## Identidade visual — CONCLUÍDA em 2026-09-21, paleta e logo revisados em 2026-09-29 (decisão revista de novo)
 - Decisão de 2026-09-21 (mantida só como histórico): usar a paleta EXATA do site de óleo/FluxioDesk, para dar consistência visual ao ecossistema de marcas do mesmo cliente terceiro.
 - Em 2026-09-29 essa decisão foi revertida por pedido explícito do usuário: a paleta **deixou de ser compartilhada com o FluxioDesk** e passou a ser **exclusiva da Cinzel e a Gema**, extraída do logo oficial da marca (moldura de ágata azul e dourada). O projeto irmão `techflowdistribuidora`/FluxioDesk **não foi tocado** — a mudança é só neste repositório.
-- Estrutura de seções da landing (Header, Hero, grid de peças, banner de confiança, FAQ, About, certificação, galeria, blog, footer, modais) continua a mesma; só as cores de marca e o logo mudaram.
+- Estrutura de seções da landing (Header, Hero, grid de peças, banner de confiança, FAQ, About, certificação, blog, footer, modais) continua a mesma; só as cores de marca e o logo mudaram.
 - Nova paleta (valores arbitrários do Tailwind, sem estender `tailwind.config.js`):
   - Dourado (marca/destaque, botões primários, bordas de destaque/foco, valores de preço, labels "eyebrow", estado ativo de navegação): `#C78F50`, hover `#B37D3F`; texto sobre fundo dourado usa `#010B1A` (marinho) para contraste, não branco
   - Azul da gema (uso secundário — links de navegação, hover de itens de menu/categoria, ícones): `#5F84BA`

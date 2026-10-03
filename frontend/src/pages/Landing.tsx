@@ -5,7 +5,6 @@ import { Certification } from "../components/landing/Certification";
 import { Faq } from "../components/landing/Faq";
 import { FeaturedProducts } from "../components/landing/FeaturedProducts";
 import { Footer } from "../components/landing/Footer";
-import { Gallery } from "../components/landing/Gallery";
 import { Hero } from "../components/landing/Hero";
 import { PublicHeader } from "../components/landing/PublicHeader";
 import { QualityPolicyModal } from "../components/landing/QualityPolicyModal";
@@ -39,7 +38,6 @@ export function Landing() {
       <Faq />
       <About />
       <Certification />
-      <Gallery />
       <Blog />
       <Footer
         whatsappHref={WHATSAPP_HREF}
