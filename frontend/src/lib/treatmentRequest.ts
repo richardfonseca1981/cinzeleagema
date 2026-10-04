@@ -1,4 +1,10 @@
-import type { ColorEnhanceLevel, PhotoTreatmentOperation, TreatmentPreviewRequest } from "../types";
+import type {
+  ColorEnhanceLevel,
+  PhotoTreatmentOperation,
+  PhotoTreatmentPreviewResult,
+  PhotoTreatmentRawPreviewResult,
+  TreatmentPreviewRequest,
+} from "../types";
 
 // Lógica pura (sem React/fetch) que decide O QUE o painel de tratamento envia
 // ao backend, para os dois caminhos:
@@ -8,7 +14,7 @@ import type { ColorEnhanceLevel, PhotoTreatmentOperation, TreatmentPreviewReques
 //    arquivo + "instruction" OU "operations" (string JSON).
 // Isolada aqui para ser testada sem renderizar o componente.
 
-export type TreatmentShortcut = "enhance_color" | "sharpen" | "removeBackground";
+export type TreatmentShortcut = "enhance_color" | "sharpen" | "removeBackground" | "autoFit";
 
 // Operations prontas dos atalhos do admin — nunca passam pela Claude.
 export function shortcutRequest(
@@ -22,6 +28,8 @@ export function shortcutRequest(
       return { operations: [{ operation: "sharpen", intensity: "médio" }] };
     case "removeBackground":
       return { operations: [{ operation: "removeBackground" }] };
+    case "autoFit":
+      return { operations: [{ operation: "autoFit" }] };
   }
 }
 
@@ -53,4 +61,24 @@ export function colorEnhanceMeta(operations: PhotoTreatmentOperation[]): {
 // Nível forte exige clique duplo em "Confirmar".
 export function requiresForteConfirmation(operations: PhotoTreatmentOperation[]): boolean {
   return operations.some((o) => o.operation === "enhance_color" && o.level === "forte");
+}
+
+// Como o painel deve reagir à resposta do preview (rota da foto salva ou rota
+// stateless da staged — mesmo formato de decisão):
+//  - unclear: o pedido em texto não foi entendido (mostra a sugestão);
+//  - noChange: nada foi alterado (ex.: peça já enquadrada) — só um aviso, sem
+//    preview nem botão Confirmar;
+//  - ready: há preview para confirmar/descartar (notice opcional, ex.: "Peça
+//    enquadrada: ocupava 6% ... agora ocupa 40%").
+export type PreviewOutcome =
+  | { kind: "unclear"; message: string }
+  | { kind: "noChange"; message: string }
+  | { kind: "ready"; notice: string | null };
+
+export const DEFAULT_UNCLEAR_MESSAGE = "Tente descrever o tratamento de outra forma.";
+
+export function classifyPreviewResult(result: PhotoTreatmentPreviewResult | PhotoTreatmentRawPreviewResult): PreviewOutcome {
+  if (result.unclear) return { kind: "unclear", message: result.suggestion ?? DEFAULT_UNCLEAR_MESSAGE };
+  if (result.noChange) return { kind: "noChange", message: result.notice };
+  return { kind: "ready", notice: result.notice ?? null };
 }

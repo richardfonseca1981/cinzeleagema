@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  DEFAULT_UNCLEAR_MESSAGE,
+  classifyPreviewResult,
   colorEnhanceMeta,
   planPreviewCall,
   rawFormFields,
@@ -72,5 +74,64 @@ describe("colorEnhanceMeta / requiresForteConfirmation", () => {
     expect(requiresForteConfirmation([{ operation: "enhance_color", level: "medio" }])).toBe(false);
     expect(requiresForteConfirmation([{ operation: "enhance_color", level: "leve" }])).toBe(false);
     expect(requiresForteConfirmation([{ operation: "removeBackground" }])).toBe(false);
+  });
+});
+
+describe("Enquadrar peça (autoFit)", () => {
+  it("o atalho envia operations [autoFit] sem parâmetros (nunca instruction, nunca passa pela IA)", () => {
+    expect(shortcutRequest("autoFit")).toEqual({ operations: [{ operation: "autoFit" }] });
+  });
+
+  it("o nível de realce escolhido não interfere no enquadramento", () => {
+    expect(shortcutRequest("autoFit", "forte")).toEqual({ operations: [{ operation: "autoFit" }] });
+  });
+
+  it("foto já salva: JSON com operations na rota com estado", () => {
+    expect(planPreviewCall("existing", shortcutRequest("autoFit"))).toEqual({
+      route: "saved",
+      json: { operations: [{ operation: "autoFit" }] },
+    });
+  });
+
+  it("foto staged: multipart com UM campo 'operations' (string JSON) e nenhum 'instruction'", () => {
+    const call = planPreviewCall("staged", shortcutRequest("autoFit"));
+    expect(call).toEqual({ route: "raw", fields: [["operations", '[{"operation":"autoFit"}]']] });
+  });
+
+  it("não marca realce de cor nem exige clique duplo", () => {
+    const ops = [{ operation: "autoFit" as const }];
+    expect(colorEnhanceMeta(ops)).toEqual({ colorEnhanced: false, colorEnhanceLevel: null });
+    expect(requiresForteConfirmation(ops)).toBe(false);
+  });
+});
+
+describe("classifyPreviewResult", () => {
+  const ops = [{ operation: "autoFit" as const }];
+
+  it("noChange (peça já enquadrada): só o aviso em português, sem preview", () => {
+    expect(
+      classifyPreviewResult({ unclear: false, noChange: true, operations: ops, notice: "A peça já ocupa bem o quadro — não há o que enquadrar." })
+    ).toEqual({ kind: "noChange", message: "A peça já ocupa bem o quadro — não há o que enquadrar." });
+  });
+
+  it("preview normal da foto salva, com o aviso do que foi feito", () => {
+    expect(
+      classifyPreviewResult({ unclear: false, operations: ops, previewUrl: "u", previewKey: "k", notice: "Peça enquadrada: ocupava 6% do quadro e agora ocupa 40%." })
+    ).toEqual({ kind: "ready", notice: "Peça enquadrada: ocupava 6% do quadro e agora ocupa 40%." });
+  });
+
+  it("preview normal da foto staged sem aviso", () => {
+    expect(classifyPreviewResult({ unclear: false, operations: ops, previewDataUrl: "data:image/png;base64,AA" })).toEqual({
+      kind: "ready",
+      notice: null,
+    });
+  });
+
+  it("pedido pouco claro usa a sugestão (ou uma mensagem padrão)", () => {
+    expect(classifyPreviewResult({ unclear: true, suggestion: "tente 'enquadra a peça'" })).toEqual({
+      kind: "unclear",
+      message: "tente 'enquadra a peça'",
+    });
+    expect(classifyPreviewResult({ unclear: true })).toEqual({ kind: "unclear", message: DEFAULT_UNCLEAR_MESSAGE });
   });
 });

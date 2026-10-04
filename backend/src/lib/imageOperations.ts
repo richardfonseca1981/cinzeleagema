@@ -1,6 +1,7 @@
 import sharp from "sharp";
 import { z } from "zod";
 import { removeBackground } from "./rembg";
+import { autoFitSubject, type AutoFitResult } from "./autoFit";
 
 // Lista fechada de operações permitidas — nenhuma outra é aceita, mesmo que
 // a Claude API retorne algo diferente (o backend valida de novo aqui).
@@ -55,6 +56,11 @@ const removeBackgroundSchema = z.object({
   operation: z.literal("removeBackground"),
 });
 
+// Enquadramento automático da peça (ver lib/autoFit.ts) — sem parâmetros.
+const autoFitSchema = z.object({
+  operation: z.literal("autoFit"),
+});
+
 const enhanceColorSchema = z.object({
   operation: z.literal("enhance_color"),
   level: z.enum(["leve", "medio", "forte"]),
@@ -71,6 +77,7 @@ export const operationSchema = z
     compressSchema,
     convertFormatSchema,
     removeBackgroundSchema,
+    autoFitSchema,
     enhanceColorSchema,
   ])
   .superRefine((data, ctx) => {
@@ -246,6 +253,8 @@ async function applyOperation(buffer: Buffer, op: Operation): Promise<Buffer> {
       return removeBackground(buffer);
     case "enhance_color":
       return enhanceColor(buffer, op.level);
+    case "autoFit":
+      return (await autoFitSubject(buffer)).buffer;
   }
 }
 
@@ -258,12 +267,20 @@ function formatMeta(format: string | undefined): { contentType: string; ext: str
 export async function executeOperations(
   buffer: Buffer,
   ops: Operation[]
-): Promise<{ buffer: Buffer; contentType: string; ext: string }> {
+): Promise<{ buffer: Buffer; contentType: string; ext: string; autoFit?: AutoFitResult }> {
   let working = buffer;
+  let autoFit: AutoFitResult | undefined;
   for (const op of ops) {
+    if (op.operation === "autoFit") {
+      // Guarda o relatório (ação/razão/cobertura) para o preview explicar,
+      // em português, por que nada foi recortado quando for o caso.
+      autoFit = await autoFitSubject(working);
+      working = autoFit.buffer;
+      continue;
+    }
     working = await applyOperation(working, op);
   }
   const meta = await sharp(working).metadata();
   const { contentType, ext } = formatMeta(meta.format);
-  return { buffer: working, contentType, ext };
+  return { buffer: working, contentType, ext, ...(autoFit ? { autoFit } : {}) };
 }

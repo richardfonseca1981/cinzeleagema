@@ -11,6 +11,7 @@ import {
 } from "../schemas/product.schema";
 import { deleteObject, getObject, isR2Configured, putObject } from "../lib/r2";
 import { executeOperations } from "../lib/imageOperations";
+import { describeAutoFit } from "../lib/autoFit";
 import { resolveTreatmentOperations } from "../lib/photoTreatment";
 
 export const imageTreatmentRouter = Router({ mergeParams: true });
@@ -45,12 +46,19 @@ imageTreatmentRouter.post(
     }
 
     const original = await getObject(image.key);
-    const { buffer, contentType, ext } = await executeOperations(original, result.operations);
+    const { buffer, contentType, ext, autoFit } = await executeOperations(original, result.operations);
+    const notice = autoFit ? describeAutoFit(autoFit) : undefined;
+
+    // Só "Enquadrar peça" e nada foi recortado: explica em vez de gravar um
+    // preview idêntico à foto atual no R2.
+    if (autoFit && autoFit.action !== "cropped" && result.operations.length === 1) {
+      return res.json({ unclear: false, noChange: true, operations: result.operations, notice });
+    }
 
     const previewKey = `products/${productId}/previews/${randomUUID()}${ext}`;
     const previewUrl = await putObject(previewKey, buffer, contentType);
 
-    res.json({ unclear: false, operations: result.operations, previewUrl, previewKey });
+    res.json({ unclear: false, operations: result.operations, previewUrl, previewKey, ...(notice ? { notice } : {}) });
   })
 );
 

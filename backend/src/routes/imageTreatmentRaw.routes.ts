@@ -4,6 +4,7 @@ import { requireAuth } from "../middleware/auth";
 import { asyncHandler } from "../utils/asyncHandler";
 import { HttpError } from "../middleware/errorHandler";
 import { executeOperations } from "../lib/imageOperations";
+import { describeAutoFit } from "../lib/autoFit";
 import { resolveTreatmentOperations, type TreatmentRequest } from "../lib/photoTreatment";
 import { treatmentInstructionSchema, treatmentOperationsRequestSchema } from "../schemas/product.schema";
 
@@ -54,12 +55,20 @@ imageTreatmentRawRouter.post(
       return res.json({ unclear: true, suggestion: result.suggestion });
     }
 
-    const { buffer, contentType } = await executeOperations(req.file.buffer, result.operations);
+    const { buffer, contentType, autoFit } = await executeOperations(req.file.buffer, result.operations);
+    const notice = autoFit ? describeAutoFit(autoFit) : undefined;
+
+    // Só "Enquadrar peça" e nada foi recortado: explica em vez de devolver
+    // uma imagem idêntica à atual.
+    if (autoFit && autoFit.action !== "cropped" && result.operations.length === 1) {
+      return res.json({ unclear: false, noChange: true, operations: result.operations, notice });
+    }
 
     res.json({
       unclear: false,
       operations: result.operations,
       previewDataUrl: `data:${contentType};base64,${buffer.toString("base64")}`,
+      ...(notice ? { notice } : {}),
     });
   })
 );

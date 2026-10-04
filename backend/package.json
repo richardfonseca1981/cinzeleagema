@@ -16,7 +16,9 @@
     "translate:backfill": "tsx src/scripts/backfillProductTranslations.ts",
     "reset-password": "tsx src/scripts/resetAdminPassword.ts",
     "fix-invalid-translations": "tsx src/scripts/fixInvalidTranslations.ts",
-    "wipe-product-data": "tsx src/scripts/wipeProductData.ts"
+    "wipe-product-data": "tsx src/scripts/wipeProductData.ts",
+    "autofit:photos": "tsx src/scripts/autoFitExistingPhotos.ts",
+    "autofit:photos:prod": "node dist/scripts/autoFitExistingPhotos.js"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

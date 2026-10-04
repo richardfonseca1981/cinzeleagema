@@ -128,3 +128,55 @@ describe("interpretPhotoInstruction — enhance_color", () => {
     expect(idxColor).toBeGreaterThan(idxRemove);
   });
 });
+
+describe("interpretPhotoInstruction — autoFit (enquadrar a peça)", () => {
+  it("repassa operations com autoFit (sem parâmetros) sem alterar", async () => {
+    mockCreate.mockResolvedValue(photoToolUseResponse({ unclear: false, operations: [{ operation: "autoFit" }] }));
+
+    const result = await interpretPhotoInstruction("enquadra a peça");
+
+    expect(result).toEqual({ unclear: false, operations: [{ operation: "autoFit" }] });
+  });
+
+  it("repassa a ordem removeBackground -> autoFit -> brightness -> enhance_color como recebida", async () => {
+    const operations = [
+      { operation: "removeBackground" },
+      { operation: "autoFit" },
+      { operation: "brightness", value: 10 },
+      { operation: "enhance_color", level: "medio" },
+    ];
+    mockCreate.mockResolvedValue(photoToolUseResponse({ unclear: false, operations }));
+
+    const result = await interpretPhotoInstruction("tira o fundo, aproxima a pedra, clareia e realça as cores");
+
+    expect(result).toEqual({ unclear: false, operations });
+  });
+
+  it("autoFit está no enum de operações da ferramenta enviada à Claude", async () => {
+    mockCreate.mockResolvedValue(photoToolUseResponse({ unclear: false, operations: [{ operation: "autoFit" }] }));
+    await interpretPhotoInstruction("centraliza a pedra");
+
+    const tool = mockCreate.mock.calls.at(-1)![0].tools[0];
+    const operationEnum = tool.input_schema.properties.operations.items.properties.operation.enum as string[];
+    expect(operationEnum).toContain("autoFit");
+  });
+
+  it("system prompt descreve autoFit e mapeia as frases-gatilho para ele", () => {
+    expect(SYSTEM_PROMPT).toContain("- autoFit:");
+    for (const phrase of ["enquadra a peça", "centraliza a pedra", "aproxima a pedra", "tira o espaço em volta"]) {
+      expect(SYSTEM_PROMPT.toLowerCase()).toContain(phrase);
+    }
+    expect(SYSTEM_PROMPT).toMatch(/autoFit.*NÃO para crop|NÃO para crop/);
+  });
+
+  it("system prompt documenta a ordem: removeBackground -> autoFit -> brightness/contrast -> enhance_color", () => {
+    const idxRemove = SYSTEM_PROMPT.indexOf("removeBackground primeiro");
+    const idxFit = SYSTEM_PROMPT.indexOf("depois autoFit");
+    const idxBright = SYSTEM_PROMPT.indexOf("depois brightness/contrast");
+    const idxColor = SYSTEM_PROMPT.indexOf("enhance_color por último");
+    expect(idxRemove).toBeGreaterThan(-1);
+    expect(idxFit).toBeGreaterThan(idxRemove);
+    expect(idxBright).toBeGreaterThan(idxFit);
+    expect(idxColor).toBeGreaterThan(idxBright);
+  });
+});

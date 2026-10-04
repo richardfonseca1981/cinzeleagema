@@ -14,12 +14,18 @@ import {
   type NewEntry,
 } from "../lib/imageStaging";
 import { smallImageWarning } from "../lib/imageSize";
-import { colorEnhanceMeta, requiresForteConfirmation, shortcutRequest, type TreatmentShortcut } from "../lib/treatmentRequest";
+import {
+  classifyPreviewResult,
+  colorEnhanceMeta,
+  requiresForteConfirmation,
+  shortcutRequest,
+  type TreatmentShortcut,
+} from "../lib/treatmentRequest";
 import type {
   ColorEnhanceLevel,
   PhotoTreatmentOperation,
-  PhotoTreatmentPreviewResult,
-  PhotoTreatmentRawPreviewResult,
+  PhotoTreatmentPreviewReady,
+  PhotoTreatmentRawPreviewReady,
   ProductImage,
   TreatmentPreviewRequest,
 } from "../types";
@@ -60,6 +66,8 @@ function describeOperation(op: PhotoTreatmentOperation): string {
       return `converter para ${op.format}`;
     case "enhance_color":
       return `realce de cor ${op.level}`;
+    case "autoFit":
+      return "peça enquadrada";
   }
 }
 
@@ -307,9 +315,12 @@ function ImageTreatmentPanel({ target, showToast }: ImageTreatmentPanelProps) {
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<{ operations: PhotoTreatmentOperation[]; displayUrl: string } | null>(null);
   const [pendingRaw, setPendingRaw] = useState<
-    Extract<PhotoTreatmentPreviewResult, { unclear: false }> | Extract<PhotoTreatmentRawPreviewResult, { unclear: false }> | null
+    PhotoTreatmentPreviewReady | PhotoTreatmentRawPreviewReady | null
   >(null);
   const [suggestion, setSuggestion] = useState<string | null>(null);
+  // Aviso informativo em português: nada foi alterado (ex.: "A peça já ocupa
+  // bem o quadro") ou resumo do que o tratamento fez (ex.: peça enquadrada).
+  const [notice, setNotice] = useState<string | null>(null);
   // Nível "forte" de enhance_color muda bastante a cor da foto — exige um
   // segundo clique em "Confirmar" antes de salvar de verdade.
   const [forteArmed, setForteArmed] = useState(false);
@@ -324,6 +335,7 @@ function ImageTreatmentPanel({ target, showToast }: ImageTreatmentPanelProps) {
     setPreview(null);
     setPendingRaw(null);
     setSuggestion(null);
+    setNotice(null);
     setError(null);
     setForteArmed(false);
   }
@@ -334,26 +346,28 @@ function ImageTreatmentPanel({ target, showToast }: ImageTreatmentPanelProps) {
     setLoading(true);
     setError(null);
     setSuggestion(null);
+    setNotice(null);
     setPreview(null);
     setPendingRaw(null);
     setForteArmed(false);
     try {
-      if (target.kind === "existing") {
-        const result = await api.previewPhotoTreatment(target.productId, target.image.id, body);
-        if (result.unclear) {
-          setSuggestion(result.suggestion ?? "Tente descrever o tratamento de outra forma.");
-        } else {
-          setPreview({ operations: result.operations, displayUrl: result.previewUrl });
-          setPendingRaw(result);
-        }
-      } else {
-        const result = await previewPhotoTreatmentRaw(target.entry.file, body);
-        if (result.unclear) {
-          setSuggestion(result.suggestion ?? "Tente descrever o tratamento de outra forma.");
-        } else {
-          setPreview({ operations: result.operations, displayUrl: result.previewDataUrl });
-          setPendingRaw(result);
-        }
+      const result =
+        target.kind === "existing"
+          ? await api.previewPhotoTreatment(target.productId, target.image.id, body)
+          : await previewPhotoTreatmentRaw(target.entry.file, body);
+
+      const outcome = classifyPreviewResult(result);
+      if (outcome.kind === "unclear") {
+        setSuggestion(outcome.message);
+      } else if (outcome.kind === "noChange") {
+        setNotice(outcome.message);
+      } else if (!result.unclear && !result.noChange) {
+        setNotice(outcome.notice);
+        setPreview({
+          operations: result.operations,
+          displayUrl: "previewUrl" in result ? result.previewUrl : result.previewDataUrl,
+        });
+        setPendingRaw(result);
       }
     } catch {
       setError("Não foi possível processar o pedido. Tente novamente.");
@@ -386,7 +400,7 @@ function ImageTreatmentPanel({ target, showToast }: ImageTreatmentPanelProps) {
     try {
       const colorEnhance = colorEnhanceMeta(preview.operations);
       if (target.kind === "existing") {
-        const raw = pendingRaw as Extract<PhotoTreatmentPreviewResult, { unclear: false }>;
+        const raw = pendingRaw as PhotoTreatmentPreviewReady;
         const updated = await api.confirmPhotoTreatment(
           target.productId,
           target.image.id,
@@ -396,7 +410,7 @@ function ImageTreatmentPanel({ target, showToast }: ImageTreatmentPanelProps) {
         );
         target.onUpdated(updated);
       } else {
-        const raw = pendingRaw as Extract<PhotoTreatmentRawPreviewResult, { unclear: false }>;
+        const raw = pendingRaw as PhotoTreatmentRawPreviewReady;
         const blob = await fetch(raw.previewDataUrl).then((r) => r.blob());
         const treatedFile = new File([blob], target.entry.file.name, { type: blob.type });
         const treatedPreviewUrl = URL.createObjectURL(blob);
@@ -427,7 +441,7 @@ function ImageTreatmentPanel({ target, showToast }: ImageTreatmentPanelProps) {
       setLoading(true);
       setError(null);
       try {
-        const raw = pendingRaw as Extract<PhotoTreatmentPreviewResult, { unclear: false }>;
+        const raw = pendingRaw as PhotoTreatmentPreviewReady;
         await api.discardPhotoTreatment(target.productId, target.image.id, raw.previewKey);
         resetPanel();
       } catch {
@@ -502,6 +516,15 @@ function ImageTreatmentPanel({ target, showToast }: ImageTreatmentPanelProps) {
             <button
               type="button"
               disabled={loading}
+              onClick={() => handleShortcut("autoFit")}
+              title="Aproxima a peça e tira o espaço em volta, sem cortar a pedra"
+              className="rounded border border-[#C78F50] px-2 py-1 text-[11px] font-medium text-[#C78F50] hover:bg-[#C78F50]/10 disabled:opacity-40"
+            >
+              Enquadrar peça
+            </button>
+            <button
+              type="button"
+              disabled={loading}
               onClick={() => handleShortcut("sharpen")}
               className="rounded border border-[#E2E8F0] px-2 py-1 text-[11px] text-[#1A1A1A] hover:bg-[#F8FAFC] disabled:opacity-40"
             >
@@ -545,6 +568,9 @@ function ImageTreatmentPanel({ target, showToast }: ImageTreatmentPanelProps) {
               Pedido pouco claro: {suggestion}
             </p>
           )}
+          {notice && !preview && (
+            <p className="rounded border border-[#5F84BA]/40 bg-[#F1F5F9] p-1 text-[#1A1A1A]">{notice}</p>
+          )}
           {error && (
             <p className="rounded border border-[#EF4444] bg-[#FEF2F2] px-1.5 py-1 text-[#B91C1C]">{error}</p>
           )}
@@ -572,6 +598,7 @@ function ImageTreatmentPanel({ target, showToast }: ImageTreatmentPanelProps) {
                 </div>
               </div>
               <p className="text-[11px] text-[#64748B]">Aplicado: {preview.operations.map(describeOperation).join(", ")}</p>
+              {notice && <p className="text-[11px] text-[#1A1A1A]">{notice}</p>}
               {isForteColorPreview && forteArmed && (
                 <p className="rounded border border-[#F59E0B] bg-[#FFFBEB] p-1 text-[#B45309]">
                   Nível forte altera bastante as cores. Clique em "Confirmar" de novo para aplicar de verdade.
