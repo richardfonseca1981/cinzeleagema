@@ -18,7 +18,9 @@
     "fix-invalid-translations": "tsx src/scripts/fixInvalidTranslations.ts",
     "wipe-product-data": "tsx src/scripts/wipeProductData.ts",
     "autofit:photos": "tsx src/scripts/autoFitExistingPhotos.ts",
-    "autofit:photos:prod": "node dist/scripts/autoFitExistingPhotos.js"
+    "autofit:photos:prod": "node dist/scripts/autoFitExistingPhotos.js",
+    "promote-formas": "tsx src/scripts/promoteFormasToCategory.ts",
+    "promote-formas:prod": "node dist/scripts/promoteFormasToCategory.js"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
