@@ -24,6 +24,14 @@ export const listProductsQuerySchema = z.object({
     .transform((v) => (v === undefined ? undefined : v === "true")),
   categoryId: z.string().min(1).optional(),
   subcategoryId: z.string().min(1).optional(),
+  // Busca (painel admin): contém, sem diferenciar maiúsculas de minúsculas,
+  // em name e sku. Vazio/só espaços = sem busca (comportamento anterior).
+  q: z
+    .string()
+    .trim()
+    .max(100)
+    .optional()
+    .transform((v) => (v ? v : undefined)),
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().positive().max(100).default(20),
 });

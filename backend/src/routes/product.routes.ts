@@ -4,6 +4,7 @@ import { requireAuth } from "../middleware/auth";
 import { asyncHandler } from "../utils/asyncHandler";
 import { HttpError } from "../middleware/errorHandler";
 import { createProductSchema, listProductsQuerySchema, updateProductSchema } from "../schemas/product.schema";
+import { escapeLikePattern } from "../utils/escapeLike";
 import { translateAndSaveProduct, translateProductInBackground } from "../lib/productTranslation";
 
 export const productRouter = Router();
@@ -37,12 +38,21 @@ async function resolveSubcategoryId(categoryId: string, subcategoryId: string | 
 productRouter.get(
   "/",
   asyncHandler(async (req, res) => {
-    const { active, categoryId, subcategoryId, page, pageSize } = listProductsQuerySchema.parse(req.query);
+    const { active, categoryId, subcategoryId, q, page, pageSize } = listProductsQuerySchema.parse(req.query);
 
     const where = {
       ...(active === undefined ? {} : { active }),
       ...(categoryId ? { categoryId } : {}),
       ...(subcategoryId ? { subcategoryId } : {}),
+      // O total (count) usa o mesmo "where": páginas e total refletem a busca.
+      ...(q
+        ? {
+            OR: [
+              { name: { contains: escapeLikePattern(q), mode: "insensitive" as const } },
+              { sku: { contains: escapeLikePattern(q), mode: "insensitive" as const } },
+            ],
+          }
+        : {}),
     };
 
     const [items, total] = await Promise.all([
