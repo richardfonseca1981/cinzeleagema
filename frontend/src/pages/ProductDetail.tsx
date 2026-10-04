@@ -10,6 +10,7 @@ import { WHATSAPP_HREF } from "../lib/whatsapp";
 import { useCart } from "../lib/cart";
 import { useExchangeRate } from "../lib/exchangeRate";
 import { useToast } from "../components/Toast";
+import { ProductImage } from "../components/ProductImage";
 
 export function ProductDetail() {
   const { t, i18n } = useTranslation();
@@ -68,17 +69,13 @@ export function ProductDetail() {
 
         {product && (
           <div className="mt-6 grid gap-8 sm:grid-cols-2">
-            {product.images[0] ? (
-              <img
-                src={product.images[0].url}
-                alt={displayName}
-                className="aspect-square w-full rounded-xl border border-[#E2E8F0] object-cover"
-              />
-            ) : (
-              <div className="flex aspect-square w-full items-center justify-center rounded-xl border border-[#E2E8F0] bg-[#F1F5F9] text-sm text-[#94A3B8]">
-                {t("productCard.noPhoto")}
-              </div>
-            )}
+            <ProductImage
+              src={product.images[0]?.url}
+              alt={displayName}
+              ratio="1:1"
+              priority
+              className="rounded-xl border border-[#E2E8F0]"
+            />
 
             <div>
               {(product.category || product.subcategory) && (

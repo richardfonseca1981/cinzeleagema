@@ -5,8 +5,9 @@ import { formatPrice, formatWeightSize, localizeText } from "../../lib/format";
 import { useCart } from "../../lib/cart";
 import { useExchangeRate } from "../../lib/exchangeRate";
 import { useToast } from "../Toast";
+import { ProductImage } from "../ProductImage";
 
-export function ProductCard({ product }: { product: Product }) {
+export function ProductCard({ product, priority = false }: { product: Product; priority?: boolean }) {
   const { t, i18n } = useTranslation();
   const { addItem } = useCart();
   const { showToast } = useToast();
@@ -32,13 +33,7 @@ export function ProductCard({ product }: { product: Product }) {
   return (
     <div className="flex flex-col overflow-hidden rounded-xl border border-[#E2E8F0] bg-white shadow-sm transition hover:shadow-md">
       <Link to={`/catalogo/${product.id}`} className="block">
-        {image ? (
-          <img src={image} alt={displayName} className="h-48 w-full object-cover" />
-        ) : (
-          <div className="flex h-48 w-full items-center justify-center bg-[#F1F5F9] text-sm text-[#94A3B8]">
-            {t("productCard.noPhoto")}
-          </div>
-        )}
+        <ProductImage src={image} alt={displayName} ratio="4:3" priority={priority} />
       </Link>
       <div className="flex flex-1 flex-col p-4">
         <Link to={`/catalogo/${product.id}`}>

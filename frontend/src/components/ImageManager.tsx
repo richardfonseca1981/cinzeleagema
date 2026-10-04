@@ -13,6 +13,7 @@ import {
   type ImageEntry,
   type NewEntry,
 } from "../lib/imageStaging";
+import { smallImageWarning } from "../lib/imageSize";
 import { colorEnhanceMeta, requiresForteConfirmation, shortcutRequest, type TreatmentShortcut } from "../lib/treatmentRequest";
 import type {
   ColorEnhanceLevel,
@@ -75,6 +76,29 @@ function Spinner({ className = "h-5 w-5" }: { className?: string }) {
       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
     </svg>
   );
+}
+
+// Mede a foto (salva ou staged) e mostra um aviso discreto, sem bloquear,
+// quando ela é pequena demais para ficar nítida no site.
+function SmallImageWarning({ url }: { url: string }) {
+  const [warning, setWarning] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setWarning(null);
+    const probe = new Image();
+    probe.onload = () => {
+      if (!cancelled) setWarning(smallImageWarning(probe.naturalWidth, probe.naturalHeight));
+    };
+    probe.src = url;
+    return () => {
+      cancelled = true;
+      probe.onload = null;
+    };
+  }, [url]);
+
+  if (!warning) return null;
+  return <p className="mt-1 rounded border border-[#F59E0B]/40 bg-[#FFFBEB] px-1.5 py-1 text-[11px] text-[#B45309]">{warning}</p>;
 }
 
 function revokeNewEntryUrls(entry: NewEntry) {
@@ -199,6 +223,7 @@ export const ImageManager = forwardRef<ImageManagerHandle, ImageManagerProps>(fu
               alt=""
               className="h-32 w-full rounded object-cover"
             />
+            <SmallImageWarning url={entry.kind === "existing" ? entry.image.url : entry.previewUrl} />
             <div className="mt-1 flex items-center justify-between text-xs text-[#64748B]">
               <button
                 type="button"
