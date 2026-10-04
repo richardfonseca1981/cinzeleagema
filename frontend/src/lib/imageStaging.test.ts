@@ -95,8 +95,8 @@ describe("selecionar foto nova e clicar em Salvar", () => {
 
     await commitImageChanges(entries, new Set(), deps);
 
-    expect(upload).toHaveBeenNthCalledWith(1, expect.objectContaining({ name: "a.jpg" }));
-    expect(upload).toHaveBeenNthCalledWith(2, expect.objectContaining({ name: "b.jpg" }));
+    expect(upload).toHaveBeenNthCalledWith(1, expect.objectContaining({ file: expect.objectContaining({ name: "a.jpg" }) }));
+    expect(upload).toHaveBeenNthCalledWith(2, expect.objectContaining({ file: expect.objectContaining({ name: "b.jpg" }) }));
     expect(deps.reorder).toHaveBeenCalledWith(["img-a", "img-b"]);
   });
 });
@@ -210,6 +210,10 @@ describe("tratamento por IA em foto staged (sem backend com estado)", () => {
       previewUrl: "blob:original",
       previousFile: null,
       previousPreviewUrl: null,
+      colorEnhanced: false,
+      colorEnhanceLevel: null,
+      previousColorEnhanced: false,
+      previousColorEnhanceLevel: null,
       ...overrides,
     };
   }
@@ -241,6 +245,51 @@ describe("tratamento por IA em foto staged (sem backend com estado)", () => {
   it("desfazer sem tratamento prévio é um no-op", () => {
     const entry = makeNewEntry();
     expect(withNewEntryUndo(entry)).toBe(entry);
+  });
+
+  it("confirmar um tratamento com enhance_color marca colorEnhanced e guarda o nível", () => {
+    const entry = makeNewEntry();
+    const next = withNewEntryTreatment(entry, {
+      file: makeFile("colorido.jpg"),
+      previewUrl: "blob:colorido",
+      colorEnhanced: true,
+      colorEnhanceLevel: "forte",
+    });
+
+    expect(next.colorEnhanced).toBe(true);
+    expect(next.colorEnhanceLevel).toBe("forte");
+    expect(next.previousColorEnhanced).toBe(false);
+    expect(next.previousColorEnhanceLevel).toBeNull();
+  });
+
+  it("confirmar um tratamento sem enhance_color preserva um colorEnhanced já marcado antes", () => {
+    const colored = withNewEntryTreatment(makeNewEntry(), {
+      file: makeFile("colorido.jpg"),
+      previewUrl: "blob:colorido",
+      colorEnhanced: true,
+      colorEnhanceLevel: "leve",
+    });
+
+    const sharpened = withNewEntryTreatment(colored, { file: makeFile("nitido.jpg"), previewUrl: "blob:nitido" });
+
+    expect(sharpened.colorEnhanced).toBe(true);
+    expect(sharpened.colorEnhanceLevel).toBe("leve");
+  });
+
+  it("desfazer restaura colorEnhanced/Level para o valor de antes do tratamento desfeito", () => {
+    const colored = withNewEntryTreatment(makeNewEntry(), {
+      file: makeFile("colorido.jpg"),
+      previewUrl: "blob:colorido",
+      colorEnhanced: true,
+      colorEnhanceLevel: "medio",
+    });
+    const sharpened = withNewEntryTreatment(colored, { file: makeFile("nitido.jpg"), previewUrl: "blob:nitido" });
+
+    const undone = withNewEntryUndo(sharpened);
+
+    expect(undone.file.name).toBe("colorido.jpg");
+    expect(undone.colorEnhanced).toBe(true);
+    expect(undone.colorEnhanceLevel).toBe("medio");
   });
 
   it("descartar (não confirmar) não altera a entrada — simplesmente não se chama withNewEntryTreatment", () => {

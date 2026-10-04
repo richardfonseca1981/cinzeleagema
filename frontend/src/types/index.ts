@@ -1,3 +1,8 @@
+// Nível fechado do realce de cor (enhance_color) — mesmo enum validado no
+// backend (lib/imageOperations.ts). "medio" sem acento mesmo (consistente
+// com o parâmetro aceito pela API, diferente do "médio" acentuado do sharpen).
+export type ColorEnhanceLevel = "leve" | "medio" | "forte";
+
 export interface ProductImage {
   id: string;
   url: string;
@@ -5,6 +10,8 @@ export interface ProductImage {
   position: number;
   previousUrl?: string | null;
   previousKey?: string | null;
+  colorEnhanced?: boolean;
+  colorEnhanceLevel?: ColorEnhanceLevel | null;
 }
 
 export interface PhotoTreatmentOperation {
@@ -17,7 +24,8 @@ export interface PhotoTreatmentOperation {
     | "rotate"
     | "compress"
     | "convertFormat"
-    | "removeBackground";
+    | "removeBackground"
+    | "enhance_color";
   width?: number;
   height?: number;
   aspectRatio?: "1:1" | "4:3" | "16:9";
@@ -26,7 +34,12 @@ export interface PhotoTreatmentOperation {
   degrees?: 90 | 180 | 270;
   quality?: number;
   format?: "webp" | "jpeg" | "png";
+  level?: ColorEnhanceLevel;
 }
+
+// Corpo de POST /treatment/preview (e multipart equivalente): texto livre
+// (via Claude) OU operações prontas dos atalhos do admin — nunca os dois.
+export type TreatmentPreviewRequest = { instruction: string } | { operations: PhotoTreatmentOperation[] };
 
 export type PhotoTreatmentPreviewResult =
   | { unclear: true; suggestion?: string }

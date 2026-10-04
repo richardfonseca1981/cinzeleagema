@@ -41,7 +41,7 @@ imageRouter.post(
     const { productId } = req.params as { productId: string };
     await ensureProductExists(productId);
 
-    const { url, key } = confirmImageSchema.parse(req.body);
+    const { url, key, colorEnhanced, colorEnhanceLevel } = confirmImageSchema.parse(req.body);
 
     const lastImage = await prisma.productImage.findFirst({
       where: { productId },
@@ -49,7 +49,14 @@ imageRouter.post(
     });
 
     const image = await prisma.productImage.create({
-      data: { productId, url, key, position: (lastImage?.position ?? -1) + 1 },
+      data: {
+        productId,
+        url,
+        key,
+        position: (lastImage?.position ?? -1) + 1,
+        colorEnhanced: colorEnhanced ?? false,
+        colorEnhanceLevel: colorEnhanced ? colorEnhanceLevel ?? null : null,
+      },
     });
 
     res.status(201).json(image);

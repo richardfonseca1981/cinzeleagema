@@ -112,6 +112,16 @@ model ProductImage {
   previousUrl String?
   previousKey String?
 
+  // Metadados do realce de cor (operação enhance_color) — true quando a
+  // imagem ATUAL já passou por essa operação em algum tratamento confirmado
+  // (mesmo que o tratamento mais recente tenha sido só nitidez/brilho por
+  // cima do resultado colorido). previousColorEnhanced/Level espelham
+  // previousUrl/Key para o /undo restaurar o estado certo, um nível atrás.
+  colorEnhanced             Boolean @default(false)
+  colorEnhanceLevel         String?
+  previousColorEnhanced     Boolean @default(false)
+  previousColorEnhanceLevel String?
+
   createdAt DateTime @default(now())
 
   @@index([productId])

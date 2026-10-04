@@ -55,6 +55,11 @@ const removeBackgroundSchema = z.object({
   operation: z.literal("removeBackground"),
 });
 
+const enhanceColorSchema = z.object({
+  operation: z.literal("enhance_color"),
+  level: z.enum(["leve", "medio", "forte"]),
+});
+
 export const operationSchema = z
   .discriminatedUnion("operation", [
     resizeSchema,
@@ -66,6 +71,7 @@ export const operationSchema = z
     compressSchema,
     convertFormatSchema,
     removeBackgroundSchema,
+    enhanceColorSchema,
   ])
   .superRefine((data, ctx) => {
     if (data.operation === "resize" && data.width === undefined && data.height === undefined) {
@@ -141,6 +147,67 @@ async function applyCompress(buffer: Buffer, quality: number): Promise<Buffer> {
   return sharp(buffer).jpeg({ quality }).toBuffer();
 }
 
+// Realce de cor ("vibrance"): satura mais o que já tem pouca cor, preserva
+// tons neutros (pele/fundo/pedra sem cor) e protege realces estourados.
+// Deliberadamente NÃO usa sharp.normalise() (escurece quando o fundo domina
+// o histograma) nem sharp.clahe() (reduz saturação em vez de aumentar) —
+// ambos testados e descartados para este caso de uso.
+export type ColorEnhanceLevel = "leve" | "medio" | "forte";
+
+const COLOR_ENHANCE_LEVELS: Record<ColorEnhanceLevel, { vib: number; sat: number; sharp: number }> = {
+  leve: { vib: 0.35, sat: 1.04, sharp: 0.6 },
+  medio: { vib: 0.7, sat: 1.08, sharp: 0.8 },
+  forte: { vib: 1.1, sat: 1.12, sharp: 1.0 },
+};
+
+// Exportada separadamente (além de enhanceColor) para ser testada como
+// função pura — opera direto no buffer de pixels raw, sem I/O.
+export function applyVibrance(
+  data: Uint8Array,
+  channels: number,
+  amount: number,
+  chromaFloor = 0.1,
+  highlightProtect = 0.92
+): void {
+  for (let i = 0; i < data.length; i += channels) {
+    if (channels === 4 && data[i + 3] === 0) continue;
+    const r = data[i],
+      g = data[i + 1],
+      b = data[i + 2];
+    const max = Math.max(r, g, b),
+      min = Math.min(r, g, b);
+    if (max === 0) continue;
+    const s = (max - min) / max;
+    const t = Math.min(1, Math.max(0, (s - chromaFloor) / chromaFloor));
+    const w = t * t * (3 - 2 * t);
+    if (w === 0) continue;
+    const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+    const lum = gray / 255;
+    const hl = lum > highlightProtect ? Math.max(0, 1 - (lum - highlightProtect) / (1 - highlightProtect)) : 1;
+    let f = 1 + amount * (1 - s) * w * hl;
+    for (const c of [r, g, b]) {
+      const d = c - gray;
+      if (d > 0) f = Math.min(f, (255 - gray) / d);
+      else if (d < 0) f = Math.min(f, (0 - gray) / d);
+    }
+    f = Math.max(1, f);
+    data[i] = Math.round(gray + (r - gray) * f);
+    data[i + 1] = Math.round(gray + (g - gray) * f);
+    data[i + 2] = Math.round(gray + (b - gray) * f);
+  }
+}
+
+export async function enhanceColor(input: Buffer, level: ColorEnhanceLevel = "medio"): Promise<Buffer> {
+  const P = COLOR_ENHANCE_LEVELS[level];
+  const { data, info } = await sharp(input).rotate().ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  applyVibrance(data, info.channels, P.vib);
+  return sharp(data, { raw: { width: info.width, height: info.height, channels: info.channels } })
+    .modulate({ saturation: P.sat })
+    .sharpen({ sigma: 1.0, m1: P.sharp, m2: 2.0 })
+    .webp({ quality: 92 })
+    .toBuffer();
+}
+
 async function applyOperation(buffer: Buffer, op: Operation): Promise<Buffer> {
   switch (op.operation) {
     case "resize":
@@ -161,6 +228,8 @@ async function applyOperation(buffer: Buffer, op: Operation): Promise<Buffer> {
       return sharp(buffer).toFormat(op.format).toBuffer();
     case "removeBackground":
       return removeBackground(buffer);
+    case "enhance_color":
+      return enhanceColor(buffer, op.level);
   }
 }
 

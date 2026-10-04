@@ -1,4 +1,4 @@
-import type { ProductImage } from "../types";
+import type { ColorEnhanceLevel, ProductImage } from "../types";
 
 export interface ExistingEntry {
   kind: "existing";
@@ -15,6 +15,13 @@ export interface NewEntry {
   // fotos já salvas) — null quando nunca houve tratamento ou já foi desfeito.
   previousFile: File | null;
   previousPreviewUrl: string | null;
+  // Espelha colorEnhanced/colorEnhanceLevel e previousColorEnhanced/Level do
+  // ProductImage — como a foto staged ainda não tem registro no banco, esses
+  // metadados precisam viajar junto até o upload final (ver uploadImageToR2).
+  colorEnhanced: boolean;
+  colorEnhanceLevel: ColorEnhanceLevel | null;
+  previousColorEnhanced: boolean;
+  previousColorEnhanceLevel: ColorEnhanceLevel | null;
 }
 
 export type ImageEntry = ExistingEntry | NewEntry;
@@ -26,18 +33,43 @@ export function entriesFromImages(images: ProductImage[]): ImageEntry[] {
 }
 
 export function addNewEntry(entries: ImageEntry[], localId: string, file: File, previewUrl: string): ImageEntry[] {
-  return [...entries, { kind: "new", localId, file, previewUrl, previousFile: null, previousPreviewUrl: null }];
+  return [
+    ...entries,
+    {
+      kind: "new",
+      localId,
+      file,
+      previewUrl,
+      previousFile: null,
+      previousPreviewUrl: null,
+      colorEnhanced: false,
+      colorEnhanceLevel: null,
+      previousColorEnhanced: false,
+      previousColorEnhanceLevel: null,
+    },
+  ];
 }
 
 // Aplica (confirma) um tratamento por IA numa foto staged: o File/preview
-// atual vira "anterior" (para desfazer) e o tratado passa a ser o atual.
-export function withNewEntryTreatment(entry: NewEntry, treated: { file: File; previewUrl: string }): NewEntry {
+// (e os metadados de realce de cor) atuais viram "anterior" (para desfazer)
+// e o tratado passa a ser o atual.
+export function withNewEntryTreatment(
+  entry: NewEntry,
+  treated: { file: File; previewUrl: string; colorEnhanced?: boolean; colorEnhanceLevel?: ColorEnhanceLevel | null }
+): NewEntry {
   return {
     ...entry,
     previousFile: entry.file,
     previousPreviewUrl: entry.previewUrl,
+    previousColorEnhanced: entry.colorEnhanced,
+    previousColorEnhanceLevel: entry.colorEnhanceLevel,
     file: treated.file,
     previewUrl: treated.previewUrl,
+    // Mesma regra da rota /treatment/confirm: se este tratamento não incluiu
+    // enhance_color, preserva o que já estava marcado (a foto pode continuar
+    // visualmente realçada por um tratamento staged anterior).
+    colorEnhanced: treated.colorEnhanced === true ? true : entry.colorEnhanced,
+    colorEnhanceLevel: treated.colorEnhanced === true ? treated.colorEnhanceLevel ?? null : entry.colorEnhanceLevel,
   };
 }
 
@@ -52,6 +84,10 @@ export function withNewEntryUndo(entry: NewEntry): NewEntry {
     previewUrl: entry.previousPreviewUrl,
     previousFile: null,
     previousPreviewUrl: null,
+    colorEnhanced: entry.previousColorEnhanced,
+    colorEnhanceLevel: entry.previousColorEnhanceLevel,
+    previousColorEnhanced: false,
+    previousColorEnhanceLevel: null,
   };
 }
 
@@ -88,7 +124,10 @@ export function hasPendingChanges(entries: ImageEntry[], originalImages: Product
 }
 
 export interface CommitDeps {
-  upload: (file: File) => Promise<ProductImage>;
+  // Recebe a entry inteira (não só o File) para poder repassar os metadados
+  // de realce de cor (colorEnhanced/colorEnhanceLevel) na criação do
+  // ProductImage — ver uploadImageToR2 em lib/api.ts.
+  upload: (entry: NewEntry) => Promise<ProductImage>;
   deleteImage: (imageId: string) => Promise<void>;
   reorder: (order: string[]) => Promise<ProductImage[]>;
 }
@@ -105,7 +144,7 @@ export async function commitImageChanges(
 
   for (const entry of entries) {
     if (entry.kind === "new") {
-      const uploaded = await deps.upload(entry.file);
+      const uploaded = await deps.upload(entry);
       uploadedIdByLocalId.set(entry.localId, uploaded.id);
     }
   }

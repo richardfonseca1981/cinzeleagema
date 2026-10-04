@@ -64,6 +64,18 @@ describe("operationSchema", () => {
     expect(operationSchema.safeParse({ operation: "removeBackground" }).success).toBe(true);
   });
 
+  it("accepts valid enhance_color levels and rejects invented/accented ones", () => {
+    expect(operationSchema.safeParse({ operation: "enhance_color", level: "leve" }).success).toBe(true);
+    expect(operationSchema.safeParse({ operation: "enhance_color", level: "medio" }).success).toBe(true);
+    expect(operationSchema.safeParse({ operation: "enhance_color", level: "forte" }).success).toBe(true);
+    expect(operationSchema.safeParse({ operation: "enhance_color", level: "média" }).success).toBe(false);
+    expect(operationSchema.safeParse({ operation: "enhance_color", level: "extremo" }).success).toBe(false);
+  });
+
+  it("rejects enhance_color without level", () => {
+    expect(operationSchema.safeParse({ operation: "enhance_color" }).success).toBe(false);
+  });
+
   it("rejects an operation outside the closed list", () => {
     expect(operationSchema.safeParse({ operation: "invented" }).success).toBe(false);
   });

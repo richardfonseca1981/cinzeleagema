@@ -3,13 +3,16 @@ import type {
   AdminSession,
   AdminUserSummary,
   Category,
+  ColorEnhanceLevel,
   CreateOrderResult,
   PhotoTreatmentPreviewResult,
   PhotoTreatmentRawPreviewResult,
   Product,
   ProductImage,
   ProductListResponse,
+  TreatmentPreviewRequest,
 } from "../types";
+import type { NewEntry } from "./imageStaging";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -95,10 +98,21 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ fileName, contentType }),
     }),
-  confirmImageUpload: (productId: string, url: string, key: string) =>
+  confirmImageUpload: (
+    productId: string,
+    url: string,
+    key: string,
+    colorEnhance?: { colorEnhanced: boolean; colorEnhanceLevel: ColorEnhanceLevel | null }
+  ) =>
     request<ProductImage>(`/api/products/${productId}/images`, {
       method: "POST",
-      body: JSON.stringify({ url, key }),
+      body: JSON.stringify({
+        url,
+        key,
+        ...(colorEnhance?.colorEnhanced
+          ? { colorEnhanced: true, colorEnhanceLevel: colorEnhance.colorEnhanceLevel ?? undefined }
+          : {}),
+      }),
     }),
   reorderImages: (productId: string, order: string[]) =>
     request<ProductImage[]>(`/api/products/${productId}/images/reorder`, {
@@ -108,15 +122,27 @@ export const api = {
   deleteImage: (productId: string, imageId: string) =>
     request<void>(`/api/products/${productId}/images/${imageId}`, { method: "DELETE" }),
 
-  previewPhotoTreatment: (productId: string, imageId: string, instruction: string) =>
+  previewPhotoTreatment: (productId: string, imageId: string, body: TreatmentPreviewRequest) =>
     request<PhotoTreatmentPreviewResult>(`/api/products/${productId}/images/${imageId}/treatment/preview`, {
       method: "POST",
-      body: JSON.stringify({ instruction }),
+      body: JSON.stringify(body),
     }),
-  confirmPhotoTreatment: (productId: string, imageId: string, previewUrl: string, previewKey: string) =>
+  confirmPhotoTreatment: (
+    productId: string,
+    imageId: string,
+    previewUrl: string,
+    previewKey: string,
+    colorEnhance?: { colorEnhanced: boolean; colorEnhanceLevel: ColorEnhanceLevel | null }
+  ) =>
     request<ProductImage>(`/api/products/${productId}/images/${imageId}/treatment/confirm`, {
       method: "POST",
-      body: JSON.stringify({ previewUrl, previewKey }),
+      body: JSON.stringify({
+        previewUrl,
+        previewKey,
+        ...(colorEnhance?.colorEnhanced
+          ? { colorEnhanced: true, colorEnhanceLevel: colorEnhance.colorEnhanceLevel ?? undefined }
+          : {}),
+      }),
     }),
   discardPhotoTreatment: (productId: string, imageId: string, previewKey: string) =>
     request<void>(`/api/products/${productId}/images/${imageId}/treatment/discard`, {
@@ -130,11 +156,20 @@ export const api = {
 // Versão stateless do tratamento por IA, para fotos staged (sem productId/
 // imageId reais ainda) — envia o arquivo bruto por multipart e recebe a
 // imagem já tratada embutida na resposta; nunca grava nada no backend.
-export async function previewPhotoTreatmentRaw(file: File, instruction: string): Promise<PhotoTreatmentRawPreviewResult> {
+export async function previewPhotoTreatmentRaw(
+  file: File,
+  body: TreatmentPreviewRequest
+): Promise<PhotoTreatmentRawPreviewResult> {
   const session = getSession();
   const formData = new FormData();
   formData.append("file", file);
-  formData.append("instruction", instruction);
+  // multipart não tem JSON aninhado nativo: "operations" vai como string
+  // JSON mesma (o backend faz o parse manual — ver imageTreatmentRaw.routes.ts).
+  if ("operations" in body) {
+    formData.append("operations", JSON.stringify(body.operations));
+  } else {
+    formData.append("instruction", body.instruction);
+  }
 
   const res = await fetch(`${API_URL}/api/images/treatment-preview-raw`, {
     method: "POST",
@@ -154,19 +189,25 @@ export async function previewPhotoTreatmentRaw(file: File, instruction: string):
   return res.json();
 }
 
-export async function uploadImageToR2(productId: string, file: File): Promise<ProductImage> {
-  const { uploadUrl, key, publicUrl } = await api.presignImageUpload(productId, file.name, file.type);
+// Recebe a NewEntry inteira (não só o File) para repassar colorEnhanced/
+// colorEnhanceLevel ao criar o ProductImage, caso a foto staged já tenha
+// passado por um tratamento de realce de cor antes do upload.
+export async function uploadImageToR2(productId: string, entry: NewEntry): Promise<ProductImage> {
+  const { uploadUrl, key, publicUrl } = await api.presignImageUpload(productId, entry.file.name, entry.file.type);
 
   const putRes = await fetch(uploadUrl, {
     method: "PUT",
-    headers: { "Content-Type": file.type },
-    body: file,
+    headers: { "Content-Type": entry.file.type },
+    body: entry.file,
   });
   if (!putRes.ok) {
     throw new ApiError(putRes.status, "Falha ao enviar imagem para o armazenamento");
   }
 
-  return api.confirmImageUpload(productId, publicUrl, key);
+  return api.confirmImageUpload(productId, publicUrl, key, {
+    colorEnhanced: entry.colorEnhanced,
+    colorEnhanceLevel: entry.colorEnhanceLevel,
+  });
 }
 
 export { ApiError };
