@@ -13,6 +13,7 @@ import {
   type ImageEntry,
   type NewEntry,
 } from "../lib/imageStaging";
+import { colorEnhanceMeta, requiresForteConfirmation, shortcutRequest, type TreatmentShortcut } from "../lib/treatmentRequest";
 import type {
   ColorEnhanceLevel,
   PhotoTreatmentOperation,
@@ -291,11 +292,7 @@ function ImageTreatmentPanel({ target, showToast }: ImageTreatmentPanelProps) {
   const currentUrl = target.kind === "existing" ? target.image.url : target.entry.previewUrl;
   const canUndo = target.kind === "existing" ? Boolean(target.image.previousUrl) : Boolean(target.entry.previousFile);
 
-  const colorOpInPreview = preview?.operations.find(
-    (op): op is PhotoTreatmentOperation & { operation: "enhance_color"; level: ColorEnhanceLevel } =>
-      op.operation === "enhance_color"
-  );
-  const isForteColorPreview = colorOpInPreview?.level === "forte";
+  const isForteColorPreview = preview ? requiresForteConfirmation(preview.operations) : false;
 
   function resetPanel() {
     setInstruction("");
@@ -345,8 +342,8 @@ function ImageTreatmentPanel({ target, showToast }: ImageTreatmentPanelProps) {
     void runPreview({ instruction });
   }
 
-  function handleShortcut(operations: PhotoTreatmentOperation[]) {
-    void runPreview({ operations });
+  function handleShortcut(shortcut: TreatmentShortcut) {
+    void runPreview(shortcutRequest(shortcut, colorLevel));
   }
 
   async function handleConfirm() {
@@ -362,9 +359,7 @@ function ImageTreatmentPanel({ target, showToast }: ImageTreatmentPanelProps) {
     setLoading(true);
     setError(null);
     try {
-      const colorEnhance = colorOpInPreview
-        ? { colorEnhanced: true, colorEnhanceLevel: colorOpInPreview.level ?? null }
-        : { colorEnhanced: false, colorEnhanceLevel: null };
+      const colorEnhance = colorEnhanceMeta(preview.operations);
       if (target.kind === "existing") {
         const raw = pendingRaw as Extract<PhotoTreatmentPreviewResult, { unclear: false }>;
         const updated = await api.confirmPhotoTreatment(
@@ -474,7 +469,7 @@ function ImageTreatmentPanel({ target, showToast }: ImageTreatmentPanelProps) {
             <button
               type="button"
               disabled={loading}
-              onClick={() => handleShortcut([{ operation: "enhance_color", level: colorLevel }])}
+              onClick={() => handleShortcut("enhance_color")}
               className="rounded border border-[#C78F50] px-2 py-1 text-[11px] font-medium text-[#C78F50] hover:bg-[#C78F50]/10 disabled:opacity-40"
             >
               Realçar cores
@@ -482,7 +477,7 @@ function ImageTreatmentPanel({ target, showToast }: ImageTreatmentPanelProps) {
             <button
               type="button"
               disabled={loading}
-              onClick={() => handleShortcut([{ operation: "sharpen", intensity: "médio" }])}
+              onClick={() => handleShortcut("sharpen")}
               className="rounded border border-[#E2E8F0] px-2 py-1 text-[11px] text-[#1A1A1A] hover:bg-[#F8FAFC] disabled:opacity-40"
             >
               Mais nitidez
@@ -490,7 +485,7 @@ function ImageTreatmentPanel({ target, showToast }: ImageTreatmentPanelProps) {
             <button
               type="button"
               disabled={loading}
-              onClick={() => handleShortcut([{ operation: "removeBackground" }])}
+              onClick={() => handleShortcut("removeBackground")}
               className="rounded border border-[#E2E8F0] px-2 py-1 text-[11px] text-[#1A1A1A] hover:bg-[#F8FAFC] disabled:opacity-40"
             >
               Remover fundo

@@ -13,6 +13,7 @@ import type {
   TreatmentPreviewRequest,
 } from "../types";
 import type { NewEntry } from "./imageStaging";
+import { rawFormFields } from "./treatmentRequest";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -165,11 +166,7 @@ export async function previewPhotoTreatmentRaw(
   formData.append("file", file);
   // multipart não tem JSON aninhado nativo: "operations" vai como string
   // JSON mesma (o backend faz o parse manual — ver imageTreatmentRaw.routes.ts).
-  if ("operations" in body) {
-    formData.append("operations", JSON.stringify(body.operations));
-  } else {
-    formData.append("instruction", body.instruction);
-  }
+  for (const [name, value] of rawFormFields(body)) formData.append(name, value);
 
   const res = await fetch(`${API_URL}/api/images/treatment-preview-raw`, {
     method: "POST",

@@ -158,3 +158,52 @@ describe("enhanceColor (integração ponta a ponta)", () => {
     expect(metaDefault.format).toBe("webp");
   });
 });
+
+// Regressão: com chromaFloor = 0,1 o realce não fazia nada visível em fotos de
+// saturação baixa (pedras claras/translúcidas) — "Realçar cores" parecia quebrado.
+describe("enhanceColor em tons pastéis (zona morta do chromaFloor)", () => {
+  async function meanSaturation(buffer: Buffer): Promise<number> {
+    const { data } = await sharp(buffer).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+    let sum = 0;
+    let count = 0;
+    for (let i = 0; i < data.length; i += 3) {
+      const max = Math.max(data[i], data[i + 1], data[i + 2]);
+      const min = Math.min(data[i], data[i + 1], data[i + 2]);
+      if (max === 0) continue;
+      sum += (max - min) / max;
+      count++;
+    }
+    return sum / count;
+  }
+
+  function solid(r: number, g: number, b: number): Promise<Buffer> {
+    return sharp({ create: { width: 40, height: 40, channels: 3, background: { r, g, b } } })
+      .png()
+      .toBuffer();
+  }
+
+  it("realça visivelmente uma cor pastel (saturação ~0,10) no nível médio, e mais no forte", async () => {
+    const pastel = await solid(170, 162, 153); // S = 0,10
+    const original = await meanSaturation(pastel);
+    const medio = await meanSaturation(await enhanceColor(pastel, "medio"));
+    const forte = await meanSaturation(await enhanceColor(pastel, "forte"));
+
+    expect(medio).toBeGreaterThan(original * 1.3);
+    expect(forte).toBeGreaterThan(medio);
+  });
+
+  it("o nível leve também aumenta (nunca diminui) a saturação de uma cor pastel", async () => {
+    const pastel = await solid(170, 162, 153);
+    const leve = await meanSaturation(await enhanceColor(pastel, "leve"));
+    expect(leve).toBeGreaterThan(await meanSaturation(pastel));
+  });
+
+  it("continua preservando fundo neutro (cinza/branco, saturação ≤ 0,03) em todos os níveis", async () => {
+    const neutral = await solid(235, 233, 231); // S ≈ 0,017
+    const original = await meanSaturation(neutral);
+    for (const level of ["leve", "medio", "forte"] as const) {
+      const result = await meanSaturation(await enhanceColor(neutral, level));
+      expect(Math.abs(result - original)).toBeLessThan(0.02);
+    }
+  });
+});

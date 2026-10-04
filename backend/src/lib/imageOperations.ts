@@ -160,13 +160,21 @@ const COLOR_ENHANCE_LEVELS: Record<ColorEnhanceLevel, { vib: number; sat: number
   forte: { vib: 1.1, sat: 1.12, sharp: 1.0 },
 };
 
+// chromaFloor = saturação abaixo da qual o pixel é tratado como neutro e não
+// é tocado; o efeito só chega a 100% em 2x esse valor (smoothstep). Com 0,1
+// (valor anterior) pedras claras/translúcidas — saturação 0,05-0,15, comuns em
+// fotos de joalheria — caíam numa zona morta e o realce não mudava nada
+// visível. 0,04 ainda preserva fundos cinza/brancos e o ruído do JPEG (que
+// ficam em ~0-0,03) e passa a realçar tons pastéis.
+export const DEFAULT_CHROMA_FLOOR = 0.04;
+
 // Exportada separadamente (além de enhanceColor) para ser testada como
 // função pura — opera direto no buffer de pixels raw, sem I/O.
 export function applyVibrance(
   data: Uint8Array,
   channels: number,
   amount: number,
-  chromaFloor = 0.1,
+  chromaFloor = DEFAULT_CHROMA_FLOOR,
   highlightProtect = 0.92
 ): void {
   for (let i = 0; i < data.length; i += channels) {
