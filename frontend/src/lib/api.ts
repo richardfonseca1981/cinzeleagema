@@ -13,6 +13,7 @@ import type {
   ShippingStatus,
   TreatmentPreviewRequest,
 } from "../types";
+import type { PostalCodeLookup, ShippingQuoteRequest, ShippingQuoteResult } from "./shipping/types";
 import type { NewEntry } from "./imageStaging";
 import { rawFormFields } from "./treatmentRequest";
 
@@ -70,6 +71,12 @@ export const api = {
   getExchangeRate: () => request<{ rate: number; updatedAt: string }>("/api/exchange-rate"),
 
   getShippingStatus: () => request<ShippingStatus>("/api/shipping/status"),
+  // Frete do comprador (rotas públicas). O endpoint de cotação tem limite de
+  // 20 requisições/min por IP: 429 é tratado na interface.
+  getShippingQuote: (body: ShippingQuoteRequest, signal?: AbortSignal) =>
+    request<ShippingQuoteResult>("/api/shipping/quote", { method: "POST", body: JSON.stringify(body), signal }),
+  lookupPostalCode: (code: string, signal?: AbortSignal) =>
+    request<PostalCodeLookup>(`/api/shipping/postal-code/${code}`, { signal }),
 
   listProducts: (
     params: { active?: boolean; categoryId?: string; subcategoryId?: string; q?: string; page?: number; pageSize?: number } = {}

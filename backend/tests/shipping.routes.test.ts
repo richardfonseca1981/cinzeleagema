@@ -170,6 +170,39 @@ describe("POST /api/shipping/quote — produto", () => {
 });
 
 describe("POST /api/shipping/quote — frete internacional (Parte 1B pendente)", () => {
+  it("aceita país diferente de BR SEM código postal (opcional fora do Brasil)", async () => {
+    const res = await request(app)
+      .post("/api/shipping/quote")
+      .send({ country: "US", items: [{ productId: "qualquer", quantity: 1 }] });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      mode: "international",
+      requiresConfirmation: true,
+      notice: "taxes_not_included",
+      unavailable: { reason: "not_configured" },
+    });
+  });
+
+  it("aceita país diferente de BR com código postal vazio", async () => {
+    const res = await request(app)
+      .post("/api/shipping/quote")
+      .send({ country: "PT", postalCode: "", items: [{ productId: "qualquer", quantity: 1 }] });
+    expect(res.status).toBe(200);
+    expect(res.body.mode).toBe("international");
+  });
+
+  it("continua exigindo CEP de 8 dígitos no Brasil: ausente ou vazio responde 400", async () => {
+    const product = await createProduct();
+    for (const body of [
+      { country: "BR", items: [{ productId: product.id, quantity: 1 }] },
+      { country: "BR", postalCode: "", items: [{ productId: product.id, quantity: 1 }] },
+    ]) {
+      const res = await request(app).post("/api/shipping/quote").send(body);
+      expect(res.status).toBe(400);
+    }
+  });
+
   it("responde indisponível sem chamar nenhum provedor para país diferente de BR", async () => {
     configureMelhorEnvio();
     const fetchMock = vi.fn();

@@ -158,7 +158,6 @@
     "viewCatalog": "Ver catálogo",
     "perUnit": "/ unidade",
     "remove": "Remover",
-    "total": "Total estimado",
     "checkout": "Finalizar pedido"
   },
   "checkout": {
@@ -166,7 +165,6 @@
     "subtitle": "Quase lá! Informe seus dados e confirme o pedido. Em breve nossa equipe fala com você pelo WhatsApp para combinar pagamento e entrega.",
     "emptyCart": "Seu pedido está vazio.",
     "summary": "Resumo",
-    "total": "Total estimado",
     "nameLabel": "Nome",
     "phoneLabel": "Telefone/WhatsApp",
     "phonePlaceholder": "(11) 99999-0000 ou +1 415 555 2671",
@@ -181,9 +179,22 @@
       "intro": "Olá! Gostaria de fazer um pedido:",
       "item": "• {{quantity}}x {{name}} — {{price}}",
       "itemWithSize": "• {{quantity}}x {{name}} ({{size}}) — {{price}}",
-      "total": "Total estimado: {{total}}",
       "name": "Nome: {{name}}",
-      "phone": "Telefone: {{phone}}"
+      "phone": "Telefone: {{phone}}",
+      "subtotal": "Subtotal: {{amount}}",
+      "postalCodeBr": "CEP {{code}}",
+      "postalCode": "código postal {{code}}",
+      "destination": "Destino: {{place}}",
+      "shippingQuoted": "Frete: {{carrier}} — {{service}}: {{price}}",
+      "shippingQuotedWithDays": "Frete: {{carrier}} — {{service}}: {{price}} ({{days}})",
+      "shippingEstimated": "Frete estimado, a confirmar pelo atendimento: {{carrier}} — {{service}}: {{price}}",
+      "shippingEstimatedWithDays": "Frete estimado, a confirmar pelo atendimento: {{carrier}} — {{service}}: {{price}} ({{days}})",
+      "shippingInternational": "Frete estimado, a confirmar pelo atendimento",
+      "shippingArrange": "Frete: a combinar pelo atendimento",
+      "taxes": "Impostos de importação não incluídos",
+      "totalWithShipping": "Total (produtos + frete): {{total}}",
+      "totalWithEstimatedShipping": "Total estimado (produtos + frete estimado): {{total}}",
+      "totalWithoutShipping": "Total estimado (sem frete): {{total}}"
     }
   },
   "whatsapp": {
@@ -191,5 +202,77 @@
   },
   "cartButton": {
     "ariaLabel": "Ver meu pedido"
+  },
+  "shipping": {
+    "title": "Calcular frete",
+    "subtitle": "Informe o destino para ver as opções de envio.",
+    "country": "País",
+    "postalCodeBr": "CEP",
+    "postalCodeBrHint": "Somente números (8 dígitos)",
+    "postalCodeOther": "Código postal (opcional)",
+    "calculate": "Calcular frete",
+    "calculating": "Calculando...",
+    "cooldown": "Aguarde {{seconds}}s para calcular de novo",
+    "international": {
+      "title": "Envio internacional",
+      "text": "Para este país, o frete é confirmado pelo nosso atendimento pelo WhatsApp depois do pedido.",
+      "taxes": "Impostos de importação e taxas alfandegárias do país de destino não estão incluídos."
+    },
+    "optionsLabel": "Opções de frete",
+    "badge": {
+      "cheapest": "Mais barato",
+      "fastest": "Mais rápido"
+    },
+    "estimate": {
+      "label": "Estimativa",
+      "note": "Valor estimado — a confirmação final é feita pelo WhatsApp."
+    },
+    "delivery": {
+      "days_one": "{{count}} dia",
+      "days_other": "{{count}} dias",
+      "range": "{{min}} a {{max}} dias",
+      "unknown": "Prazo a confirmar"
+    },
+    "arrange": {
+      "link": "Prefiro combinar o frete pelo WhatsApp",
+      "chosen": "Frete a combinar pelo WhatsApp. Você pode escolher uma opção acima quando quiser."
+    },
+    "taxesNotice": "Impostos de importação não incluídos.",
+    "expired": "A cotação anterior venceu. Calcule o frete de novo.",
+    "actions": {
+      "retry": "Tentar de novo",
+      "checkPostalCode": "Conferir o CEP",
+      "reviewCart": "Revisar o pedido",
+      "arrange": "Combinar pelo WhatsApp"
+    },
+    "unavailable": {
+      "provider_error": "Não conseguimos consultar o frete agora. Tente de novo em instantes ou combine o frete pelo WhatsApp.",
+      "no_rates_configured": "Ainda não temos tabela de frete para este destino. Nosso atendimento combina o frete pelo WhatsApp.",
+      "invalid_destination": "Não encontramos este destino. Confira o CEP e tente de novo, ou combine o frete pelo WhatsApp.",
+      "over_limits": "Uma das peças é pesada ou grande demais para as opções automáticas. O frete dela é combinado com nosso atendimento pelo WhatsApp.",
+      "incomplete_product_data": "Ainda não temos o peso e as medidas completos de uma das peças para calcular o frete. Nosso atendimento combina o frete pelo WhatsApp.",
+      "not_configured": "O cálculo automático de frete não está disponível agora. Nosso atendimento combina o frete pelo WhatsApp."
+    },
+    "error": {
+      "rate_limited": "Muitas consultas seguidas. Aguarde alguns segundos e tente de novo — ou combine o frete pelo WhatsApp.",
+      "invalid_postal_code": "CEP inválido. Informe os 8 dígitos do CEP.",
+      "product_unavailable": "Uma das peças do pedido não está mais disponível. Revise o pedido ou combine o frete pelo WhatsApp.",
+      "network": "Sem conexão com o servidor. Confira sua internet e tente de novo, ou combine o frete pelo WhatsApp.",
+      "timeout": "O cálculo demorou demais. Tente de novo ou combine o frete pelo WhatsApp.",
+      "server": "Não foi possível calcular o frete agora. Tente de novo ou combine o frete pelo WhatsApp."
+    },
+    "summary": {
+      "subtotal": "Subtotal",
+      "shipping": "Frete",
+      "total": "Total",
+      "totalEstimated": "Total estimado",
+      "toArrange": "A combinar",
+      "estimateToConfirm": "Estimativa a confirmar",
+      "estimatedHint": "Frete estimado — a confirmação final é feita pelo WhatsApp.",
+      "arrangeHint": "O frete será combinado com nosso atendimento pelo WhatsApp.",
+      "staleWarning": "O carrinho mudou depois da cotação do frete, então ela venceu. O frete ficará \"a combinar\" a menos que você recalcule.",
+      "recalculate": "Recalcular no carrinho",
+      "calculateInCart": "Calcular o frete no carrinho"
+    }
   }
 }

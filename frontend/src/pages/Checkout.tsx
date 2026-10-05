@@ -1,50 +1,38 @@
-import { FormEvent, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { FormEvent, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import type { TFunction } from "i18next";
 import { useCart } from "../lib/cart";
 import { api } from "../lib/api";
-import { formatPrice, formatWeightSize, localizeText } from "../lib/format";
+import { formatWeightSize, localizeText } from "../lib/format";
+import { cartSignature } from "../lib/shipping/cartSignature";
+import { computeOrderTotals } from "../lib/shipping/money";
+import { loadStoredShipping } from "../lib/shipping/storage";
+import { destinationFor, resolveShippingSummary, shippingAmountBRL } from "../lib/shipping/summary";
+import { buildWhatsAppMessage } from "../lib/shipping/whatsappMessage";
+import { OrderSummary } from "../components/shipping/OrderSummary";
 import { useExchangeRate } from "../lib/exchangeRate";
 import { normalizePhone, sanitizePhoneInput } from "../lib/phone";
 import { PublicHeader } from "../components/landing/PublicHeader";
 import { WhatsAppFloatingButton } from "../components/landing/WhatsAppFloatingButton";
 import { WHATSAPP_HREF } from "../lib/whatsapp";
-import type { CartItem } from "../types";
 
 const WHATSAPP_NUMBER = import.meta.env.VITE_WHATSAPP_NUMBER;
-
-function buildWhatsAppMessage(
-  t: TFunction,
-  lang: string,
-  exchangeRate: number | null,
-  items: CartItem[],
-  totalEstimate: number,
-  customerName: string,
-  customerPhone: string
-) {
-  const lines = [
-    t("checkout.whatsappMessage.intro"),
-    ...items.map((item) => {
-      const name = localizeText(item.name, item.nameEn, lang);
-      const price = formatPrice(item.unitPrice * item.quantity, lang, exchangeRate);
-      const size = formatWeightSize(item.weightGrams, item.sizeCm, lang);
-      return size
-        ? t("checkout.whatsappMessage.itemWithSize", { quantity: item.quantity, name, size, price })
-        : t("checkout.whatsappMessage.item", { quantity: item.quantity, name, price });
-    }),
-    t("checkout.whatsappMessage.total", { total: formatPrice(totalEstimate, lang, exchangeRate) }),
-    t("checkout.whatsappMessage.name", { name: customerName }),
-    t("checkout.whatsappMessage.phone", { phone: customerPhone }),
-  ];
-  return lines.join("\n");
-}
 
 export function Checkout() {
   const { t, i18n } = useTranslation();
   const { items, totalEstimate, clear } = useCart();
   const navigate = useNavigate();
   const exchangeRate = useExchangeRate();
+  // O destino e a opção de frete vêm do carrinho (localStorage). Se o carrinho
+  // mudou depois da cotação, ela venceu: aviso, mas o pedido nunca é bloqueado.
+  const stored = useMemo(() => loadStoredShipping(), []);
+  const summary = useMemo(() => resolveShippingSummary(stored, cartSignature(items), Date.now()), [stored, items]);
+  const totals = computeOrderTotals(
+    items.map((i) => i.unitPrice * i.quantity),
+    shippingAmountBRL(summary),
+    i18n.language,
+    exchangeRate
+  );
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [phoneError, setPhoneError] = useState(false);
@@ -88,15 +76,16 @@ export function Checkout() {
       setSentVia("fluxiodesk");
     } else {
       if (WHATSAPP_NUMBER) {
-        const message = buildWhatsAppMessage(
+        const message = buildWhatsAppMessage({
           t,
-          i18n.language,
+          lang: i18n.language,
           exchangeRate,
           items,
-          totalEstimate,
+          summary,
+          destination: destinationFor(stored, summary),
           customerName,
-          normalizedPhone
-        );
+          customerPhone: normalizedPhone,
+        });
         window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
       }
       clear();
@@ -160,10 +149,25 @@ export function Checkout() {
               );
             })}
           </ul>
-          <div className="mt-3 flex items-center justify-between border-t border-[#E2E8F0] pt-3 font-semibold">
-            <span>{t("checkout.total")}</span>
-            <span className="text-[#C78F50]">{formatPrice(totalEstimate, i18n.language, exchangeRate)}</span>
-          </div>
+        </div>
+
+        <div className="mt-4">
+          <OrderSummary totals={totals} summary={summary} exchangeRate={exchangeRate} />
+          {summary.kind === "stale" && (
+            <p className="mt-2 rounded-lg border border-[#F59E0B] bg-[#FFFBEB] p-3 text-sm text-[#B45309]" role="status" data-testid="stale-warning">
+              {t("shipping.summary.staleWarning")}{" "}
+              <Link to="/carrinho" className="font-medium underline">
+                {t("shipping.summary.recalculate")}
+              </Link>
+            </p>
+          )}
+          {summary.kind === "none" && (
+            <p className="mt-2 text-sm">
+              <Link to="/carrinho" className="text-[#64748B] underline underline-offset-2 hover:text-[#C78F50]">
+                {t("shipping.summary.calculateInCart")}
+              </Link>
+            </p>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4 rounded-lg border border-[#E2E8F0] bg-white p-4">

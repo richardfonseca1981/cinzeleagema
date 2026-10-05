@@ -18,6 +18,9 @@ export const shippingQuoteSchema = z.object({
     .length(2)
     .regex(/^[A-Za-z]{2}$/, "País deve ser um código alpha-2 (ex: BR)")
     .transform((value) => value.toUpperCase()),
-  postalCode: z.string().min(1),
+  // Obrigatório só no Brasil (8 dígitos — validado na rota). Fora do Brasil o
+  // código postal é opcional: o comprador pode não saber/não ter, e o frete
+  // internacional é confirmado pelo atendimento de qualquer forma.
+  postalCode: z.string().optional().default(""),
   items: z.array(shippingQuoteItemSchema).min(1),
 });

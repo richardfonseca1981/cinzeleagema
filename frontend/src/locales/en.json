@@ -158,7 +158,6 @@
     "viewCatalog": "View catalog",
     "perUnit": "/ unit",
     "remove": "Remove",
-    "total": "Estimated total",
     "checkout": "Checkout"
   },
   "checkout": {
@@ -166,7 +165,6 @@
     "subtitle": "Almost there! Enter your details and confirm your order. Our team will reach out on WhatsApp shortly to arrange payment and delivery.",
     "emptyCart": "Your order is empty.",
     "summary": "Summary",
-    "total": "Estimated total",
     "nameLabel": "Name",
     "phoneLabel": "Phone/WhatsApp",
     "phonePlaceholder": "(11) 99999-0000 or +1 415 555 2671",
@@ -181,9 +179,22 @@
       "intro": "Hi! I'd like to place an order:",
       "item": "• {{quantity}}x {{name}} — {{price}}",
       "itemWithSize": "• {{quantity}}x {{name}} ({{size}}) — {{price}}",
-      "total": "Estimated total: {{total}}",
       "name": "Name: {{name}}",
-      "phone": "Phone: {{phone}}"
+      "phone": "Phone: {{phone}}",
+      "subtotal": "Subtotal: {{amount}}",
+      "postalCodeBr": "postal code {{code}}",
+      "postalCode": "postal code {{code}}",
+      "destination": "Destination: {{place}}",
+      "shippingQuoted": "Shipping: {{carrier}} — {{service}}: {{price}}",
+      "shippingQuotedWithDays": "Shipping: {{carrier}} — {{service}}: {{price}} ({{days}})",
+      "shippingEstimated": "Estimated shipping, to be confirmed by our team: {{carrier}} — {{service}}: {{price}}",
+      "shippingEstimatedWithDays": "Estimated shipping, to be confirmed by our team: {{carrier}} — {{service}}: {{price}} ({{days}})",
+      "shippingInternational": "Estimated shipping, to be confirmed by our team",
+      "shippingArrange": "Shipping: to be arranged with our team",
+      "taxes": "Import taxes not included",
+      "totalWithShipping": "Total (products + shipping): {{total}}",
+      "totalWithEstimatedShipping": "Estimated total (products + estimated shipping): {{total}}",
+      "totalWithoutShipping": "Estimated total (without shipping): {{total}}"
     }
   },
   "whatsapp": {
@@ -208,5 +219,77 @@
     "Calcitas": "Calcites",
     "Citrinos": "Citrines",
     "Formas": "Shapes"
+  },
+  "shipping": {
+    "title": "Calculate shipping",
+    "subtitle": "Enter the destination to see the shipping options.",
+    "country": "Country",
+    "postalCodeBr": "Postal code (CEP)",
+    "postalCodeBrHint": "Numbers only (8 digits)",
+    "postalCodeOther": "Postal code (optional)",
+    "calculate": "Calculate shipping",
+    "calculating": "Calculating...",
+    "cooldown": "Wait {{seconds}}s to calculate again",
+    "international": {
+      "title": "International shipping",
+      "text": "For this country, shipping is confirmed by our team on WhatsApp after you place the order.",
+      "taxes": "Import taxes and customs duties of the destination country are not included."
+    },
+    "optionsLabel": "Shipping options",
+    "badge": {
+      "cheapest": "Cheapest",
+      "fastest": "Fastest"
+    },
+    "estimate": {
+      "label": "Estimate",
+      "note": "Estimated price — final confirmation is done on WhatsApp."
+    },
+    "delivery": {
+      "days_one": "{{count}} day",
+      "days_other": "{{count}} days",
+      "range": "{{min}} to {{max}} days",
+      "unknown": "Delivery time to be confirmed"
+    },
+    "arrange": {
+      "link": "I'd rather arrange shipping on WhatsApp",
+      "chosen": "Shipping to be arranged on WhatsApp. You can pick an option above whenever you like."
+    },
+    "taxesNotice": "Import taxes not included.",
+    "expired": "The previous quote has expired. Calculate shipping again.",
+    "actions": {
+      "retry": "Try again",
+      "checkPostalCode": "Check the postal code",
+      "reviewCart": "Review the order",
+      "arrange": "Arrange on WhatsApp"
+    },
+    "unavailable": {
+      "provider_error": "We couldn't check shipping right now. Try again in a moment or arrange shipping on WhatsApp.",
+      "no_rates_configured": "We don't have a shipping table for this destination yet. Our team arranges shipping with you on WhatsApp.",
+      "invalid_destination": "We couldn't find this destination. Check the postal code and try again, or arrange shipping on WhatsApp.",
+      "over_limits": "One of the pieces is too heavy or too large for the automatic options. Its shipping is arranged with our team on WhatsApp.",
+      "incomplete_product_data": "We don't have the complete weight and dimensions of one of the pieces to calculate shipping. Our team arranges shipping with you on WhatsApp.",
+      "not_configured": "Automatic shipping calculation isn't available right now. Our team arranges shipping with you on WhatsApp."
+    },
+    "error": {
+      "rate_limited": "Too many requests in a row. Wait a few seconds and try again — or arrange shipping on WhatsApp.",
+      "invalid_postal_code": "Invalid postal code. Enter all 8 digits of the CEP.",
+      "product_unavailable": "One of the pieces in your order is no longer available. Review the order or arrange shipping on WhatsApp.",
+      "network": "No connection to the server. Check your internet and try again, or arrange shipping on WhatsApp.",
+      "timeout": "The calculation took too long. Try again or arrange shipping on WhatsApp.",
+      "server": "We couldn't calculate shipping right now. Try again or arrange shipping on WhatsApp."
+    },
+    "summary": {
+      "subtotal": "Subtotal",
+      "shipping": "Shipping",
+      "total": "Total",
+      "totalEstimated": "Estimated total",
+      "toArrange": "To be arranged",
+      "estimateToConfirm": "Estimate to be confirmed",
+      "estimatedHint": "Estimated shipping — final confirmation is done on WhatsApp.",
+      "arrangeHint": "Shipping will be arranged with our team on WhatsApp.",
+      "staleWarning": "Your cart changed after the shipping quote, so it expired. Shipping will stay \"to be arranged\" unless you recalculate.",
+      "recalculate": "Recalculate in the cart",
+      "calculateInCart": "Calculate shipping in the cart"
+    }
   }
 }

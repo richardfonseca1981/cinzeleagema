@@ -1,5 +1,6 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from "react";
 import type { CartItem } from "../types";
+import { clearStoredQuote } from "./shipping/storage";
 
 const STORAGE_KEY = "cinzeleagema_cart";
 
@@ -59,6 +60,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   function clear() {
     setItems([]);
+    // Pedido enviado: a cotação de frete (e a escolha) não valem mais; só país/CEP ficam.
+    clearStoredQuote();
   }
 
   const totalCount = useMemo(() => items.reduce((sum, i) => sum + i.quantity, 0), [items]);
