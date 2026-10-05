@@ -194,7 +194,9 @@
       "taxes": "Import taxes not included",
       "totalWithShipping": "Total (products + shipping): {{total}}",
       "totalWithEstimatedShipping": "Estimated total (products + estimated shipping): {{total}}",
-      "totalWithoutShipping": "Estimated total (without shipping): {{total}}"
+      "totalWithoutShipping": "Estimated total (without shipping): {{total}}",
+      "exchangeRate": "Exchange rate used: US$ 1 = R$ {{rate}} (rate of the day)",
+      "exchangeRateApprox": "Exchange rate used: US$ 1 = R$ {{rate}} (approximate rate)"
     }
   },
   "whatsapp": {

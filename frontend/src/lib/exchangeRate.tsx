@@ -2,7 +2,13 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import { useTranslation } from "react-i18next";
 import { api } from "./api";
 
-const ExchangeRateContext = createContext<number | null>(null);
+export interface ExchangeRateInfo {
+  rate: number;
+  // ISO 8601, como devolvido por GET /api/exchange-rate
+  updatedAt: string | null;
+}
+
+const ExchangeRateContext = createContext<ExchangeRateInfo | null>(null);
 
 // Busca a cotação USD->BRL uma única vez por sessão, só quando o idioma EN é
 // usado pela primeira vez (PT nunca precisa dela) — e guarda em memória para
@@ -12,7 +18,7 @@ const ExchangeRateContext = createContext<number | null>(null);
 // de quebrar a página.
 export function ExchangeRateProvider({ children }: { children: ReactNode }) {
   const { i18n } = useTranslation();
-  const [rate, setRate] = useState<number | null>(null);
+  const [info, setInfo] = useState<ExchangeRateInfo | null>(null);
   const fetchState = useRef<"idle" | "pending" | "done">("idle");
 
   useEffect(() => {
@@ -22,7 +28,7 @@ export function ExchangeRateProvider({ children }: { children: ReactNode }) {
     api
       .getExchangeRate()
       .then((data) => {
-        setRate(data.rate);
+        setInfo({ rate: data.rate, updatedAt: data.updatedAt ?? null });
         fetchState.current = "done";
       })
       .catch(() => {
@@ -32,9 +38,14 @@ export function ExchangeRateProvider({ children }: { children: ReactNode }) {
       });
   }, [i18n.language]);
 
-  return <ExchangeRateContext.Provider value={rate}>{children}</ExchangeRateContext.Provider>;
+  return <ExchangeRateContext.Provider value={info}>{children}</ExchangeRateContext.Provider>;
 }
 
 export function useExchangeRate(): number | null {
+  return useContext(ExchangeRateContext)?.rate ?? null;
+}
+
+// Cotação + data da última atualização (para avisar quando está desatualizada).
+export function useExchangeRateInfo(): ExchangeRateInfo | null {
   return useContext(ExchangeRateContext);
 }

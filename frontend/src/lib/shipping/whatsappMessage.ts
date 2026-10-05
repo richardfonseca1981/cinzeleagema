@@ -3,7 +3,8 @@ import type { CartItem } from "../../types";
 import { formatWeightSize, localizeText } from "../format";
 import { countryName } from "./countries";
 import { deliveryRangeText } from "./options";
-import { computeOrderTotals, formatCents } from "./money";
+import { formatRateForMessage } from "../exchangeRateQuality";
+import { computeOrderTotals, formatCents, usesDollars } from "./money";
 import { formatPostalCode } from "./postalCode";
 import { shippingAmountBRL, type MessageDestination, type ShippingSummary } from "./summary";
 
@@ -16,6 +17,8 @@ export interface WhatsAppMessageInput {
   destination: MessageDestination | null;
   customerName: string;
   customerPhone: string;
+  // true só quando se SABE que a cotação tem mais de 24 h (ver exchangeRateQuality.ts)
+  rateStale?: boolean;
 }
 
 function destinationLine(t: TFunction, lang: string, d: MessageDestination): string {
@@ -77,5 +80,14 @@ export function buildWhatsAppMessage(input: WhatsAppMessageInput): string {
 
   lines.push(t("checkout.whatsappMessage.name", { name: input.customerName }));
   lines.push(t("checkout.whatsappMessage.phone", { phone: input.customerPhone }));
+
+  // Última linha, só informativa: SOMENTE em inglês e SOMENTE quando a conversão
+  // para dólar foi de fato aplicada aos valores acima (mesma `usesDollars` e a
+  // MESMA cotação `rate` que converteu os valores — nenhuma consulta nova).
+  // Em português, ou se a mensagem saiu em reais, não há linha.
+  if (usesDollars(lang, rate)) {
+    const key = input.rateStale ? "checkout.whatsappMessage.exchangeRateApprox" : "checkout.whatsappMessage.exchangeRate";
+    lines.push("", t(key, { rate: formatRateForMessage(rate as number) }));
+  }
   return lines.join("\n");
 }

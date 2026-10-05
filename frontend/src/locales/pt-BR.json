@@ -194,7 +194,9 @@
       "taxes": "Impostos de importação não incluídos",
       "totalWithShipping": "Total (produtos + frete): {{total}}",
       "totalWithEstimatedShipping": "Total estimado (produtos + frete estimado): {{total}}",
-      "totalWithoutShipping": "Total estimado (sem frete): {{total}}"
+      "totalWithoutShipping": "Total estimado (sem frete): {{total}}",
+      "exchangeRate": "Cotação usada: US$ 1 = R$ {{rate}} (cotação do dia)",
+      "exchangeRateApprox": "Cotação usada: US$ 1 = R$ {{rate}} (cotação aproximada)"
     }
   },
   "whatsapp": {
