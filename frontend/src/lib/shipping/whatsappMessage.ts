@@ -17,8 +17,9 @@ export interface WhatsAppMessageInput {
   destination: MessageDestination | null;
   customerName: string;
   customerPhone: string;
-  // true só quando se SABE que a cotação tem mais de 24 h (ver exchangeRateQuality.ts)
-  rateStale?: boolean;
+  // true quando a cotação é aproximada: origem "stale"/"fallback" ou mais de
+  // 24 h (ver isRateApproximate em exchangeRateQuality.ts)
+  rateApproximate?: boolean;
 }
 
 function destinationLine(t: TFunction, lang: string, d: MessageDestination): string {
@@ -86,7 +87,7 @@ export function buildWhatsAppMessage(input: WhatsAppMessageInput): string {
   // MESMA cotação `rate` que converteu os valores — nenhuma consulta nova).
   // Em português, ou se a mensagem saiu em reais, não há linha.
   if (usesDollars(lang, rate)) {
-    const key = input.rateStale ? "checkout.whatsappMessage.exchangeRateApprox" : "checkout.whatsappMessage.exchangeRate";
+    const key = input.rateApproximate ? "checkout.whatsappMessage.exchangeRateApprox" : "checkout.whatsappMessage.exchangeRate";
     lines.push("", t(key, { rate: formatRateForMessage(rate as number) }));
   }
   return lines.join("\n");

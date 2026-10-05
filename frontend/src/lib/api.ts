@@ -68,7 +68,8 @@ export const api = {
 
   listCategories: () => request<Category[]>("/api/categories"),
 
-  getExchangeRate: () => request<{ rate: number; updatedAt: string }>("/api/exchange-rate"),
+  // `source` é novo (live | stale | fallback); pode faltar num backend antigo.
+  getExchangeRate: () => request<{ rate: number; updatedAt: string; source?: string }>("/api/exchange-rate"),
 
   getShippingStatus: () => request<ShippingStatus>("/api/shipping/status"),
   // Frete do comprador (rotas públicas). O endpoint de cotação tem limite de

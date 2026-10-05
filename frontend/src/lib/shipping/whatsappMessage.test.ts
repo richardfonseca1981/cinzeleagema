@@ -3,6 +3,7 @@ import type { TFunction } from "i18next";
 import type { CartItem } from "../../types";
 import { buildWhatsAppMessage } from "./whatsappMessage";
 import { destinationFor, resolveShippingSummary } from "./summary";
+import { isRateApproximate, type RateSource } from "../exchangeRateQuality";
 import type { StoredShipping } from "./storage";
 import { ARRANGE_OPTION_ID, type ShippingOption } from "./types";
 import { makeT } from "./testHelpers";
@@ -163,8 +164,8 @@ describe("mensagem do WhatsApp — inglês (valores em dólar pela cotação do 
   });
 });
 
-// Constrói a mensagem já normalizada, com opções extras (rateStale).
-function buildWith(lang: "pt-BR" | "en", s: StoredShipping | null, rate: number | null, extra: { rateStale?: boolean } = {}) {
+// Constrói a mensagem já normalizada, com opções extras (rateApproximate).
+function buildWith(lang: "pt-BR" | "en", s: StoredShipping | null, rate: number | null, extra: { rateApproximate?: boolean } = {}) {
   const summary = resolveShippingSummary(s, "sig", NOW + 1000);
   return normalizeSpaces(
     buildWhatsAppMessage({
@@ -214,18 +215,18 @@ describe("linha informativa da cotação (só em inglês, só com conversão apl
   });
 
   it("cotação desatualizada (> 24 h): '(approximate rate)' no lugar de '(rate of the day)'", () => {
-    const msg = buildWith("en", stored({}), 5.32, { rateStale: true });
+    const msg = buildWith("en", stored({}), 5.32, { rateApproximate: true });
     expect(msg.split("\n").at(-1)).toBe(LINE("5.32", "approximate rate"));
     expect(msg).not.toContain("rate of the day");
   });
 
   it("cotação atual (padrão): '(rate of the day)'", () => {
-    expect(buildWith("en", stored({}), 5.32, { rateStale: false }).split("\n").at(-1)).toBe(LINE("5.32"));
+    expect(buildWith("en", stored({}), 5.32, { rateApproximate: false }).split("\n").at(-1)).toBe(LINE("5.32"));
     expect(buildWith("en", stored({}), 5.32).split("\n").at(-1)).toBe(LINE("5.32"));
   });
 
   it("desatualizada MAS sem conversão aplicada: sem linha nenhuma", () => {
-    expect(buildWith("en", stored({}), null, { rateStale: true })).not.toMatch(/Exchange rate|approximate/);
+    expect(buildWith("en", stored({}), null, { rateApproximate: true })).not.toMatch(/Exchange rate|approximate/);
   });
 
   it("o número da linha é EXATAMENTE a cotação que converteu os valores (5.37)", () => {
@@ -269,9 +270,33 @@ describe("linha informativa da cotação (só em inglês, só com conversão apl
     expect(msg.split("\n").at(-1)).toBe(LINE("5.32"));
   });
 
-  it("a linha é só informativa: os valores da mensagem são idênticos com ou sem 'rateStale'", () => {
+  it("a linha é só informativa: os valores da mensagem são idênticos com ou sem 'rateApproximate'", () => {
     const strip = (m: string) => m.split("\n").slice(0, -2).join("\n");
-    expect(strip(buildWith("en", stored({}), 5.32, { rateStale: true }))).toBe(strip(buildWith("en", stored({}), 5.32, { rateStale: false })));
+    expect(strip(buildWith("en", stored({}), 5.32, { rateApproximate: true }))).toBe(strip(buildWith("en", stored({}), 5.32, { rateApproximate: false })));
+  });
+
+  describe("da resposta de /api/exchange-rate até a linha final (origem da cotação)", () => {
+    const NOW_MS = Date.parse("2026-10-05T12:00:00.000Z");
+    const FRESH = "2026-10-05T11:30:00.000Z";
+    const OLD = "2026-10-01T12:00:00.000Z";
+    const endWith = (info: { updatedAt: string | null; source?: RateSource | null }) =>
+      buildWith("en", stored({}), 5.32, { rateApproximate: isRateApproximate(info, NOW_MS) }).split("\n").at(-1);
+
+    it.each([
+      ["live recente", { updatedAt: FRESH, source: "live" as const }, "rate of the day"],
+      ["stale", { updatedAt: OLD, source: "stale" as const }, "approximate rate"],
+      ["fallback (updatedAt = agora)", { updatedAt: "2026-10-05T12:00:00.000Z", source: "fallback" as const }, "approximate rate"],
+      ["velha só pelo updatedAt", { updatedAt: OLD, source: null }, "approximate rate"],
+      ["sem source e recente (backend antigo)", { updatedAt: FRESH, source: null }, "rate of the day"],
+    ])("%s → (%s)", (_label, info, text) => {
+      expect(endWith(info)).toBe(`Exchange rate used: US$ 1 = R$ 5.32 (${text})`);
+    });
+
+    it("o número e o resto da mensagem são os mesmos nas duas variações — só muda o texto entre parênteses", () => {
+      const a = buildWith("en", stored({}), 5.32, { rateApproximate: false });
+      const b = buildWith("en", stored({}), 5.32, { rateApproximate: true });
+      expect(a.replace("(rate of the day)", "(approximate rate)")).toBe(b);
+    });
   });
 
   it("o texto vem dos arquivos de idioma (en e pt-BR têm as duas chaves)", () => {

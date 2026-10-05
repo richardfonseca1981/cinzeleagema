@@ -11,7 +11,7 @@ import { destinationFor, resolveShippingSummary, shippingAmountBRL } from "../li
 import { buildWhatsAppMessage } from "../lib/shipping/whatsappMessage";
 import { OrderSummary } from "../components/shipping/OrderSummary";
 import { useExchangeRate, useExchangeRateInfo } from "../lib/exchangeRate";
-import { isRateStale } from "../lib/exchangeRateQuality";
+import { isRateApproximate } from "../lib/exchangeRateQuality";
 import { normalizePhone, sanitizePhoneInput } from "../lib/phone";
 import { PublicHeader } from "../components/landing/PublicHeader";
 import { WhatsAppFloatingButton } from "../components/landing/WhatsAppFloatingButton";
@@ -87,7 +87,7 @@ export function Checkout() {
           destination: destinationFor(stored, summary),
           customerName,
           customerPhone: normalizedPhone,
-          rateStale: isRateStale(exchangeRateInfo?.updatedAt, Date.now()),
+          rateApproximate: isRateApproximate(exchangeRateInfo, Date.now()),
         });
         window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
       }

@@ -1,11 +1,14 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { api } from "./api";
+import { parseRateSource, type RateSource } from "./exchangeRateQuality";
 
 export interface ExchangeRateInfo {
   rate: number;
   // ISO 8601, como devolvido por GET /api/exchange-rate
   updatedAt: string | null;
+  // origem da cotação; null se o backend não informar (backend antigo)
+  source: RateSource | null;
 }
 
 const ExchangeRateContext = createContext<ExchangeRateInfo | null>(null);
@@ -28,7 +31,7 @@ export function ExchangeRateProvider({ children }: { children: ReactNode }) {
     api
       .getExchangeRate()
       .then((data) => {
-        setInfo({ rate: data.rate, updatedAt: data.updatedAt ?? null });
+        setInfo({ rate: data.rate, updatedAt: data.updatedAt ?? null, source: parseRateSource(data.source) });
         fetchState.current = "done";
       })
       .catch(() => {
@@ -45,7 +48,7 @@ export function useExchangeRate(): number | null {
   return useContext(ExchangeRateContext)?.rate ?? null;
 }
 
-// Cotação + data da última atualização (para avisar quando está desatualizada).
+// Cotação + data da última atualização + origem (para saber se é aproximada).
 export function useExchangeRateInfo(): ExchangeRateInfo | null {
   return useContext(ExchangeRateContext);
 }
