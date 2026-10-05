@@ -3,9 +3,28 @@ import multer from "multer";
 import { requireAuth } from "../middleware/auth";
 import { asyncHandler } from "../utils/asyncHandler";
 import { HttpError } from "../middleware/errorHandler";
-import { treatmentPreviewSchema } from "../schemas/product.schema";
-import { isAnthropicConfigured, interpretPhotoInstruction } from "../lib/claude";
-import { executeOperations, operationsSchema } from "../lib/imageOperations";
+import { executeOperations } from "../lib/imageOperations";
+import { describeAutoFit } from "../lib/autoFit";
+import { resolveTreatmentOperations, type TreatmentRequest } from "../lib/photoTreatment";
+import { treatmentInstructionSchema, treatmentOperationsRequestSchema } from "../schemas/product.schema";
+
+// multipart (multer) não tem JSON aninhado nativo: "instruction" chega como
+// campo de texto normal; para os atalhos do admin, o frontend manda
+// "operations" como esse mesmo tipo de campo, mas com um JSON.stringify do
+// array — por isso faz o parse manual aqui antes de validar com zod.
+function parseRawTreatmentRequest(body: Record<string, unknown>): TreatmentRequest {
+  if (typeof body.operations === "string") {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(body.operations);
+    } catch {
+      throw new HttpError(400, "Campo operations inválido (JSON malformado)");
+    }
+    return treatmentOperationsRequestSchema.parse({ operations: parsed });
+  }
+
+  return treatmentInstructionSchema.parse(body);
+}
 
 const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024;
 
@@ -26,30 +45,30 @@ imageTreatmentRawRouter.post(
   "/treatment-preview-raw",
   upload.single("file"),
   asyncHandler(async (req, res) => {
-    if (!isAnthropicConfigured()) {
-      throw new HttpError(503, "Tratamento de foto por IA não configurado (ANTHROPIC_API_KEY ausente)");
-    }
     if (!req.file) {
       throw new HttpError(400, "Arquivo de imagem ausente");
     }
 
-    const { instruction } = treatmentPreviewSchema.parse(req.body);
-
-    const interpretation = await interpretPhotoInstruction(instruction);
-    if (interpretation.unclear) {
-      return res.json({ unclear: true, suggestion: interpretation.suggestion });
+    const request = parseRawTreatmentRequest(req.body);
+    const result = await resolveTreatmentOperations(request);
+    if (result.unclear) {
+      return res.json({ unclear: true, suggestion: result.suggestion });
     }
 
-    // Nunca confia no que a IA retornou sem validar de novo contra a lista
-    // fechada de operações e seus ranges (mesma validação da rota com estado).
-    const operations = operationsSchema.parse(interpretation.operations);
+    const { buffer, contentType, autoFit } = await executeOperations(req.file.buffer, result.operations);
+    const notice = autoFit ? describeAutoFit(autoFit) : undefined;
 
-    const { buffer, contentType } = await executeOperations(req.file.buffer, operations);
+    // Só "Enquadrar peça" e nada foi recortado: explica em vez de devolver
+    // uma imagem idêntica à atual.
+    if (autoFit && autoFit.action !== "cropped" && result.operations.length === 1) {
+      return res.json({ unclear: false, noChange: true, operations: result.operations, notice });
+    }
 
     res.json({
       unclear: false,
-      operations,
+      operations: result.operations,
       previewDataUrl: `data:${contentType};base64,${buffer.toString("base64")}`,
+      ...(notice ? { notice } : {}),
     });
   })
 );

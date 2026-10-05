@@ -1,3 +1,8 @@
+// Nível fechado do realce de cor (enhance_color) — mesmo enum validado no
+// backend (lib/imageOperations.ts). "medio" sem acento mesmo (consistente
+// com o parâmetro aceito pela API, diferente do "médio" acentuado do sharpen).
+export type ColorEnhanceLevel = "leve" | "medio" | "forte";
+
 export interface ProductImage {
   id: string;
   url: string;
@@ -5,6 +10,8 @@ export interface ProductImage {
   position: number;
   previousUrl?: string | null;
   previousKey?: string | null;
+  colorEnhanced?: boolean;
+  colorEnhanceLevel?: ColorEnhanceLevel | null;
 }
 
 export interface PhotoTreatmentOperation {
@@ -17,7 +24,9 @@ export interface PhotoTreatmentOperation {
     | "rotate"
     | "compress"
     | "convertFormat"
-    | "removeBackground";
+    | "removeBackground"
+    | "autoFit"
+    | "enhance_color";
   width?: number;
   height?: number;
   aspectRatio?: "1:1" | "4:3" | "16:9";
@@ -26,18 +35,40 @@ export interface PhotoTreatmentOperation {
   degrees?: 90 | 180 | 270;
   quality?: number;
   format?: "webp" | "jpeg" | "png";
+  level?: ColorEnhanceLevel;
 }
 
-export type PhotoTreatmentPreviewResult =
-  | { unclear: true; suggestion?: string }
-  | { unclear: false; operations: PhotoTreatmentOperation[]; previewUrl: string; previewKey: string };
+// Corpo de POST /treatment/preview (e multipart equivalente): texto livre
+// (via Claude) OU operações prontas dos atalhos do admin — nunca os dois.
+export type TreatmentPreviewRequest = { instruction: string } | { operations: PhotoTreatmentOperation[] };
+
+// "noChange": o tratamento (ex.: "Enquadrar peça" numa foto já enquadrada) não
+// alterou a imagem — não há preview, só um aviso em português (notice).
+export type PhotoTreatmentNoChange = { unclear: false; noChange: true; operations: PhotoTreatmentOperation[]; notice: string };
+
+export type PhotoTreatmentPreviewReady = {
+  unclear: false;
+  noChange?: undefined;
+  operations: PhotoTreatmentOperation[];
+  previewUrl: string;
+  previewKey: string;
+  notice?: string;
+};
+
+export type PhotoTreatmentPreviewResult = { unclear: true; suggestion?: string } | PhotoTreatmentNoChange | PhotoTreatmentPreviewReady;
 
 // Resultado da rota stateless (/api/images/treatment-preview-raw), usada para
 // tratar fotos staged (ainda não enviadas ao R2) — a imagem tratada volta
 // embutida na resposta em vez de uma URL já hospedada.
-export type PhotoTreatmentRawPreviewResult =
-  | { unclear: true; suggestion?: string }
-  | { unclear: false; operations: PhotoTreatmentOperation[]; previewDataUrl: string };
+export type PhotoTreatmentRawPreviewReady = {
+  unclear: false;
+  noChange?: undefined;
+  operations: PhotoTreatmentOperation[];
+  previewDataUrl: string;
+  notice?: string;
+};
+
+export type PhotoTreatmentRawPreviewResult = { unclear: true; suggestion?: string } | PhotoTreatmentNoChange | PhotoTreatmentRawPreviewReady;
 
 export interface Subcategory {
   id: string;

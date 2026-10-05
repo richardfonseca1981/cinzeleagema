@@ -14,12 +14,14 @@ function getClient(): Anthropic {
   return client;
 }
 
-// Mesma lista fechada de 9 operações validada de novo em imageOperations.ts —
+// Mesma lista fechada de 11 operações validada de novo em imageOperations.ts —
 // a IA nunca executa nada diretamente, só decide qual(is) operação(ões) desta
 // lista aplicar (ou marca o pedido como pouco claro).
 const TOOL_NAME = "apply_photo_treatment";
 
-const SYSTEM_PROMPT = `Você interpreta pedidos em português sobre tratamento de fotos de produtos (peças de joalheria/pedras preciosas) e traduz o pedido em uma lista ordenada de operações de uma lista FECHADA. Nunca invente uma operação fora da lista.
+// Exportado só para um teste de regressão (claude.test.ts) checar que as
+// frases-gatilho/regra de ordem do enhance_color continuam no prompt.
+export const SYSTEM_PROMPT = `Você interpreta pedidos em português sobre tratamento de fotos de produtos (peças de joalheria/pedras preciosas) e traduz o pedido em uma lista ordenada de operações de uma lista FECHADA. Nunca invente uma operação fora da lista.
 
 Operações permitidas:
 - resize: width e/ou height (pixels)
@@ -31,9 +33,14 @@ Operações permitidas:
 - compress: quality (1 a 100)
 - convertFormat: format ("webp", "jpeg" ou "png")
 - removeBackground: sem parâmetros, apenas remove o fundo da imagem
+- autoFit: sem parâmetros — enquadra a peça: recorta em volta da peça, com uma folga, para ela ocupar bem o quadro (não remove o fundo, não amplia)
+- enhance_color: level ("leve", "medio" ou "forte") — realça a saturação/vivacidade das cores da pedra, sem mexer em nitidez de foco
 
 Regras:
 - Se o pedido combinar mais de uma ideia (ex: "remove o fundo e deixa mais nítida"), retorne várias operações em "operations", na ordem que fizer mais sentido aplicar.
+- Pedidos genéricos sobre "melhorar a foto" (sem especificar o quê), ou que peçam para "realçar", deixar "mais viva", "mais cor", "mais saturada" ou "mais colorida" mapeiam para enhance_color nível "medio". Se o pedido reforçar que é algo sutil/leve, use nível "leve"; se pedir algo bem forte/bem colorido, use nível "forte". Pedidos sobre "nítida"/"foco"/"desfocada" continuam mapeando só para sharpen — nunca para enhance_color, mesmo que o termo pareça parecido.
+- Pedidos como "enquadra a peça", "centraliza a pedra", "aproxima a pedra", "tira o espaço em volta", "a pedra está pequena na foto" ou "corta as sobras" mapeiam para autoFit (e NÃO para crop, que corta numa proporção/tamanho em pixels pedidos).
+- Quando o pedido combinar remoção de fundo, enquadramento, ajuste de brilho/contraste e realce de cor, retorne nessa ordem: removeBackground primeiro, depois autoFit, depois brightness/contrast, depois enhance_color por último (enhance_color processa melhor depois do fundo já removido, porque ignora os pixels já transparentes).
 - Se o pedido não mapear claramente para uma ou mais operações desta lista, retorne unclear=true e uma sugestão curta de como o admin poderia reformular o pedido usando termos que mapeiam para a lista (não retorne "operations" nesse caso).
 - Nunca responda com texto livre — sempre use a ferramenta apply_photo_treatment.`;
 
@@ -52,6 +59,8 @@ const OPERATION_INPUT_SCHEMA = {
         "compress",
         "convertFormat",
         "removeBackground",
+        "autoFit",
+        "enhance_color",
       ],
     },
     width: { type: "integer" },
@@ -62,6 +71,7 @@ const OPERATION_INPUT_SCHEMA = {
     degrees: { type: "integer", enum: [90, 180, 270] },
     quality: { type: "integer" },
     format: { type: "string", enum: ["webp", "jpeg", "png"] },
+    level: { type: "string", enum: ["leve", "medio", "forte"] },
   },
   required: ["operation"],
 };
@@ -103,6 +113,7 @@ export interface RawOperation {
   degrees?: number;
   quality?: number;
   format?: string;
+  level?: string;
 }
 
 export type ClaudeInterpretation =

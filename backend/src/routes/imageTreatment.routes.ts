@@ -10,8 +10,9 @@ import {
   treatmentPreviewSchema,
 } from "../schemas/product.schema";
 import { deleteObject, getObject, isR2Configured, putObject } from "../lib/r2";
-import { isAnthropicConfigured, interpretPhotoInstruction } from "../lib/claude";
-import { executeOperations, operationsSchema } from "../lib/imageOperations";
+import { executeOperations } from "../lib/imageOperations";
+import { describeAutoFit } from "../lib/autoFit";
+import { resolveTreatmentOperations } from "../lib/photoTreatment";
 
 export const imageTreatmentRouter = Router({ mergeParams: true });
 
@@ -34,31 +35,30 @@ imageTreatmentRouter.post(
     const { productId, imageId } = req.params as { productId: string; imageId: string };
     const image = await ensureImageExists(productId, imageId);
 
-    if (!isAnthropicConfigured()) {
-      throw new HttpError(503, "Tratamento de foto por IA não configurado (ANTHROPIC_API_KEY ausente)");
-    }
     if (!isR2Configured()) {
       throw new HttpError(503, "Upload de imagens não configurado (variáveis R2 ausentes)");
     }
 
-    const { instruction } = treatmentPreviewSchema.parse(req.body);
-
-    const interpretation = await interpretPhotoInstruction(instruction);
-    if (interpretation.unclear) {
-      return res.json({ unclear: true, suggestion: interpretation.suggestion });
+    const body = treatmentPreviewSchema.parse(req.body);
+    const result = await resolveTreatmentOperations(body);
+    if (result.unclear) {
+      return res.json({ unclear: true, suggestion: result.suggestion });
     }
 
-    // Nunca confia no que a IA retornou sem validar de novo contra a lista
-    // fechada de operações e seus ranges.
-    const operations = operationsSchema.parse(interpretation.operations);
-
     const original = await getObject(image.key);
-    const { buffer, contentType, ext } = await executeOperations(original, operations);
+    const { buffer, contentType, ext, autoFit } = await executeOperations(original, result.operations);
+    const notice = autoFit ? describeAutoFit(autoFit) : undefined;
+
+    // Só "Enquadrar peça" e nada foi recortado: explica em vez de gravar um
+    // preview idêntico à foto atual no R2.
+    if (autoFit && autoFit.action !== "cropped" && result.operations.length === 1) {
+      return res.json({ unclear: false, noChange: true, operations: result.operations, notice });
+    }
 
     const previewKey = `products/${productId}/previews/${randomUUID()}${ext}`;
     const previewUrl = await putObject(previewKey, buffer, contentType);
 
-    res.json({ unclear: false, operations, previewUrl, previewKey });
+    res.json({ unclear: false, operations: result.operations, previewUrl, previewKey, ...(notice ? { notice } : {}) });
   })
 );
 
@@ -70,15 +70,23 @@ imageTreatmentRouter.post(
     const { productId, imageId } = req.params as { productId: string; imageId: string };
     const image = await ensureImageExists(productId, imageId);
 
-    const { previewUrl, previewKey } = treatmentConfirmSchema.parse(req.body);
+    const { previewUrl, previewKey, colorEnhanced, colorEnhanceLevel } = treatmentConfirmSchema.parse(req.body);
 
     const updated = await prisma.productImage.update({
       where: { id: image.id },
       data: {
         previousUrl: image.url,
         previousKey: image.key,
+        previousColorEnhanced: image.colorEnhanced,
+        previousColorEnhanceLevel: image.colorEnhanceLevel,
         url: previewUrl,
         key: previewKey,
+        // Se este tratamento não incluiu enhance_color, mantém o que já
+        // estava marcado — a imagem atual pode continuar visualmente
+        // realçada por um tratamento anterior, mesmo que este aqui só tenha
+        // mexido em nitidez/brilho por cima do resultado colorido.
+        colorEnhanced: colorEnhanced === true ? true : image.colorEnhanced,
+        colorEnhanceLevel: colorEnhanced === true ? colorEnhanceLevel ?? null : image.colorEnhanceLevel,
       },
     });
 
@@ -122,6 +130,10 @@ imageTreatmentRouter.post(
         key: image.previousKey,
         previousUrl: null,
         previousKey: null,
+        colorEnhanced: image.previousColorEnhanced,
+        colorEnhanceLevel: image.previousColorEnhanceLevel,
+        previousColorEnhanced: false,
+        previousColorEnhanceLevel: null,
       },
     });
 

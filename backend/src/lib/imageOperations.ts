@@ -1,6 +1,7 @@
 import sharp from "sharp";
 import { z } from "zod";
 import { removeBackground } from "./rembg";
+import { autoFitSubject, type AutoFitResult } from "./autoFit";
 
 // Lista fechada de operações permitidas — nenhuma outra é aceita, mesmo que
 // a Claude API retorne algo diferente (o backend valida de novo aqui).
@@ -55,6 +56,16 @@ const removeBackgroundSchema = z.object({
   operation: z.literal("removeBackground"),
 });
 
+// Enquadramento automático da peça (ver lib/autoFit.ts) — sem parâmetros.
+const autoFitSchema = z.object({
+  operation: z.literal("autoFit"),
+});
+
+const enhanceColorSchema = z.object({
+  operation: z.literal("enhance_color"),
+  level: z.enum(["leve", "medio", "forte"]),
+});
+
 export const operationSchema = z
   .discriminatedUnion("operation", [
     resizeSchema,
@@ -66,6 +77,8 @@ export const operationSchema = z
     compressSchema,
     convertFormatSchema,
     removeBackgroundSchema,
+    autoFitSchema,
+    enhanceColorSchema,
   ])
   .superRefine((data, ctx) => {
     if (data.operation === "resize" && data.width === undefined && data.height === undefined) {
@@ -102,18 +115,20 @@ function clampMultiplier(value: number): number {
 
 async function applyResize(buffer: Buffer, op: Extract<Operation, { operation: "resize" }>): Promise<Buffer> {
   return sharp(buffer)
-    .resize(op.width, op.height, { fit: "inside", withoutEnlargement: false })
+    // Nunca amplia: foto pequena que "pede" 1200 px continua no tamanho original
+    // (ampliar só borra e pixela no site).
+    .resize(op.width, op.height, { fit: "inside", withoutEnlargement: true })
     .toBuffer();
 }
 
 async function applyCrop(buffer: Buffer, op: Extract<Operation, { operation: "crop" }>): Promise<Buffer> {
+  const meta = await sharp(buffer).metadata();
+  const origWidth = meta.width ?? 1;
+  const origHeight = meta.height ?? 1;
   let targetWidth = op.width;
   let targetHeight = op.height;
 
   if (targetWidth === undefined || targetHeight === undefined) {
-    const meta = await sharp(buffer).metadata();
-    const origWidth = meta.width ?? 1;
-    const origHeight = meta.height ?? 1;
     const [ratioW, ratioH] = ASPECT_RATIOS[op.aspectRatio!];
 
     if (origWidth / origHeight > ratioW / ratioH) {
@@ -124,6 +139,12 @@ async function applyCrop(buffer: Buffer, op: Extract<Operation, { operation: "cr
       targetHeight = Math.round(origWidth * (ratioH / ratioW));
     }
   }
+
+  // Nunca amplia: se o tamanho pedido for maior que a foto, mantém a mesma
+  // proporção pedida, mas reduzida até caber na foto original.
+  const shrink = Math.min(1, origWidth / targetWidth, origHeight / targetHeight);
+  targetWidth = Math.max(1, Math.round(targetWidth * shrink));
+  targetHeight = Math.max(1, Math.round(targetHeight * shrink));
 
   return sharp(buffer).resize(targetWidth, targetHeight, { fit: "cover", position: "centre" }).toBuffer();
 }
@@ -139,6 +160,75 @@ async function applyCompress(buffer: Buffer, quality: number): Promise<Buffer> {
   if (meta.format === "png") return sharp(buffer).png({ quality }).toBuffer();
   if (meta.format === "webp") return sharp(buffer).webp({ quality }).toBuffer();
   return sharp(buffer).jpeg({ quality }).toBuffer();
+}
+
+// Realce de cor ("vibrance"): satura mais o que já tem pouca cor, preserva
+// tons neutros (pele/fundo/pedra sem cor) e protege realces estourados.
+// Deliberadamente NÃO usa sharp.normalise() (escurece quando o fundo domina
+// o histograma) nem sharp.clahe() (reduz saturação em vez de aumentar) —
+// ambos testados e descartados para este caso de uso.
+export type ColorEnhanceLevel = "leve" | "medio" | "forte";
+
+const COLOR_ENHANCE_LEVELS: Record<ColorEnhanceLevel, { vib: number; sat: number; sharp: number }> = {
+  leve: { vib: 0.35, sat: 1.04, sharp: 0.6 },
+  medio: { vib: 0.7, sat: 1.08, sharp: 0.8 },
+  forte: { vib: 1.1, sat: 1.12, sharp: 1.0 },
+};
+
+// chromaFloor = saturação abaixo da qual o pixel é tratado como neutro e não
+// é tocado; o efeito só chega a 100% em 2x esse valor (smoothstep). Com 0,1
+// (valor anterior) pedras claras/translúcidas — saturação 0,05-0,15, comuns em
+// fotos de joalheria — caíam numa zona morta e o realce não mudava nada
+// visível. 0,04 ainda preserva fundos cinza/brancos e o ruído do JPEG (que
+// ficam em ~0-0,03) e passa a realçar tons pastéis.
+export const DEFAULT_CHROMA_FLOOR = 0.04;
+
+// Exportada separadamente (além de enhanceColor) para ser testada como
+// função pura — opera direto no buffer de pixels raw, sem I/O.
+export function applyVibrance(
+  data: Uint8Array,
+  channels: number,
+  amount: number,
+  chromaFloor = DEFAULT_CHROMA_FLOOR,
+  highlightProtect = 0.92
+): void {
+  for (let i = 0; i < data.length; i += channels) {
+    if (channels === 4 && data[i + 3] === 0) continue;
+    const r = data[i],
+      g = data[i + 1],
+      b = data[i + 2];
+    const max = Math.max(r, g, b),
+      min = Math.min(r, g, b);
+    if (max === 0) continue;
+    const s = (max - min) / max;
+    const t = Math.min(1, Math.max(0, (s - chromaFloor) / chromaFloor));
+    const w = t * t * (3 - 2 * t);
+    if (w === 0) continue;
+    const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+    const lum = gray / 255;
+    const hl = lum > highlightProtect ? Math.max(0, 1 - (lum - highlightProtect) / (1 - highlightProtect)) : 1;
+    let f = 1 + amount * (1 - s) * w * hl;
+    for (const c of [r, g, b]) {
+      const d = c - gray;
+      if (d > 0) f = Math.min(f, (255 - gray) / d);
+      else if (d < 0) f = Math.min(f, (0 - gray) / d);
+    }
+    f = Math.max(1, f);
+    data[i] = Math.round(gray + (r - gray) * f);
+    data[i + 1] = Math.round(gray + (g - gray) * f);
+    data[i + 2] = Math.round(gray + (b - gray) * f);
+  }
+}
+
+export async function enhanceColor(input: Buffer, level: ColorEnhanceLevel = "medio"): Promise<Buffer> {
+  const P = COLOR_ENHANCE_LEVELS[level];
+  const { data, info } = await sharp(input).rotate().ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  applyVibrance(data, info.channels, P.vib);
+  return sharp(data, { raw: { width: info.width, height: info.height, channels: info.channels } })
+    .modulate({ saturation: P.sat })
+    .sharpen({ sigma: 1.0, m1: P.sharp, m2: 2.0 })
+    .webp({ quality: 92 })
+    .toBuffer();
 }
 
 async function applyOperation(buffer: Buffer, op: Operation): Promise<Buffer> {
@@ -161,6 +251,10 @@ async function applyOperation(buffer: Buffer, op: Operation): Promise<Buffer> {
       return sharp(buffer).toFormat(op.format).toBuffer();
     case "removeBackground":
       return removeBackground(buffer);
+    case "enhance_color":
+      return enhanceColor(buffer, op.level);
+    case "autoFit":
+      return (await autoFitSubject(buffer)).buffer;
   }
 }
 
@@ -173,12 +267,20 @@ function formatMeta(format: string | undefined): { contentType: string; ext: str
 export async function executeOperations(
   buffer: Buffer,
   ops: Operation[]
-): Promise<{ buffer: Buffer; contentType: string; ext: string }> {
+): Promise<{ buffer: Buffer; contentType: string; ext: string; autoFit?: AutoFitResult }> {
   let working = buffer;
+  let autoFit: AutoFitResult | undefined;
   for (const op of ops) {
+    if (op.operation === "autoFit") {
+      // Guarda o relatório (ação/razão/cobertura) para o preview explicar,
+      // em português, por que nada foi recortado quando for o caso.
+      autoFit = await autoFitSubject(working);
+      working = autoFit.buffer;
+      continue;
+    }
     working = await applyOperation(working, op);
   }
   const meta = await sharp(working).metadata();
   const { contentType, ext } = formatMeta(meta.format);
-  return { buffer: working, contentType, ext };
+  return { buffer: working, contentType, ext, ...(autoFit ? { autoFit } : {}) };
 }

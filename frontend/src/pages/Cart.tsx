@@ -6,6 +6,7 @@ import { useExchangeRate } from "../lib/exchangeRate";
 import { PublicHeader } from "../components/landing/PublicHeader";
 import { WhatsAppFloatingButton } from "../components/landing/WhatsAppFloatingButton";
 import { WHATSAPP_HREF } from "../lib/whatsapp";
+import { ProductImage } from "../components/ProductImage";
 
 export function Cart() {
   const { t, i18n } = useTranslation();
@@ -38,13 +39,7 @@ export function Cart() {
 
                 return (
                   <div key={item.productId} className="flex flex-wrap items-center gap-4 p-4">
-                    {item.imageUrl ? (
-                      <img src={item.imageUrl} alt={itemName} className="h-16 w-16 rounded-lg object-cover" />
-                    ) : (
-                      <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-[#F1F5F9] text-xs text-[#94A3B8]">
-                        {t("productCard.noPhoto")}
-                      </div>
-                    )}
+                    <ProductImage variant="thumb" src={item.imageUrl} alt={itemName} />
                     <div className="min-w-[140px] flex-1">
                       <p className="font-medium text-[#1A1A1A]">{itemName}</p>
                       {weightSize && <p className="text-xs text-[#94A3B8]">{weightSize}</p>}

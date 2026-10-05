@@ -134,7 +134,12 @@
     "subtitle": "Browse our available pieces, organized by category.",
     "allProducts": "All pieces",
     "loading": "Loading...",
-    "empty": "No pieces found in this category."
+    "empty": "No pieces found in this category.",
+    "showingCount": "Showing {{shown}} of {{total}} pieces",
+    "loadMore": "Load more",
+    "loadingMore": "Loading...",
+    "loadMoreError": "Couldn't load more pieces.",
+    "retry": "Try again"
   },
   "productCard": {
     "noPhoto": "No photo",

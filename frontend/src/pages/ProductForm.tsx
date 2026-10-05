@@ -1,9 +1,10 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { api, ApiError } from "../lib/api";
 import type { Category, ProductImage } from "../types";
 import { ImageManager, type ImageManagerHandle } from "../components/ImageManager";
 import { useToast } from "../components/Toast";
+import { backToListPath } from "../lib/productListState";
 
 const DIACRITICS_REGEX = new RegExp("[̀-ͯ]", "g");
 
@@ -24,7 +25,11 @@ export function ProductForm() {
   const { id } = useParams();
   const isEditing = Boolean(id);
   const navigate = useNavigate();
+  const location = useLocation();
   const { showToast } = useToast();
+  // A lista passa a query string atual (página, busca, filtros) em
+  // location.state; ao salvar/cancelar volta exatamente para ela.
+  const listPath = backToListPath(location.state);
 
   const [productId, setProductId] = useState<string | null>(id ?? null);
   const [images, setImages] = useState<ProductImage[]>([]);
@@ -127,12 +132,12 @@ export function ProductForm() {
         }
 
         showToast("success", "Produto atualizado com sucesso");
-        navigate("/admin/produtos");
+        navigate(listPath);
       } else {
         const created = await api.createProduct(payload);
         setProductId(created.id);
         showToast("success", "Produto criado com sucesso");
-        navigate(`/admin/produtos/${created.id}`, { replace: true });
+        navigate(`/admin/produtos/${created.id}`, { replace: true, state: location.state });
       }
     } catch (err) {
       showToast("error", err instanceof ApiError ? err.message : "Não foi possível salvar o produto");
@@ -143,7 +148,7 @@ export function ProductForm() {
   }
 
   function handleCancel() {
-    navigate("/admin/produtos");
+    navigate(listPath);
   }
 
   if (loading) {
