@@ -168,7 +168,7 @@
     "nameLabel": "Nome",
     "phoneLabel": "Telefone/WhatsApp",
     "phonePlaceholder": "(11) 99999-0000 ou +1 415 555 2671",
-    "phoneError": "Informe um telefone válido: DDD + número (ex: 14988095356) ou um telefone internacional começando com \"+\" (ex: +14155552671).",
+    "phoneError": "Informe um telefone válido: DDD + número (ex: 11999990000) ou um telefone internacional começando com \"+\" (ex: +14155552671).",
     "submit": "Confirmar pedido",
     "sending": "Enviando...",
     "successTitle": "Pedido enviado!",

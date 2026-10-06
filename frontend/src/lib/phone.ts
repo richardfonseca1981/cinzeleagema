@@ -1,5 +1,5 @@
 // Telefone/WhatsApp do checkout aceita dois formatos, livres de máscara fixa:
-// brasileiro sem "+" (DDD + 8 ou 9 dígitos, ex: 14988095356) ou internacional
+// brasileiro sem "+" (DDD + 8 ou 9 dígitos, ex: 11999990000) ou internacional
 // já completo com "+" (E.164: "+" seguido de 7 a 15 dígitos). Quando já vem
 // com "+", o número não é alterado — o usuário já digitou o código do próprio
 // país, então só validamos o formato geral em vez de tentar adivinhar.

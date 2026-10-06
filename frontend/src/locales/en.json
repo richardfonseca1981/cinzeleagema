@@ -168,7 +168,7 @@
     "nameLabel": "Name",
     "phoneLabel": "Phone/WhatsApp",
     "phonePlaceholder": "(11) 99999-0000 or +1 415 555 2671",
-    "phoneError": "Enter a valid phone number: area code + number (e.g. 14988095356) or an international number starting with \"+\" (e.g. +14155552671).",
+    "phoneError": "Enter a valid phone number: area code + number (e.g. 11999990000) or an international number starting with \"+\" (e.g. +14155552671).",
     "submit": "Confirm order",
     "sending": "Sending...",
     "successTitle": "Order sent!",
