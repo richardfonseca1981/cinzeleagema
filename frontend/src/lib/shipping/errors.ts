@@ -1,28 +1,15 @@
-import { UNAVAILABLE_REASONS, type ShippingUnavailableReason } from "./types";
+import type { ArrangeReason, TechnicalCause } from "./types";
+import { ARRANGE_REASONS } from "./types";
 
 // O que a interface oferece depois de cada situação (nunca uma tela morta).
-export type ShippingAction = "retry" | "checkPostalCode" | "reviewCart" | "arrange";
+//  - retry: "Tentar de novo"
+//  - closeArranged: "Fechar o pedido com frete a combinar" (só depois de falha técnica)
+export type ShippingAction = "retry" | "checkPostalCode" | "reviewCart" | "closeArranged";
 
 export interface ShippingMessage {
   // chave em pt-BR.json / en.json
   messageKey: string;
   actions: ShippingAction[];
-}
-
-// Cada unavailable.reason devolvido pela API → mensagem humana + próxima ação.
-export const UNAVAILABLE_MESSAGES: Record<ShippingUnavailableReason, ShippingMessage> = {
-  provider_error: { messageKey: "shipping.unavailable.provider_error", actions: ["retry", "arrange"] },
-  no_rates_configured: { messageKey: "shipping.unavailable.no_rates_configured", actions: ["arrange"] },
-  invalid_destination: { messageKey: "shipping.unavailable.invalid_destination", actions: ["checkPostalCode", "arrange"] },
-  over_limits: { messageKey: "shipping.unavailable.over_limits", actions: ["arrange"] },
-  incomplete_product_data: { messageKey: "shipping.unavailable.incomplete_product_data", actions: ["arrange"] },
-  not_configured: { messageKey: "shipping.unavailable.not_configured", actions: ["arrange"] },
-};
-
-export function describeUnavailable(reason: string): ShippingMessage {
-  return (UNAVAILABLE_REASONS as readonly string[]).includes(reason)
-    ? UNAVAILABLE_MESSAGES[reason as ShippingUnavailableReason]
-    : UNAVAILABLE_MESSAGES.provider_error; // código novo/desconhecido: trata como falha do provedor
 }
 
 // Falhas da chamada em si (rede, timeout, 429, 4xx/5xx).
@@ -34,14 +21,43 @@ export type ShippingErrorKind =
   | "timeout"
   | "server";
 
-export const ERROR_MESSAGES: Record<ShippingErrorKind, ShippingMessage> = {
-  rate_limited: { messageKey: "shipping.error.rate_limited", actions: ["arrange"] },
-  invalid_postal_code: { messageKey: "shipping.error.invalid_postal_code", actions: ["checkPostalCode", "arrange"] },
-  product_unavailable: { messageKey: "shipping.error.product_unavailable", actions: ["reviewCart", "arrange"] },
-  network: { messageKey: "shipping.error.network", actions: ["retry", "arrange"] },
-  timeout: { messageKey: "shipping.error.timeout", actions: ["retry", "arrange"] },
-  server: { messageKey: "shipping.error.server", actions: ["retry", "arrange"] },
-};
+// O que uma resposta/falha significa para o pedido:
+//  - arrange: frete "a combinar" automático, o comprador pode confirmar;
+//  - technical: falha técnica — só confirma se escolher "a combinar" explicitamente;
+//  - invalid_destination: CEP inválido — corrigir o CEP, nunca "a combinar";
+//  - product_unavailable: peça saiu do catálogo — revisar o pedido.
+export type ShippingIssue =
+  | { type: "arrange"; reason: ArrangeReason }
+  | { type: "technical"; cause: TechnicalCause }
+  | { type: "invalid_destination" }
+  | { type: "product_unavailable" };
+
+export function issueFromUnavailableReason(reason: string): ShippingIssue {
+  if ((ARRANGE_REASONS as readonly string[]).includes(reason)) return { type: "arrange", reason: reason as ArrangeReason };
+  if (reason === "invalid_destination") return { type: "invalid_destination" };
+  if (reason === "not_configured") return { type: "technical", cause: "not_configured" };
+  // provider_error e qualquer código novo/desconhecido: falha técnica
+  return { type: "technical", cause: "provider_error" };
+}
+
+export function issueFromError(kind: ShippingErrorKind): ShippingIssue {
+  if (kind === "invalid_postal_code") return { type: "invalid_destination" };
+  if (kind === "product_unavailable") return { type: "product_unavailable" };
+  return { type: "technical", cause: kind };
+}
+
+export function describeIssue(issue: ShippingIssue): ShippingMessage {
+  switch (issue.type) {
+    case "arrange":
+      return { messageKey: `shipping.issue.${issue.reason}`, actions: [] };
+    case "technical":
+      return { messageKey: `shipping.issue.${issue.cause}`, actions: ["retry", "closeArranged"] };
+    case "invalid_destination":
+      return { messageKey: "shipping.issue.invalid_destination", actions: ["checkPostalCode"] };
+    case "product_unavailable":
+      return { messageKey: "shipping.issue.product_unavailable", actions: ["reviewCart"] };
+  }
+}
 
 export class ShippingTimeoutError extends Error {
   constructor() {
@@ -73,7 +89,8 @@ export function classifyShippingError(err: unknown): ShippingErrorKind {
   return "network";
 }
 
-// Quanto tempo o botão fica desativado depois de um 429 (limite: 20/min por IP).
+// Quanto tempo o botão "Tentar de novo" fica desativado depois de um 429
+// (limite: 20/min por IP).
 export const RATE_LIMIT_COOLDOWN_MS = 15_000;
 // Tempo máximo de espera pela cotação.
 export const QUOTE_TIMEOUT_MS = 15_000;

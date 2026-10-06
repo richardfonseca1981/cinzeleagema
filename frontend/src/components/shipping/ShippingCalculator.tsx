@@ -1,16 +1,19 @@
 import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { CartItem } from "../../types";
-import { ERROR_MESSAGES, describeUnavailable, type ShippingAction, type ShippingMessage } from "../../lib/shipping/errors";
-import { deliveryRangeText } from "../../lib/shipping/options";
+import { describeIssue, type ShippingAction, type ShippingIssue } from "../../lib/shipping/errors";
+import { deliveryRangeText, optionLabel } from "../../lib/shipping/options";
 import { formatCents, toDisplayCents } from "../../lib/shipping/money";
 import type { ShippingController } from "../../lib/shipping/useShippingController";
-import { ARRANGE_OPTION_ID, type ShippingOption } from "../../lib/shipping/types";
+import type { ShippingOption } from "../../lib/shipping/types";
 
 interface ShippingCalculatorProps {
   controller: ShippingController;
   items: CartItem[];
   exchangeRate: number | null;
+  // "Fechar o pedido com frete a combinar" (só depois de uma falha técnica):
+  // quem usa o componente decide para onde o comprador vai em seguida.
+  onCloseArranged: () => void;
 }
 
 const fieldClass =
@@ -36,23 +39,27 @@ function OptionsSkeleton({ label }: { label: string }) {
   );
 }
 
-export function ShippingCalculator({ controller: c, items, exchangeRate }: ShippingCalculatorProps) {
+export function ShippingCalculator({ controller: c, items, exchangeRate, onCloseArranged }: ShippingCalculatorProps) {
   const { t, i18n } = useTranslation();
   const postalRef = useRef<HTMLInputElement>(null);
   const money = (brl: number) => formatCents(toDisplayCents(brl, i18n.language, exchangeRate), i18n.language, exchangeRate);
 
   const cooling = c.cooldownSecondsLeft > 0;
-  const arranged = c.selection === ARRANGE_OPTION_ID;
+  // O comprador já escolheu "Fechar o pedido com frete a combinar" depois da falha.
+  const arrangedAfterFailure = c.summary.kind === "arrange" && c.summary.reason === "technical_choice";
 
   function runAction(action: ShippingAction) {
     if (action === "retry") void c.calculate();
     else if (action === "checkPostalCode") postalRef.current?.focus();
     else if (action === "reviewCart") document.getElementById("cart-items")?.scrollIntoView({ block: "start" });
-    else c.chooseArrange();
+    else if (c.chooseArrange()) onCloseArranged();
   }
 
-  function renderMessage(message: ShippingMessage, tone: "error" | "info") {
-    const actions = message.actions.filter((a) => !(a === "arrange" && arranged));
+  // Frete a combinar automático (over_limits, país sem tarifa, dados incompletos)
+  // é informativo; falha técnica, CEP inválido e peça indisponível são alertas.
+  function renderIssue(issue: ShippingIssue) {
+    const message = describeIssue(issue);
+    const tone = issue.type === "arrange" ? "info" : "error";
     return (
       <div
         role={tone === "error" ? "alert" : "status"}
@@ -60,19 +67,21 @@ export function ShippingCalculator({ controller: c, items, exchangeRate }: Shipp
           tone === "error" ? "border-[#FCA5A5] bg-[#FEF2F2] text-[#991B1B]" : "border-[#E2E8F0] bg-[#F8FAFC] text-[#1A1A1A]"
         }`}
         data-testid="shipping-message"
+        data-issue={issue.type === "arrange" ? issue.reason : issue.type === "technical" ? issue.cause : issue.type}
       >
         <p>{t(message.messageKey)}</p>
-        {actions.length > 0 && (
+        {message.actions.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-2">
-            {actions.map((action) => (
+            {message.actions.map((action) => (
               <button
                 key={action}
                 type="button"
                 onClick={() => runAction(action)}
                 disabled={action === "retry" && (c.isLoading || cooling)}
                 className={secondaryButton}
+                data-testid={`shipping-action-${action}`}
               >
-                {t(`shipping.actions.${action}`)}
+                {action === "retry" && cooling ? t("shipping.actions.retryIn", { seconds: c.cooldownSecondsLeft }) : t(`shipping.actions.${action}`)}
               </button>
             ))}
           </div>
@@ -102,7 +111,7 @@ export function ShippingCalculator({ controller: c, items, exchangeRate }: Shipp
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <span className="font-medium text-[#1A1A1A]">
-              {option.carrier} — {option.service}
+              {optionLabel(option)}
             </span>
             {c.badges.cheapestId === option.id && (
               <span className="rounded-full bg-[#F0FDF4] px-2 py-0.5 text-xs font-semibold text-[#15803D]">{t("shipping.badge.cheapest")}</span>
@@ -110,12 +119,8 @@ export function ShippingCalculator({ controller: c, items, exchangeRate }: Shipp
             {c.badges.fastestId === option.id && (
               <span className="rounded-full bg-[#EFF6FF] px-2 py-0.5 text-xs font-semibold text-[#1D4ED8]">{t("shipping.badge.fastest")}</span>
             )}
-            {option.kind === "estimated" && (
-              <span className="rounded-full bg-[#FFFBEB] px-2 py-0.5 text-xs font-semibold text-[#B45309]">{t("shipping.estimate.label")}</span>
-            )}
           </span>
           <span className="mt-0.5 block text-sm text-[#64748B]">{days ?? t("shipping.delivery.unknown")}</span>
-          {option.kind === "estimated" && <span className="mt-0.5 block text-xs text-[#B45309]">{t("shipping.estimate.note")}</span>}
         </span>
         <span className="whitespace-nowrap font-semibold text-[#1A1A1A]">{money(option.priceBRL)}</span>
       </label>
@@ -124,16 +129,6 @@ export function ShippingCalculator({ controller: c, items, exchangeRate }: Shipp
 
   const state = c.quoteState;
   const result = c.result;
-
-  // A mensagem de erro/indisponibilidade já oferece "Combinar pelo WhatsApp":
-  // nesse caso o link discreto do rodapé seria redundante.
-  const shownMessage =
-    state.status === "error"
-      ? ERROR_MESSAGES[state.error]
-      : state.status === "success" && result?.unavailable && result.mode !== "international"
-        ? describeUnavailable(result.unavailable.reason)
-        : null;
-  const messageOffersArrange = Boolean(shownMessage?.actions.includes("arrange"));
 
   return (
     <section aria-labelledby="shipping-title" className="mt-6 rounded-lg border border-[#E2E8F0] bg-white p-4" data-testid="shipping-calculator">
@@ -176,7 +171,7 @@ export function ShippingCalculator({ controller: c, items, exchangeRate }: Shipp
           />
           <p id="shipping-postal-help" className="mt-1 min-h-[1.25rem] text-xs text-[#64748B]" aria-live="polite">
             {c.postalError
-              ? t("shipping.error.invalid_postal_code")
+              ? t("shipping.postalCodeInvalid")
               : c.isBrazil
                 ? c.place?.city
                   ? `${c.place.city}${c.place.state ? `, ${c.place.state}` : ""}`
@@ -211,27 +206,28 @@ export function ShippingCalculator({ controller: c, items, exchangeRate }: Shipp
 
       {state.status === "loading" && <OptionsSkeleton label={t("shipping.calculating")} />}
 
-      {state.status === "error" && renderMessage(ERROR_MESSAGES[state.error], "error")}
+      {arrangedAfterFailure ? (
+        <p className="mt-4 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-3 text-sm text-[#1A1A1A]" role="status" data-testid="arrange-chosen">
+          {t("shipping.arrangeChosen")}
+        </p>
+      ) : (
+        c.issue && renderIssue(c.issue)
+      )}
 
       {state.status === "success" && result && (
         <div aria-live="polite">
-          {result.unavailable ? (
-            result.mode === "international" ? (
-              // país sem tabela: não é erro — o frete é confirmado pelo atendimento
-              <p className="mt-4 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-3 text-sm text-[#1A1A1A]" role="status" data-testid="shipping-message">
-                {t("shipping.international.text")}
-              </p>
-            ) : (
-              renderMessage(describeUnavailable(result.unavailable.reason), "info")
-            )
-          ) : (
+          {!result.unavailable && (
             <fieldset className="mt-4">
               <legend className="sr-only">{t("shipping.optionsLabel")}</legend>
               <div role="radiogroup" aria-label={t("shipping.optionsLabel")} className="space-y-2">
                 {result.options.map(renderOption)}
               </div>
-              {result.notice === "taxes_not_included" && <p className="mt-2 text-xs text-[#64748B]">{t("shipping.taxesNotice")}</p>}
             </fieldset>
+          )}
+          {result.notice === "taxes_not_included" && (
+            <p className="mt-2 text-xs text-[#64748B]" data-testid="taxes-notice">
+              {t("shipping.taxesNotice")}
+            </p>
           )}
           {c.cartChangedSinceQuote && (
             <p className="mt-3 text-sm text-[#B45309]" role="status">
@@ -240,20 +236,6 @@ export function ShippingCalculator({ controller: c, items, exchangeRate }: Shipp
           )}
         </div>
       )}
-
-      <div className={messageOffersArrange && !arranged ? "" : "mt-4 border-t border-[#E2E8F0] pt-3"}>
-        {arranged ? (
-          <p className="text-sm text-[#64748B]" data-testid="arrange-chosen">
-            {t("shipping.arrange.chosen")}
-          </p>
-        ) : (
-          !messageOffersArrange && (
-            <button type="button" onClick={c.chooseArrange} className="text-sm text-[#64748B] underline underline-offset-2 transition hover:text-[#C78F50]">
-              {t("shipping.arrange.link")}
-            </button>
-          )
-        )}
-      </div>
     </section>
   );
 }

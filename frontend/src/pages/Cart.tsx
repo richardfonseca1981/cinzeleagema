@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useCart } from "../lib/cart";
 import { formatPrice, formatWeightSize, localizeText } from "../lib/format";
 import { computeOrderTotals, formatCents } from "../lib/shipping/money";
+import { canProceedToCheckout } from "../lib/shipping/confirmFlow";
 import { shippingAmountBRL } from "../lib/shipping/summary";
 import { useShippingController } from "../lib/shipping/useShippingController";
 import { OrderSummary } from "../components/shipping/OrderSummary";
@@ -26,6 +27,8 @@ export function Cart() {
     i18n.language,
     exchangeRate
   );
+
+  const canProceed = canProceedToCheckout(shipping.summary);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#1A1A1A]">
@@ -81,18 +84,30 @@ export function Cart() {
               })}
             </div>
 
-            <ShippingCalculator controller={shipping} items={items} exchangeRate={exchangeRate} />
+            <ShippingCalculator
+              controller={shipping}
+              items={items}
+              exchangeRate={exchangeRate}
+              onCloseArranged={() => navigate("/finalizar")}
+            />
 
             <div className="mt-6">
               <OrderSummary totals={totals} summary={shipping.summary} exchangeRate={exchangeRate} />
             </div>
 
+            {/* O pedido só avança com frete cotado ou "a combinar" permitido. */}
             <button
               onClick={() => navigate("/finalizar")}
-              className="mt-6 w-full rounded-lg bg-[#C78F50] px-4 py-3 font-semibold text-[#010B1A] transition hover:bg-[#B37D3F]"
+              disabled={!canProceed}
+              className="mt-6 w-full rounded-lg bg-[#C78F50] px-4 py-3 font-semibold text-[#010B1A] transition hover:bg-[#B37D3F] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {t("cart.checkout")}
             </button>
+            {!canProceed && (
+              <p className="mt-2 text-center text-sm text-[#64748B]" data-testid="calculate-to-continue">
+                {t("shipping.proceed.calculateFirst")}
+              </p>
+            )}
           </>
         )}
       </div>

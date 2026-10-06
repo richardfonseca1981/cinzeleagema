@@ -5,7 +5,15 @@ import type { CartItem } from "../../types";
 import { cartSignature } from "./cartSignature";
 import { DEFAULT_COUNTRY, listCountries } from "./countries";
 import { AUTO_RECALC_DEBOUNCE_MS, createDebouncer, shouldAutoRecalculate } from "./debounce";
-import { QUOTE_TIMEOUT_MS, RATE_LIMIT_COOLDOWN_MS, ShippingTimeoutError, classifyShippingError } from "./errors";
+import {
+  QUOTE_TIMEOUT_MS,
+  RATE_LIMIT_COOLDOWN_MS,
+  ShippingTimeoutError,
+  classifyShippingError,
+  issueFromError,
+  issueFromUnavailableReason,
+  type ShippingIssue,
+} from "./errors";
 import { cheapestOption, pickBadges, selectionAfterQuote } from "./options";
 import {
   digitsOnly,
@@ -15,19 +23,27 @@ import {
 } from "./postalCode";
 import { INITIAL_QUOTE_STATE, quoteReducer } from "./quoteState";
 import {
+  QUOTE_CACHE_TTL_MS,
   emptyStoredShipping,
   isQuoteValid,
   loadStoredShipping,
   saveStoredShipping,
+  type StoredArrangeChoice,
   type StoredShipping,
 } from "./storage";
 import { resolveShippingSummary } from "./summary";
-import { ARRANGE_OPTION_ID, type ShippingQuoteResult } from "./types";
+import type { ShippingQuoteResult } from "./types";
 
 // Estado da calculadora de frete da página do carrinho: destino, cotação
 // (com descarte de respostas atrasadas), escolha, cooldown de 429, recálculo
 // automático e persistência. Os cálculos de regra são funções puras nos
 // outros arquivos desta pasta.
+//
+// Frete DEFINITIVO: o valor cotado vale como final por 10 minutos. Não há
+// caminho para "pular" o cálculo: o frete é "a combinar" só nos casos de
+// over_limits / país sem tarifa / dados incompletos (automático) ou quando o
+// comprador escolhe explicitamente fechar com frete a combinar depois de uma
+// falha técnica (chooseArrange).
 
 const lookupCache = new Map<string, { city: string | null; state: string | null }>();
 
@@ -50,7 +66,9 @@ export function useShippingController(items: CartItem[]) {
     const now = Date.now();
     const quoteValid = isQuoteValid(stored.quote, signature, now);
     const cartChanged = Boolean(stored.quote) && stored.quote!.signature !== signature;
-    return { stored, quoteValid, cartChanged, expiredByTime: Boolean(stored.quote) && !quoteValid && !cartChanged };
+    // a escolha de "a combinar" só vale para o mesmo carrinho
+    const arrangeChoice = stored.arrangeChoice?.signature === signature ? stored.arrangeChoice : null;
+    return { stored, quoteValid, cartChanged, arrangeChoice, expiredByTime: Boolean(stored.quote) && !quoteValid && !cartChanged };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -67,9 +85,8 @@ export function useShippingController(items: CartItem[]) {
       ? { status: "success" as const, requestId: 0, result: initial.stored.quote.result, signature: initial.stored.quote.signature }
       : INITIAL_QUOTE_STATE
   );
-  const [selection, setSelection] = useState<string | null>(
-    initial.stored.selection === ARRANGE_OPTION_ID || initial.quoteValid ? initial.stored.selection : null
-  );
+  const [selection, setSelection] = useState<string | null>(initial.quoteValid ? initial.stored.selection : null);
+  const [arrangeChoice, setArrangeChoice] = useState<StoredArrangeChoice | null>(initial.arrangeChoice);
   const [hasQuoted, setHasQuoted] = useState(Boolean(initial.stored.quote));
   // assinatura do carrinho da última cotação pedida/recebida (para o recálculo automático)
   const [quotedSignature, setQuotedSignature] = useState<string | null>(initial.stored.quote?.signature ?? null);
@@ -92,6 +109,7 @@ export function useShippingController(items: CartItem[]) {
     idRef.current += 1;
     dispatch({ type: "reset" });
     setSelection(null);
+    setArrangeChoice(null);
     setHasQuoted(false);
     setQuotedSignature(null);
     setExpiredNotice(false);
@@ -158,6 +176,7 @@ export function useShippingController(items: CartItem[]) {
     const currentSignature = signatureRef.current;
     setPostalError(false);
     setExpiredNotice(false);
+    setArrangeChoice(null); // nova cotação: a escolha anterior de "a combinar" não vale mais
     setHasQuoted(true);
     setQuotedSignature(currentSignature);
 
@@ -225,14 +244,31 @@ export function useShippingController(items: CartItem[]) {
 
   // --- escolha ---------------------------------------------------------------
   const selectOption = useCallback((id: string) => setSelection(id), []);
-  const chooseArrange = useCallback(() => setSelection(ARRANGE_OPTION_ID), []);
 
   // --- persistência + resumo -------------------------------------------------
   const result = quoteState.status === "success" ? quoteState.result : null;
 
+  // Falha técnica atual (se houver): vem da cotação que acabou de falhar ou de
+  // uma resposta "indisponível" por problema técnico. Não é persistida.
+  const issue: ShippingIssue | null = useMemo(() => {
+    if (quoteState.status === "error") return issueFromError(quoteState.error);
+    if (quoteState.status === "success" && quoteState.result.unavailable) {
+      return issueFromUnavailableReason(quoteState.result.unavailable.reason);
+    }
+    return null;
+  }, [quoteState]);
+
+  // "Fechar o pedido com frete a combinar": escolha explícita, só depois de uma
+  // falha técnica que o comprador viu. Devolve false se não há falha para escolher.
+  const chooseArrange = useCallback((): boolean => {
+    if (!issue || issue.type !== "technical") return false;
+    setArrangeChoice({ signature: signatureRef.current, cause: issue.cause, chosenAt: Date.now() });
+    return true;
+  }, [issue]);
+
   const stored: StoredShipping = useMemo(
     () => ({
-      version: 1,
+      version: 2,
       country,
       postalCode: postalValue,
       city: place?.city ?? null,
@@ -242,13 +278,26 @@ export function useShippingController(items: CartItem[]) {
           ? { result: quoteState.result, signature: quoteState.signature, savedAt: savedAtRef.current }
           : null,
       selection,
+      arrangeChoice,
     }),
-    [country, postalValue, place, quoteState, selection]
+    [country, postalValue, place, quoteState, selection, arrangeChoice]
   );
 
   useEffect(() => {
     saveStoredShipping(stored);
   }, [stored]);
+
+  // Quando a cotação completa 10 minutos, renderiza de novo para o resumo
+  // passar a avisar que o valor será conferido ao confirmar.
+  const [, setExpiryTick] = useState(0);
+  const quoteSavedAt = quoteState.status === "success" ? savedAtRef.current : null;
+  useEffect(() => {
+    if (quoteSavedAt === null) return;
+    const remaining = quoteSavedAt + QUOTE_CACHE_TTL_MS - Date.now();
+    if (remaining <= 0) return;
+    const id = setTimeout(() => setExpiryTick((n) => n + 1), remaining + 50);
+    return () => clearTimeout(id);
+  }, [quoteSavedAt]);
 
   // Relógio no momento da renderização (e NÃO o estado `now`, que só anda
   // durante o cooldown e deixaria uma cotação recém-chegada parecer "do futuro").
@@ -274,6 +323,7 @@ export function useShippingController(items: CartItem[]) {
     cheapestId: cheapest?.id ?? null,
     selection,
     selectOption,
+    issue,
     chooseArrange,
     calculate,
     isLoading: quoteState.status === "loading",

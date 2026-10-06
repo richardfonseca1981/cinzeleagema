@@ -185,18 +185,28 @@
       "postalCodeBr": "postal code {{code}}",
       "postalCode": "postal code {{code}}",
       "destination": "Destination: {{place}}",
-      "shippingQuoted": "Shipping: {{carrier}} — {{service}}: {{price}}",
-      "shippingQuotedWithDays": "Shipping: {{carrier}} — {{service}}: {{price}} ({{days}})",
-      "shippingEstimated": "Estimated shipping, to be confirmed by our team: {{carrier}} — {{service}}: {{price}}",
-      "shippingEstimatedWithDays": "Estimated shipping, to be confirmed by our team: {{carrier}} — {{service}}: {{price}} ({{days}})",
-      "shippingInternational": "Estimated shipping, to be confirmed by our team",
-      "shippingArrange": "Shipping: to be arranged with our team",
+      "shippingArrange": "Shipping: to be arranged with our team ({{reason}})",
       "taxes": "Import taxes not included",
       "totalWithShipping": "Total (products + shipping): {{total}}",
-      "totalWithEstimatedShipping": "Estimated total (products + estimated shipping): {{total}}",
-      "totalWithoutShipping": "Estimated total (without shipping): {{total}}",
+      "totalWithoutShipping": "Total (excluding shipping): {{total}}",
       "exchangeRate": "Exchange rate used: US$ 1 = R$ {{rate}} (rate of the day)",
-      "exchangeRateApprox": "Exchange rate used: US$ 1 = R$ {{rate}} (approximate rate)"
+      "exchangeRateApprox": "Exchange rate used: US$ 1 = R$ {{rate}} (approximate rate)",
+      "shipping": "Shipping: {{service}}, {{price}}",
+      "shippingWithDays": "Shipping: {{service}}, {{price}}, {{days}}",
+      "arrangeReason": {
+        "over_limits": "piece or order too large for the standard packaging",
+        "no_rates_configured": "no shipping table for this country",
+        "incomplete_product_data": "weight or size of a piece is missing",
+        "technical_choice": "automatic calculation unavailable at the moment"
+      }
+    },
+    "willQuoteShipping": "We'll calculate shipping when you confirm the order.",
+    "needsDestination": "To calculate shipping, enter the destination in the cart.",
+    "checkingShipping": "Checking shipping...",
+    "shippingChanged": {
+      "price": "The shipping price was updated from {{from}} to {{to}}. Check the total and confirm the order again.",
+      "calculated": "Shipping calculated: {{service}}, {{price}}. Check the total and confirm the order.",
+      "arrange": "Shipping is now to be arranged with our team. Check the total and confirm the order again."
     }
   },
   "whatsapp": {
@@ -234,7 +244,7 @@
     "cooldown": "Wait {{seconds}}s to calculate again",
     "international": {
       "title": "International shipping",
-      "text": "For this country, shipping is confirmed by our team on WhatsApp after you place the order.",
+      "text": "For this country, shipping is calculated from our international shipping table and the amount shown is the final shipping price.",
       "taxes": "Import taxes and customs duties of the destination country are not included."
     },
     "optionsLabel": "Shipping options",
@@ -242,56 +252,56 @@
       "cheapest": "Cheapest",
       "fastest": "Fastest"
     },
-    "estimate": {
-      "label": "Estimate",
-      "note": "Estimated price — final confirmation is done on WhatsApp."
-    },
     "delivery": {
       "days_one": "{{count}} day",
       "days_other": "{{count}} days",
       "range": "{{min}} to {{max}} days",
-      "unknown": "Delivery time to be confirmed"
-    },
-    "arrange": {
-      "link": "I'd rather arrange shipping on WhatsApp",
-      "chosen": "Shipping to be arranged on WhatsApp. You can pick an option above whenever you like."
+      "unknown": "Delivery time not provided"
     },
     "taxesNotice": "Import taxes not included.",
-    "expired": "The previous quote has expired. Calculate shipping again.",
+    "expired": "The previous quote has expired (it is valid for 10 minutes). Calculate shipping again.",
     "actions": {
       "retry": "Try again",
       "checkPostalCode": "Check the postal code",
       "reviewCart": "Review the order",
-      "arrange": "Arrange on WhatsApp"
-    },
-    "unavailable": {
-      "provider_error": "We couldn't check shipping right now. Try again in a moment or arrange shipping on WhatsApp.",
-      "no_rates_configured": "We don't have a shipping table for this destination yet. Our team arranges shipping with you on WhatsApp.",
-      "invalid_destination": "We couldn't find this destination. Check the postal code and try again, or arrange shipping on WhatsApp.",
-      "over_limits": "This piece or this order is too large for our standard packaging. Shipping is arranged with our team on WhatsApp.",
-      "incomplete_product_data": "We don't have the complete weight and dimensions of one of the pieces to calculate shipping. Our team arranges shipping with you on WhatsApp.",
-      "not_configured": "Automatic shipping calculation isn't available right now. Our team arranges shipping with you on WhatsApp."
-    },
-    "error": {
-      "rate_limited": "Too many requests in a row. Wait a few seconds and try again — or arrange shipping on WhatsApp.",
-      "invalid_postal_code": "Invalid postal code. Enter all 8 digits of the CEP.",
-      "product_unavailable": "One of the pieces in your order is no longer available. Review the order or arrange shipping on WhatsApp.",
-      "network": "No connection to the server. Check your internet and try again, or arrange shipping on WhatsApp.",
-      "timeout": "The calculation took too long. Try again or arrange shipping on WhatsApp.",
-      "server": "We couldn't calculate shipping right now. Try again or arrange shipping on WhatsApp."
+      "retryIn": "Try again ({{seconds}}s)",
+      "closeArranged": "Place the order with shipping to be arranged"
     },
     "summary": {
       "subtotal": "Subtotal",
       "shipping": "Shipping",
       "total": "Total",
-      "totalEstimated": "Estimated total",
       "toArrange": "To be arranged",
-      "estimateToConfirm": "Estimate to be confirmed",
-      "estimatedHint": "Estimated shipping — final confirmation is done on WhatsApp.",
-      "arrangeHint": "Shipping will be arranged with our team on WhatsApp.",
-      "staleWarning": "Your cart changed after the shipping quote, so it expired. Shipping will stay \"to be arranged\" unless you recalculate.",
-      "recalculate": "Recalculate in the cart",
-      "calculateInCart": "Calculate shipping in the cart"
+      "staleWarning": "Your order changed after the shipping quote. We're recalculating shipping.",
+      "calculateInCart": "Calculate shipping in the cart",
+      "totalWithoutShipping": "Total (excluding shipping)",
+      "notCalculated": "Calculate shipping",
+      "arrangeHint": {
+        "over_limits": "Shipping to be arranged: piece or order too large for the standard packaging.",
+        "no_rates_configured": "Shipping to be arranged: we don't have a shipping table for this country yet.",
+        "incomplete_product_data": "Shipping to be arranged: the weight or size of one of the pieces is missing.",
+        "technical_choice": "Shipping to be arranged with our team: automatic calculation wasn't available."
+      },
+      "recheckHint": "We'll double-check the shipping price when you confirm the order.",
+      "backToCart": "Back to the cart"
+    },
+    "postalCodeInvalid": "Invalid postal code. Enter all 8 digits of the CEP.",
+    "arrangeChosen": "All set: the order will be placed with shipping to be arranged with our team.",
+    "issue": {
+      "over_limits": "This piece or this order is too large for our standard packaging or exceeds the shipping weight limits. Shipping will be arranged with our team — you can place the order as usual.",
+      "no_rates_configured": "We don't have a shipping table for this country yet. Shipping will be arranged with our team — you can place the order as usual.",
+      "incomplete_product_data": "We don't have the complete weight and dimensions of one of the pieces. Shipping will be arranged with our team — you can place the order as usual.",
+      "provider_error": "We couldn't check shipping right now. You can try again or place the order with shipping to be arranged with our team.",
+      "not_configured": "Automatic shipping calculation isn't available right now. You can try again or place the order with shipping to be arranged with our team.",
+      "rate_limited": "Too many requests in a row. Wait a few seconds and try again, or place the order with shipping to be arranged with our team.",
+      "network": "No connection to the server. Check your internet and try again, or place the order with shipping to be arranged with our team.",
+      "timeout": "The calculation took too long. Try again or place the order with shipping to be arranged with our team.",
+      "server": "We couldn't calculate shipping right now. Try again or place the order with shipping to be arranged with our team.",
+      "invalid_destination": "Invalid or unknown postal code. Check the CEP and try again.",
+      "product_unavailable": "One of the pieces in your order is no longer available. Review the order."
+    },
+    "proceed": {
+      "calculateFirst": "Calculate shipping to continue."
     }
   }
 }

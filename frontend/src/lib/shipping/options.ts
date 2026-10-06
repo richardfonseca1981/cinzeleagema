@@ -1,5 +1,5 @@
 import type { TFunction } from "i18next";
-import { ARRANGE_OPTION_ID, type ShippingOption, type ShippingQuoteResult } from "./types";
+import type { ShippingOption, ShippingQuoteResult } from "./types";
 
 // Prazos nulos nunca "ganham": sem informação = infinito. Se só um dos limites
 // vier, ele vale para os dois.
@@ -77,10 +77,16 @@ export function deliveryRangeText(t: TFunction, min: number | null, max: number 
 }
 
 // Seleção depois de uma cotação nova: mantém a escolha anterior se ela ainda
-// existe; senão a mais barata. Internacional sem tabela (not_configured):
-// "a combinar". Qualquer outra indisponibilidade: nada selecionado.
+// existe; senão a mais barata. Sem opções (indisponível): nada selecionado —
+// o "a combinar" nunca é uma escolha de opção, vem do motivo da indisponibilidade.
 export function selectionAfterQuote(result: ShippingQuoteResult, previous: string | null): string | null {
-  if (result.unavailable) return result.mode === "international" ? ARRANGE_OPTION_ID : null;
-  if (previous && previous !== ARRANGE_OPTION_ID && result.options.some((o) => o.id === previous)) return previous;
+  if (result.unavailable) return null;
+  if (previous && result.options.some((o) => o.id === previous)) return previous;
   return cheapestOption(result.options)?.id ?? null;
+}
+
+// "Correios — PAC". No exterior o serviço é um nome só cadastrado pelo cliente
+// (carrier e service iguais): mostra uma vez só.
+export function optionLabel(option: Pick<ShippingOption, "carrier" | "service">): string {
+  return !option.carrier || option.carrier === option.service ? option.service : `${option.carrier} — ${option.service}`;
 }

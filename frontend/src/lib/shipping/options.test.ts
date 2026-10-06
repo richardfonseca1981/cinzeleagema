@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import type { TFunction } from "i18next";
-import { cheapestOption, deliveryRangeText, pickBadges, selectionAfterQuote } from "./options";
-import { ARRANGE_OPTION_ID, type ShippingOption, type ShippingQuoteResult } from "./types";
+import { cheapestOption, deliveryRangeText, optionLabel, pickBadges, selectionAfterQuote } from "./options";
+import type { ShippingOption, ShippingQuoteResult } from "./types";
 import { makeT } from "./testHelpers";
 
 const opt = (id: string, priceBRL: number, min: number | null, max: number | null, kind: "quoted" | "estimated" = "quoted"): ShippingOption => ({
@@ -95,14 +95,24 @@ describe("selectionAfterQuote", () => {
     expect(selectionAfterQuote(ok([opt("a", 30, 5, 8), opt("b", 20, 6, 9)]), "a")).toBe("a");
   });
 
-  it("escolha anterior que sumiu volta para a mais barata; 'a combinar' não é mantido numa cotação nova", () => {
+  it("escolha anterior que sumiu volta para a mais barata", () => {
     expect(selectionAfterQuote(ok([opt("b", 20, 6, 9)]), "x")).toBe("b");
-    expect(selectionAfterQuote(ok([opt("b", 20, 6, 9)]), ARRANGE_OPTION_ID)).toBe("b");
   });
 
-  it("indisponível: nada selecionado; internacional sem tabela: 'a combinar'", () => {
+  it("indisponível (inclusive país sem tarifa): nada selecionado — 'a combinar' não é uma opção", () => {
     expect(selectionAfterQuote(unavailable("domestic"), "a")).toBeNull();
-    expect(selectionAfterQuote(unavailable("international"), null)).toBe(ARRANGE_OPTION_ID);
+    expect(selectionAfterQuote(unavailable("international"), null)).toBeNull();
+  });
+});
+
+describe("optionLabel", () => {
+  it("Brasil: transportadora e serviço", () => {
+    expect(optionLabel({ carrier: "Correios", service: "PAC" })).toBe("Correios — PAC");
+  });
+
+  it("exterior (carrier = service): mostra o nome uma vez só", () => {
+    expect(optionLabel({ carrier: "DHL Express", service: "DHL Express" })).toBe("DHL Express");
+    expect(optionLabel({ carrier: "", service: "Aéreo" })).toBe("Aéreo");
   });
 });
 

@@ -2,18 +2,19 @@ import type { TFunction } from "i18next";
 import type { CartItem } from "../../types";
 import { formatWeightSize, localizeText } from "../format";
 import { countryName } from "./countries";
-import { deliveryRangeText } from "./options";
+import { deliveryRangeText, optionLabel } from "./options";
 import { formatRateForMessage } from "../exchangeRateQuality";
 import { computeOrderTotals, formatCents, usesDollars } from "./money";
 import { formatPostalCode } from "./postalCode";
-import { shippingAmountBRL, type MessageDestination, type ShippingSummary } from "./summary";
+import { shippingAmountBRL, type MessageDestination, type UsableShippingSummary } from "./summary";
 
 export interface WhatsAppMessageInput {
   t: TFunction;
   lang: string;
   exchangeRate: number | null;
   items: CartItem[];
-  summary: ShippingSummary;
+  // O pedido só chega aqui com frete cotado ou "a combinar" permitido.
+  summary: UsableShippingSummary;
   destination: MessageDestination | null;
   customerName: string;
   customerPhone: string;
@@ -59,23 +60,17 @@ export function buildWhatsAppMessage(input: WhatsAppMessageInput): string {
 
   if (destination) lines.push(destinationLine(t, lang, destination));
 
-  if (summary.kind === "quoted" || summary.kind === "estimated") {
+  if (summary.kind === "quoted") {
     const { option } = summary;
     const days = deliveryRangeText(t, option.deliveryDaysMin, option.deliveryDaysMax);
-    const params = {
-      carrier: option.carrier,
-      service: option.service,
-      price: money(totals.shippingCents ?? 0),
-      days: days ?? "",
-    };
-    const base = summary.kind === "estimated" ? "shippingEstimated" : "shippingQuoted";
-    lines.push(t(`checkout.whatsappMessage.${base}${days ? "WithDays" : ""}`, params));
+    const params = { service: optionLabel(option), price: money(totals.shippingCents ?? 0), days: days ?? "" };
+    // Frete definitivo: serviço, preço e prazo — nada de "a confirmar".
+    lines.push(t(days ? "checkout.whatsappMessage.shippingWithDays" : "checkout.whatsappMessage.shipping", params));
     if (summary.taxesNotIncluded) lines.push(t("checkout.whatsappMessage.taxes"));
-    lines.push(t(summary.kind === "estimated" ? "checkout.whatsappMessage.totalWithEstimatedShipping" : "checkout.whatsappMessage.totalWithShipping", { total: money(totals.totalCents) }));
+    lines.push(t("checkout.whatsappMessage.totalWithShipping", { total: money(totals.totalCents) }));
   } else {
-    const international = summary.kind !== "none" && summary.international;
-    lines.push(t(international ? "checkout.whatsappMessage.shippingInternational" : "checkout.whatsappMessage.shippingArrange"));
-    if (international) lines.push(t("checkout.whatsappMessage.taxes"));
+    lines.push(t("checkout.whatsappMessage.shippingArrange", { reason: t(`checkout.whatsappMessage.arrangeReason.${summary.reason}`) }));
+    if (summary.international) lines.push(t("checkout.whatsappMessage.taxes"));
     lines.push(t("checkout.whatsappMessage.totalWithoutShipping", { total: money(totals.totalCents) }));
   }
 

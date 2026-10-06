@@ -2,10 +2,10 @@ import { beforeAll, describe, expect, it } from "vitest";
 import type { TFunction } from "i18next";
 import type { CartItem } from "../../types";
 import { buildWhatsAppMessage } from "./whatsappMessage";
-import { destinationFor, resolveShippingSummary } from "./summary";
+import { destinationFor, resolveShippingSummary, type UsableShippingSummary } from "./summary";
 import { isRateApproximate, type RateSource } from "../exchangeRateQuality";
 import type { StoredShipping } from "./storage";
-import { ARRANGE_OPTION_ID, type ShippingOption } from "./types";
+import type { ShippingOption, ShippingUnavailableReason } from "./types";
 import { makeT } from "./testHelpers";
 
 const NOW = 1_800_000_000_000;
@@ -16,19 +16,36 @@ const items: CartItem[] = [
 
 const pac: ShippingOption = { id: "pac", carrier: "Correios", service: "PAC", priceBRL: 45, deliveryDaysMin: 5, deliveryDaysMax: 8, kind: "quoted" };
 const noDays: ShippingOption = { ...pac, id: "nd", deliveryDaysMin: null, deliveryDaysMax: null };
-const est: ShippingOption = { id: "est", carrier: "Tabela", service: "Aéreo", priceBRL: 210, deliveryDaysMin: 7, deliveryDaysMax: 15, kind: "estimated" };
+// Exterior: o cliente cadastra só o nome do serviço (carrier = service)
+const abroad: ShippingOption = { id: "intl-1", carrier: "DHL Express", service: "DHL Express", priceBRL: 210, deliveryDaysMin: 7, deliveryDaysMax: 15, kind: "quoted" };
 
-function stored(over: Partial<StoredShipping> & { options?: ShippingOption[]; mode?: "domestic" | "international"; notice?: "taxes_not_included" | null }): StoredShipping {
-  const { options = [pac], mode = "domestic", notice = null, ...rest } = over;
+function stored(over: Partial<StoredShipping> & { options?: ShippingOption[]; mode?: "domestic" | "international"; notice?: "taxes_not_included" | null; unavailable?: ShippingUnavailableReason | null } = {}): StoredShipping {
+  const { options = [pac], mode = "domestic", notice = null, unavailable = null, ...rest } = over;
   return {
-    version: 1, country: "BR", postalCode: "01001000", city: "São Paulo", state: "SP",
+    version: 2, country: "BR", postalCode: "01001000", city: "São Paulo", state: "SP",
     quote: {
-      result: { destination: { country: "BR", postalCode: "01001000", city: "São Paulo", state: "SP" }, mode, options, requiresConfirmation: mode === "international", notice, unavailable: null },
+      result: {
+        destination: { country: "BR", postalCode: "01001000", city: "São Paulo", state: "SP" },
+        mode, options: unavailable ? [] : options, requiresConfirmation: false, notice,
+        unavailable: unavailable ? { reason: unavailable } : null,
+      },
       signature: "sig", savedAt: NOW,
     },
-    selection: options[0]?.id ?? null,
+    selection: unavailable ? null : options[0]?.id ?? null,
+    arrangeChoice: null,
     ...rest,
   };
+}
+const intl = (over: Parameters<typeof stored>[0] = {}) =>
+  stored({ country: "US", postalCode: "10001", city: null, state: null, mode: "international", notice: "taxes_not_included", ...over });
+// Falha técnica em que o comprador escolheu "Fechar o pedido com frete a combinar"
+const technical = (over: Partial<StoredShipping> = {}) =>
+  stored({ quote: null, selection: null, arrangeChoice: { signature: "sig", cause: "network", chosenAt: NOW }, ...over });
+
+function usable(s: StoredShipping, sig = "sig"): UsableShippingSummary {
+  const summary = resolveShippingSummary(s, sig, NOW + 1000);
+  if (summary.kind === "none") throw new Error("sem frete utilizável neste cenário");
+  return summary;
 }
 
 let pt: TFunction;
@@ -38,8 +55,8 @@ beforeAll(async () => {
   en = await makeT("en");
 });
 
-function build(lang: "pt-BR" | "en", s: StoredShipping | null, rate: number | null = null, sig = "sig") {
-  const summary = resolveShippingSummary(s, sig, NOW + 1000);
+function build(lang: "pt-BR" | "en", s: StoredShipping, rate: number | null = null) {
+  const summary = usable(s);
   // toLocaleString usa espaço não separável após "R$": normaliza para comparar.
   return normalizeSpaces(
     buildWhatsAppMessage({
@@ -49,8 +66,10 @@ function build(lang: "pt-BR" | "en", s: StoredShipping | null, rate: number | nu
   );
 }
 
+const NO_ESTIMATE = /estimad|estimate|prévia|preview|\ba confirmar\b|to be confirmed/i;
+
 describe("mensagem do WhatsApp — português (valores em R$)", () => {
-  it("frete cotado: destino, serviço com preço e prazo, e o total", () => {
+  it("Brasil cotado: destino, serviço, preço e prazo, e o total — sem 'a confirmar'", () => {
     const msg = build("pt-BR", stored({}));
     expect(msg.split("\n")).toEqual([
       "Olá! Gostaria de fazer um pedido:",
@@ -58,71 +77,76 @@ describe("mensagem do WhatsApp — português (valores em R$)", () => {
       "• 1x Quartzo — R$ 50,00",
       "Subtotal: R$ 250,00",
       "Destino: Brasil, CEP 01001-000 — São Paulo, SP",
-      "Frete: Correios — PAC: R$ 45,00 (5 a 8 dias)",
+      "Frete: Correios — PAC, R$ 45,00, 5 a 8 dias",
       "Total (produtos + frete): R$ 295,00",
       "Nome: Maria",
       "Telefone: +5514988095356",
     ]);
+    expect(msg).not.toMatch(NO_ESTIMATE);
+    expect(msg).not.toMatch(/Impostos/);
   });
 
-  it("frete cotado sem prazo: omite os parênteses", () => {
+  it("frete cotado sem prazo: omite a vírgula e o prazo", () => {
     const msg = build("pt-BR", stored({ options: [noDays] }));
-    expect(msg).toContain("Frete: Correios — PAC: R$ 45,00\n");
-    expect(msg).not.toContain("()");
+    expect(msg).toContain("Frete: Correios — PAC, R$ 45,00\n");
+    expect(msg).not.toMatch(/R\$ 45,00,/);
   });
 
-  it("frete estimado: 'a confirmar pelo atendimento', total estimado, sem impostos (destino nacional)", () => {
-    const msg = build("pt-BR", stored({ options: [est] }));
-    expect(msg).toContain("Frete estimado, a confirmar pelo atendimento: Tabela — Aéreo: R$ 210,00 (7 a 15 dias)");
-    expect(msg).toContain("Total estimado (produtos + frete estimado): R$ 460,00");
-    expect(msg).not.toMatch(/Impostos/);
-  });
-
-  it("a combinar (escolha do comprador)", () => {
-    const msg = build("pt-BR", stored({ selection: ARRANGE_OPTION_ID }));
-    expect(msg).toContain("Frete: a combinar pelo atendimento");
-    expect(msg).toContain("Total estimado (sem frete): R$ 250,00");
-    expect(msg).toContain("Destino: Brasil, CEP 01001-000 — São Paulo, SP");
-    expect(msg).not.toMatch(/Impostos/);
-  });
-
-  it("sem calcular nada (o frete nunca bloqueia): a combinar e sem linha de destino", () => {
-    const msg = build("pt-BR", null);
-    expect(msg).toContain("Frete: a combinar pelo atendimento");
-    expect(msg).not.toMatch(/Destino/);
-  });
-
-  it("cotação vencida: não usa o preço antigo, vira 'a combinar'", () => {
-    const msg = build("pt-BR", stored({}), null, "outra-assinatura");
-    expect(msg).toContain("Frete: a combinar pelo atendimento");
-    expect(msg).not.toContain("R$ 45,00");
-    expect(msg).toContain("Total estimado (sem frete): R$ 250,00");
-  });
-
-  it("destino internacional: frete estimado a confirmar + impostos de importação não incluídos", () => {
-    const msg = build("pt-BR", stored({ country: "US", postalCode: "10001", city: null, state: null, selection: ARRANGE_OPTION_ID, mode: "international", notice: "taxes_not_included" }));
+  it("exterior cotado: serviço da tabela, preço, prazo, impostos de importação não incluídos, sem 'a confirmar'", () => {
+    const msg = build("pt-BR", intl({ options: [abroad] }));
     expect(msg).toContain("Destino: Estados Unidos, código postal 10001");
-    expect(msg).toContain("Frete estimado, a confirmar pelo atendimento\n");
+    expect(msg).toContain("Frete: DHL Express, R$ 210,00, 7 a 15 dias\n");
     expect(msg).toContain("Impostos de importação não incluídos");
-    expect(msg).toContain("Total estimado (sem frete): R$ 250,00");
+    expect(msg).toContain("Total (produtos + frete): R$ 460,00");
+    expect(msg).not.toMatch(NO_ESTIMATE);
   });
 
-  it("internacional sem código postal: só o país", () => {
-    const msg = build("pt-BR", stored({ country: "PT", postalCode: "", city: null, state: null, selection: ARRANGE_OPTION_ID }));
+  it.each([
+    ["over_limits", "peça ou pedido grande demais para a embalagem padrão"],
+    ["incomplete_product_data", "falta peso ou medida de uma peça"],
+  ] as const)("a combinar por %s (Brasil): motivo curto, total sem frete, sem impostos", (reason, short) => {
+    const msg = build("pt-BR", stored({ unavailable: reason }));
+    expect(msg).toContain(`Frete: a combinar pelo atendimento (${short})`);
+    expect(msg).toContain("Total (sem frete): R$ 250,00");
+    expect(msg).toContain("Destino: Brasil, CEP 01001-000 — São Paulo, SP");
+    expect(msg).not.toMatch(/Impostos|Total estimado/);
+  });
+
+  it("país sem tarifa (no_rates_configured): a combinar + impostos de importação não incluídos", () => {
+    const msg = build("pt-BR", intl({ unavailable: "no_rates_configured" }));
+    expect(msg).toContain("Frete: a combinar pelo atendimento (sem tabela de frete para este país)");
+    expect(msg).toContain("Impostos de importação não incluídos");
+    expect(msg).toContain("Total (sem frete): R$ 250,00");
+    expect(msg).toContain("Destino: Estados Unidos, código postal 10001");
+  });
+
+  it("over_limits no exterior também leva o aviso de impostos", () => {
+    expect(build("pt-BR", intl({ unavailable: "over_limits" }))).toContain("Impostos de importação não incluídos");
+  });
+
+  it("a combinar escolhido pelo comprador depois de uma falha técnica", () => {
+    const msg = build("pt-BR", technical());
+    expect(msg).toContain("Frete: a combinar pelo atendimento (cálculo automático indisponível no momento)");
+    expect(msg).toContain("Total (sem frete): R$ 250,00");
+    expect(msg).toContain("Destino: Brasil, CEP 01001-000 — São Paulo, SP");
+  });
+
+  it("exterior sem código postal: só o país", () => {
+    const msg = build("pt-BR", intl({ country: "PT", postalCode: "", unavailable: "no_rates_configured" }));
     expect(msg).toContain("Destino: Portugal\n");
   });
 
-  it("internacional com opção estimada: preço, 'a confirmar' e impostos", () => {
-    const msg = build("pt-BR", stored({ country: "US", postalCode: "10001", city: null, state: null, options: [est], mode: "international", notice: "taxes_not_included" }));
-    expect(msg).toContain("Frete estimado, a confirmar pelo atendimento: Tabela — Aéreo: R$ 210,00");
-    expect(msg).toContain("Impostos de importação não incluídos");
+  it("nenhuma variação usa 'Total estimado' nem 'estimativa'", () => {
+    for (const s of [stored({}), intl({ options: [abroad] }), stored({ unavailable: "over_limits" }), technical()]) {
+      expect(build("pt-BR", s)).not.toMatch(/Total estimado|estimativa|estimado/i);
+    }
   });
 });
 
 describe("mensagem do WhatsApp — inglês (valores em dólar pela cotação do dia)", () => {
   const RATE = 5;
 
-  it("frete cotado: tudo em dólar, destino e prazo em inglês", () => {
+  it("Brasil cotado: tudo em dólar, destino e prazo em inglês", () => {
     const msg = build("en", stored({}), RATE);
     expect(msg.split("\n")).toEqual([
       "Hi! I'd like to place an order:",
@@ -130,32 +154,53 @@ describe("mensagem do WhatsApp — inglês (valores em dólar pela cotação do 
       "• 1x Quartzo — $10.00",
       "Subtotal: $50.00",
       "Destination: Brazil, postal code 01001-000 — São Paulo, SP",
-      "Shipping: Correios — PAC: $9.00 (5 to 8 days)",
+      "Shipping: Correios — PAC, $9.00, 5 to 8 days",
       "Total (products + shipping): $59.00",
       "Name: Maria",
       "Phone: +5514988095356",
       "",
       "Exchange rate used: US$ 1 = R$ 5.00 (rate of the day)",
     ]);
+    expect(msg).not.toMatch(NO_ESTIMATE);
   });
 
   it("os valores em dólar da mensagem somam (subtotal + frete = total)", () => {
     const msg = build("en", stored({}), 5.37);
     const money = (label: RegExp) => Number(msg.match(label)![1].replace(/[$,]/g, ""));
     const subtotal = money(/Subtotal: (\$[\d,.]+)/);
-    const shipping = money(/Correios — PAC: (\$[\d,.]+)/);
+    const shipping = money(/Correios — PAC, (\$[\d,.]+)/);
     const total = money(/Total \(products \+ shipping\): (\$[\d,.]+)/);
     expect(Math.round((subtotal + shipping) * 100)).toBe(Math.round(total * 100));
   });
 
-  it("estimado, a combinar e internacional em inglês", () => {
-    expect(build("en", stored({ options: [est] }), RATE)).toContain("Estimated shipping, to be confirmed by our team: Tabela — Aéreo: $42.00 (7 to 15 days)");
-    expect(build("en", stored({ selection: ARRANGE_OPTION_ID }), RATE)).toContain("Shipping: to be arranged with our team");
-    const intl = build("en", stored({ country: "US", postalCode: "10001", city: null, state: null, selection: ARRANGE_OPTION_ID, mode: "international", notice: "taxes_not_included" }), RATE);
-    expect(intl).toContain("Destination: United States, postal code 10001");
-    expect(intl).toContain("Estimated shipping, to be confirmed by our team\n");
-    expect(intl).toContain("Import taxes not included");
-    expect(intl).toContain("Estimated total (without shipping): $50.00");
+  it("exterior cotado em inglês: serviço, preço, prazo e aviso de impostos", () => {
+    const msg = build("en", intl({ options: [abroad] }), RATE);
+    expect(msg).toContain("Destination: United States, postal code 10001");
+    expect(msg).toContain("Shipping: DHL Express, $42.00, 7 to 15 days\n");
+    expect(msg).toContain("Import taxes not included");
+    expect(msg).toContain("Total (products + shipping): $92.00");
+    expect(msg).not.toMatch(NO_ESTIMATE);
+  });
+
+  it.each([
+    ["over_limits", "piece or order too large for the standard packaging"],
+    ["incomplete_product_data", "weight or size of a piece is missing"],
+  ] as const)("a combinar por %s em inglês", (reason, short) => {
+    const msg = build("en", stored({ unavailable: reason }), RATE);
+    expect(msg).toContain(`Shipping: to be arranged with our team (${short})`);
+    expect(msg).toContain("Total (excluding shipping): $50.00");
+    expect(msg).not.toMatch(/Import taxes|Estimated total/);
+  });
+
+  it("país sem tarifa em inglês: a combinar + impostos", () => {
+    const msg = build("en", intl({ unavailable: "no_rates_configured" }), RATE);
+    expect(msg).toContain("Shipping: to be arranged with our team (no shipping table for this country)");
+    expect(msg).toContain("Import taxes not included");
+    expect(msg).toContain("Total (excluding shipping): $50.00");
+  });
+
+  it("escolha após falha técnica, em inglês", () => {
+    expect(build("en", technical(), RATE)).toContain("Shipping: to be arranged with our team (automatic calculation unavailable at the moment)");
   });
 
   it("sem cotação do dólar disponível, cai para Real (mesma regra do resto do site)", () => {
@@ -165,8 +210,8 @@ describe("mensagem do WhatsApp — inglês (valores em dólar pela cotação do 
 });
 
 // Constrói a mensagem já normalizada, com opções extras (rateApproximate).
-function buildWith(lang: "pt-BR" | "en", s: StoredShipping | null, rate: number | null, extra: { rateApproximate?: boolean } = {}) {
-  const summary = resolveShippingSummary(s, "sig", NOW + 1000);
+function buildWith(lang: "pt-BR" | "en", s: StoredShipping, rate: number | null, extra: { rateApproximate?: boolean } = {}) {
+  const summary = usable(s);
   return normalizeSpaces(
     buildWhatsAppMessage({
       t: lang === "en" ? en : pt, lang, exchangeRate: rate, items, summary,
@@ -235,7 +280,7 @@ describe("linha informativa da cotação (só em inglês, só com conversão apl
     expect(msg).toContain("• 2x Emerald (2g · 1cm) — $37.24");
     expect(msg).toContain("• 1x Quartzo — $9.31");
     expect(msg).toContain("Subtotal: $46.55");
-    expect(msg).toContain("Correios — PAC: $8.38");
+    expect(msg).toContain("Correios — PAC, $8.38");
     const shown = Number(msg.split("\n").at(-1)!.match(/R\$ ([\d.]+) \(/)![1]);
     expect(shown).toBe(5.37);
     // refazendo as contas com o número que aparece na linha, saem os MESMOS valores
@@ -251,23 +296,20 @@ describe("linha informativa da cotação (só em inglês, só com conversão apl
     expect(msg.split("\n").at(-1)).toBe(LINE("5.32"));
   });
 
-  it("vale para qualquer mensagem em inglês: cotado, estimado, a combinar, internacional, vencido e sem frete", () => {
-    const cases: Array<[string, StoredShipping | null, string]> = [
-      ["cotado", stored({}), "sig"],
-      ["estimado", stored({ options: [est] }), "sig"],
-      ["a combinar", stored({ selection: ARRANGE_OPTION_ID }), "sig"],
-      ["internacional", stored({ country: "US", postalCode: "10001", city: null, state: null, selection: ARRANGE_OPTION_ID, mode: "international", notice: "taxes_not_included" }), "sig"],
-      ["sem frete calculado", null, "sig"],
+  it("vale para qualquer mensagem em inglês: cotado, a combinar (cada motivo), internacional e escolha após falha", () => {
+    const cases: Array<[string, StoredShipping]> = [
+      ["cotado", stored({})],
+      ["cotado no exterior", intl({ options: [abroad] })],
+      ["over_limits", stored({ unavailable: "over_limits" })],
+      ["país sem tarifa", intl({ unavailable: "no_rates_configured" })],
+      ["produto incompleto", stored({ unavailable: "incomplete_product_data" })],
+      ["a combinar após falha técnica", technical()],
     ];
-    for (const [label, s] of cases.map(([l, st]) => [l, st] as const)) {
+    for (const [label, s] of cases) {
       const lines = buildWith("en", s, 5.32).split("\n");
       expect(lines.at(-1), label).toBe(LINE("5.32"));
       expect(lines.at(-2), label).toBe("");
     }
-    // cotação vencida (assinatura diferente) também
-    const staleSummary = resolveShippingSummary(stored({}), "outra", NOW + 1000);
-    const msg = normalizeSpaces(buildWhatsAppMessage({ t: en, lang: "en", exchangeRate: 5.32, items, summary: staleSummary, destination: destinationFor(stored({}), staleSummary), customerName: "Maria", customerPhone: "+55" }));
-    expect(msg.split("\n").at(-1)).toBe(LINE("5.32"));
   });
 
   it("a linha é só informativa: os valores da mensagem são idênticos com ou sem 'rateApproximate'", () => {

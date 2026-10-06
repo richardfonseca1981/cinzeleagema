@@ -278,6 +278,35 @@ describe("POST /api/shipping/quote — cache de 10 minutos", () => {
     expect(fetchMock.mock.calls.length).toBe(callsAfterFirst);
     expect(second.body).toEqual(first.body);
   });
+
+  it("falha técnica (provider_error) NÃO fica em cache: tentar de novo consulta de novo e pode funcionar", async () => {
+    configureMelhorEnvio();
+    const product = await createProduct();
+    const body = { country: "BR", postalCode: "01001000", items: [{ productId: product.id, quantity: 1 }] };
+
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("Melhor Envio fora do ar")));
+    const failed = await request(app).post("/api/shipping/quote").send(body);
+    expect(failed.body.unavailable).toEqual({ reason: "provider_error" });
+
+    mockExternalFetch();
+    const retried = await request(app).post("/api/shipping/quote").send(body);
+    expect(retried.body.unavailable).toBeNull();
+    expect(retried.body.options).toHaveLength(1);
+  });
+
+  it("not_configured também não fica em cache", async () => {
+    clearMelhorEnvioConfig();
+    const product = await createProduct();
+    const body = { country: "BR", postalCode: "01001000", items: [{ productId: product.id, quantity: 1 }] };
+
+    const first = await request(app).post("/api/shipping/quote").send(body);
+    expect(first.body.unavailable).toEqual({ reason: "not_configured" });
+
+    configureMelhorEnvio();
+    mockExternalFetch();
+    const second = await request(app).post("/api/shipping/quote").send(body);
+    expect(second.body.unavailable).toBeNull();
+  });
 });
 
 describe("GET /api/shipping/postal-code/:code", () => {

@@ -52,6 +52,15 @@ export function buildInternationalResult(
   };
 }
 
+// Falha técnica nunca entra no cache: o comprador toca em "Tentar de novo" e
+// precisa de uma consulta nova, não da mesma falha por mais 10 minutos.
+const TECHNICAL_FAILURES: ReadonlySet<ShippingUnavailableReason> = new Set(["provider_error", "not_configured"]);
+
+function cacheQuote(key: string, result: ShippingQuoteResult): void {
+  if (result.unavailable && TECHNICAL_FAILURES.has(result.unavailable.reason)) return;
+  setCachedQuote(key, result);
+}
+
 export async function getShippingQuote(
   country: string,
   postalCode: string,
@@ -95,14 +104,14 @@ export async function getShippingQuote(
       getShipmentConfig(env)
     );
     const result = buildInternationalResult(country, postalCode, providerResult);
-    setCachedQuote(cacheKey, result);
+    cacheQuote(cacheKey, result);
     return result;
   }
 
   const computed = computeShipment(shipmentItems, getShipmentConfig(env));
   if (!computed.ok) {
     const result = buildUnavailableResult(country, postalCode, computed.reason);
-    setCachedQuote(cacheKey, result);
+    cacheQuote(cacheKey, result);
     return result;
   }
 
@@ -114,7 +123,7 @@ export async function getShippingQuote(
 
   if (!provider || !env.SHIPPING_ORIGIN_CEP) {
     const result = buildUnavailableResult(country, postalCode, "not_configured");
-    setCachedQuote(cacheKey, result);
+    cacheQuote(cacheKey, result);
     return result;
   }
 
@@ -138,6 +147,6 @@ export async function getShippingQuote(
       }
     : buildUnavailableResult(country, postalCode, providerResult.reason, destinationInfo.city, destinationInfo.state);
 
-  setCachedQuote(cacheKey, result);
+  cacheQuote(cacheKey, result);
   return result;
 }
