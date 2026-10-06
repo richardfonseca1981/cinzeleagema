@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import type { ShippingStatus } from "../types";
+import { InternationalShipping } from "../components/shippingAdmin/InternationalShipping";
 
 function StatusBadge({ ok }: { ok: boolean }) {
   return (
@@ -14,9 +15,9 @@ function StatusBadge({ ok }: { ok: boolean }) {
   );
 }
 
-// Página somente leitura — nunca exibe valores de variáveis de ambiente, só
-// se estão configuradas. A seção "Internacional" fica pronta para a Parte
-// 1B (frete internacional) preencher.
+// Seção nacional somente leitura — nunca exibe valores de variáveis de
+// ambiente, só se estão configuradas. A seção "Frete internacional" é a tabela
+// que o cliente cadastra (zonas, países e faixas de peso).
 export function Shipping() {
   const [status, setStatus] = useState<ShippingStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -93,10 +94,7 @@ export function Shipping() {
             </ul>
           </section>
 
-          <section className="rounded-lg border border-[#E2E8F0] bg-white p-6 opacity-60">
-            <h2 className="mb-1 text-sm font-semibold text-[#1A1A1A]">Internacional</h2>
-            <p className="text-xs text-[#64748B]">Ainda não implementado — chega em uma próxima etapa.</p>
-          </section>
+          <InternationalShipping />
         </div>
       )}
     </div>

@@ -150,8 +150,8 @@ export interface CreateOrderResult {
 }
 
 // GET /api/shipping/status (admin, somente leitura) — nunca traz valores de
-// variáveis, só se estão configuradas. `international` fica null até a
-// Parte 1B (frete internacional) implementar essa seção.
+// variáveis, só se estão configuradas. `international` resume a tabela do
+// frete internacional (cadastro em /api/admin/shipping).
 export interface ShippingStatus {
   domestic: {
     melhorEnvioTokenConfigured: boolean;
@@ -162,5 +162,31 @@ export interface ShippingStatus {
     maxItemSizeCm: number;
     boxFillFactor: number;
   };
-  international: null;
+  international: { zones: number; activeZones: number; activeCountries: number };
+}
+
+// Frete internacional por tabela (admin): /api/admin/shipping.
+export interface AdminShippingRate {
+  id: string;
+  zoneId: string;
+  serviceName: string;
+  maxWeightG: number;
+  priceBRL: number;
+  deliveryDaysMin: number | null;
+  deliveryDaysMax: number | null;
+  active: boolean;
+}
+
+export interface AdminShippingZone {
+  id: string;
+  name: string;
+  countries: string[];
+  active: boolean;
+  position: number;
+  rates: AdminShippingRate[];
+}
+
+export interface AdminShippingSimulation {
+  weightGrams: number;
+  result: import("../lib/shipping/types").ShippingQuoteResult;
 }
