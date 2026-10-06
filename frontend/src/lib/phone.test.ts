@@ -3,7 +3,7 @@ import { normalizePhone, sanitizePhoneInput } from "./phone";
 
 describe("normalizePhone", () => {
   it("normalizes a Brazilian number without '+' by adding +55", () => {
-    expect(normalizePhone("14988095356")).toBe("+5514988095356");
+    expect(normalizePhone("11999990000")).toBe("+5511999990000");
   });
 
   it("accepts an 8-digit (no 9) Brazilian number too", () => {
@@ -11,7 +11,7 @@ describe("normalizePhone", () => {
   });
 
   it("keeps an already-complete +55 number unchanged", () => {
-    expect(normalizePhone("+5514988095356")).toBe("+5514988095356");
+    expect(normalizePhone("+5511999990000")).toBe("+5511999990000");
   });
 
   it("keeps an international number unchanged, without adding +55", () => {
@@ -19,7 +19,7 @@ describe("normalizePhone", () => {
   });
 
   it("strips formatting punctuation before validating", () => {
-    expect(normalizePhone("(14) 98809-5356")).toBe("+5514988095356");
+    expect(normalizePhone("(11) 99999-0000")).toBe("+5511999990000");
     expect(normalizePhone("+1 (415) 555-2671")).toBe("+14155552671");
   });
 
@@ -34,7 +34,7 @@ describe("normalizePhone", () => {
 
 describe("sanitizePhoneInput", () => {
   it("keeps digits, spaces, parentheses and hyphens", () => {
-    expect(sanitizePhoneInput("(14) 98809-5356")).toBe("(14) 98809-5356");
+    expect(sanitizePhoneInput("(11) 99999-0000")).toBe("(11) 99999-0000");
   });
 
   it("keeps a leading '+' but strips letters", () => {
@@ -42,6 +42,6 @@ describe("sanitizePhoneInput", () => {
   });
 
   it("drops a '+' typed anywhere other than the start", () => {
-    expect(sanitizePhoneInput("14+988095356")).toBe("14988095356");
+    expect(sanitizePhoneInput("11+999990000")).toBe("11999990000");
   });
 });
