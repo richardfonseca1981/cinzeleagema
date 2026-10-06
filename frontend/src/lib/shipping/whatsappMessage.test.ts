@@ -61,7 +61,7 @@ function build(lang: "pt-BR" | "en", s: StoredShipping, rate: number | null = nu
   return normalizeSpaces(
     buildWhatsAppMessage({
       t: lang === "en" ? en : pt, lang, exchangeRate: rate, items, summary,
-      destination: destinationFor(s, summary), customerName: "Maria", customerPhone: "+5514988095356",
+      destination: destinationFor(s, summary), customerName: "Maria", customerPhone: "+5511999990000",
     })
   );
 }
@@ -80,7 +80,7 @@ describe("mensagem do WhatsApp — português (valores em R$)", () => {
       "Frete: Correios — PAC, R$ 45,00, 5 a 8 dias",
       "Total (produtos + frete): R$ 295,00",
       "Nome: Maria",
-      "Telefone: +5514988095356",
+      "Telefone: +5511999990000",
     ]);
     expect(msg).not.toMatch(NO_ESTIMATE);
     expect(msg).not.toMatch(/Impostos/);
@@ -157,7 +157,7 @@ describe("mensagem do WhatsApp — inglês (valores em dólar pela cotação do 
       "Shipping: Correios — PAC, $9.00, 5 to 8 days",
       "Total (products + shipping): $59.00",
       "Name: Maria",
-      "Phone: +5514988095356",
+      "Phone: +5511999990000",
       "",
       "Exchange rate used: US$ 1 = R$ 5.00 (rate of the day)",
     ]);
@@ -215,7 +215,7 @@ function buildWith(lang: "pt-BR" | "en", s: StoredShipping, rate: number | null,
   return normalizeSpaces(
     buildWhatsAppMessage({
       t: lang === "en" ? en : pt, lang, exchangeRate: rate, items, summary,
-      destination: destinationFor(s, summary), customerName: "Maria", customerPhone: "+5514988095356", ...extra,
+      destination: destinationFor(s, summary), customerName: "Maria", customerPhone: "+5511999990000", ...extra,
     })
   );
 }
@@ -227,7 +227,7 @@ describe("linha informativa da cotação (só em inglês, só com conversão apl
     const lines = buildWith("en", stored({}), 5.32).split("\n");
     expect(lines.at(-1)).toBe(LINE("5.32"));
     expect(lines.at(-2)).toBe("");
-    expect(lines.at(-3)).toBe("Phone: +5514988095356");
+    expect(lines.at(-3)).toBe("Phone: +5511999990000");
     expect(lines.filter((l) => l.startsWith("Exchange rate used"))).toHaveLength(1);
   });
 
@@ -242,7 +242,7 @@ describe("linha informativa da cotação (só em inglês, só com conversão apl
   it("português: nenhuma menção a dólar ou cotação, mesmo com cotação disponível", () => {
     const msg = buildWith("pt-BR", stored({}), 5.32);
     expect(msg).not.toMatch(/US\$|(?<!R)\$\s?\d|dólar|dolar|cota[cç]ão|exchange/i); // "R$" é o esperado; dólar não
-    expect(msg.split("\n").at(-1)).toBe("Telefone: +5514988095356");
+    expect(msg.split("\n").at(-1)).toBe("Telefone: +5511999990000");
     expect(msg).toMatch(/Subtotal: R\$ 250,00/);
   });
 
