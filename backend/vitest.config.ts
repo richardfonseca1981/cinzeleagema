@@ -9,7 +9,7 @@ export default defineConfig({
     // dependem do microserviço rembg no ar — só rodam via `npm run test:integration`
     // (ver vitest.integration.config.ts), nunca no `npm run test` padrão.
     exclude: [...configDefaults.exclude, "tests/**/*.integration.test.ts"],
-    setupFiles: ["tests/setup.ts"],
+    setupFiles: ["tests/setup.ts", "tests/setupNoAnthropic.ts"],
     fileParallelism: false,
     hookTimeout: 30000,
     testTimeout: 30000,

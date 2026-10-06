@@ -34,6 +34,11 @@ async function makeTestImage(): Promise<Buffer> {
     .toBuffer();
 }
 
+// O setup padrão zera ANTHROPIC_API_KEY (nenhum teste chama a API real). Aqui a
+// interpretação é mockada, mas a rota ainda exige "IA configurada": usa uma
+// chave FALSA, que nunca sai do processo porque interpretPhotoInstruction é mock.
+env.ANTHROPIC_API_KEY = "chave-falsa-de-teste";
+
 const app = createApp();
 const token = generateTestToken();
 

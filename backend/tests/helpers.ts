@@ -3,6 +3,8 @@ import { prisma } from "../src/lib/prisma";
 import { env } from "../src/lib/env";
 
 export async function cleanDatabase() {
+  await prisma.shippingRate.deleteMany();
+  await prisma.shippingZone.deleteMany();
   await prisma.productImage.deleteMany();
   await prisma.product.deleteMany();
   await prisma.subcategory.deleteMany();

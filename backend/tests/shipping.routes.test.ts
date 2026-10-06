@@ -172,25 +172,27 @@ describe("POST /api/shipping/quote — produto", () => {
   });
 });
 
-describe("POST /api/shipping/quote — frete internacional (Parte 1B pendente)", () => {
-  it("aceita país diferente de BR SEM código postal (opcional fora do Brasil)", async () => {
+describe("POST /api/shipping/quote — fora do Brasil (tabela do cliente)", () => {
+  it("aceita país diferente de BR SEM código postal (opcional fora do Brasil); sem tabela: a combinar", async () => {
+    const product = await createProduct();
     const res = await request(app)
       .post("/api/shipping/quote")
-      .send({ country: "US", items: [{ productId: "qualquer", quantity: 1 }] });
+      .send({ country: "US", items: [{ productId: product.id, quantity: 1 }] });
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
       mode: "international",
-      requiresConfirmation: true,
+      requiresConfirmation: false,
       notice: "taxes_not_included",
-      unavailable: { reason: "not_configured" },
+      unavailable: { reason: "no_rates_configured" },
     });
   });
 
   it("aceita país diferente de BR com código postal vazio", async () => {
+    const product = await createProduct();
     const res = await request(app)
       .post("/api/shipping/quote")
-      .send({ country: "PT", postalCode: "", items: [{ productId: "qualquer", quantity: 1 }] });
+      .send({ country: "PT", postalCode: "", items: [{ productId: product.id, quantity: 1 }] });
     expect(res.status).toBe(200);
     expect(res.body.mode).toBe("international");
   });
@@ -206,21 +208,22 @@ describe("POST /api/shipping/quote — frete internacional (Parte 1B pendente)",
     }
   });
 
-  it("responde indisponível sem chamar nenhum provedor para país diferente de BR", async () => {
+  it("não chama a Melhor Envio nem o ViaCEP para país diferente de BR", async () => {
     configureMelhorEnvio();
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
+    const product = await createProduct();
 
     const res = await request(app)
       .post("/api/shipping/quote")
-      .send({ country: "US", postalCode: "10001", items: [{ productId: "qualquer", quantity: 1 }] });
+      .send({ country: "US", postalCode: "10001", items: [{ productId: product.id, quantity: 1 }] });
 
     expect(res.status).toBe(200);
     expect(res.body.mode).toBe("international");
     expect(res.body.options).toEqual([]);
-    expect(res.body.requiresConfirmation).toBe(true);
+    expect(res.body.requiresConfirmation).toBe(false);
     expect(res.body.notice).toBe("taxes_not_included");
-    expect(res.body.unavailable).toEqual({ reason: "not_configured" });
+    expect(res.body.unavailable).toEqual({ reason: "no_rates_configured" });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });

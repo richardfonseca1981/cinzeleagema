@@ -1,7 +1,10 @@
 // Contrato compartilhado entre qualquer ShippingProvider (nacional ou
 // internacional) e o endpoint público POST /api/shipping/quote. Não depende
-// de env/prisma/fetch — só tipos, para a Parte 1B (frete internacional)
-// poder implementar um novo provider sem alterar nada aqui.
+// de env/prisma/fetch — só tipos.
+//
+// Frete DEFINITIVO (decisão do cliente): todo valor devolvido por um provedor
+// (Melhor Envio no Brasil, tabela cadastrada no exterior) é o valor final do
+// pedido. Nenhum provedor devolve "estimativa".
 
 export type ShippingUnavailableReason =
   | "provider_error"
@@ -18,6 +21,8 @@ export interface ShippingOption {
   priceBRL: number;
   deliveryDaysMin: number | null;
   deliveryDaysMax: number | null;
+  // Sempre "quoted" (valor definitivo). "estimated" não é mais emitido por
+  // nenhum provedor; o valor continua no contrato só por compatibilidade.
   kind: "quoted" | "estimated";
 }
 
@@ -39,14 +44,17 @@ export interface ShippingShipment {
 export interface ShippingCalculationInput {
   originPostalCode: string;
   destinationPostalCode: string;
+  // País de destino (ISO alpha-2). Opcional: o provedor nacional não usa; o
+  // internacional (tabela) precisa dele para achar a zona.
+  destinationCountry?: string;
   shipment: ShippingShipment;
 }
 
 export type ShippingProviderResult = { ok: true; options: ShippingOption[] } | { ok: false; reason: ShippingUnavailableReason };
 
-// Implementado por MelhorEnvioProvider (nacional, Parte 1A) e, futuramente,
-// por um provider internacional (Parte 1B) — o endpoint e o contrato de
-// resposta da API pública não mudam entre eles.
+// Implementado por MelhorEnvioProvider (nacional) e InternationalTableProvider
+// (exterior, tabela do cliente) — o endpoint e o contrato de resposta da API
+// pública não mudam entre eles.
 export interface ShippingProvider {
   calculate(input: ShippingCalculationInput): Promise<ShippingProviderResult>;
 }
@@ -58,7 +66,10 @@ export interface ShippingQuoteResult {
   destination: { country: string; postalCode: string; city: string | null; state: string | null };
   mode: "domestic" | "international";
   options: ShippingOption[];
+  // Sempre false desde que o frete é definitivo (campo mantido no contrato).
   requiresConfirmation: boolean;
+  // "taxes_not_included": em TODO destino fora do Brasil (inclusive quando
+  // indisponível) — nenhum cálculo cobre impostos de importação.
   notice: "taxes_not_included" | null;
   unavailable: null | { reason: ShippingUnavailableReason };
 }

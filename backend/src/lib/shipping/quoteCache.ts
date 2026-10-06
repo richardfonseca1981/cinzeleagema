@@ -1,6 +1,9 @@
 import type { ShippingQuoteResult } from "./types";
 
-const CACHE_TTL_MS = 10 * 60 * 1000;
+// Validade da cotação. O frontend usa o MESMO valor e o MESMO nome
+// (QUOTE_CACHE_TTL_MS em frontend/src/lib/shipping/storage.ts): uma cotação
+// só vale como frete definitivo por 10 minutos.
+export const QUOTE_CACHE_TTL_MS = 10 * 60 * 1000;
 
 interface CacheEntry {
   result: ShippingQuoteResult;
@@ -36,7 +39,15 @@ export function getCachedQuote(key: string): ShippingQuoteResult | null {
 }
 
 export function setCachedQuote(key: string, result: ShippingQuoteResult): void {
-  store.set(key, { result, expiresAt: Date.now() + CACHE_TTL_MS });
+  store.set(key, { result, expiresAt: Date.now() + QUOTE_CACHE_TTL_MS });
+}
+
+// Zonas/tarifas internacionais mudaram no admin: descarta as cotações
+// internacionais em cache (as do Brasil não dependem da tabela).
+export function clearInternationalQuoteCache(): void {
+  for (const [key, entry] of store) {
+    if (entry.result.mode === "international") store.delete(key);
+  }
 }
 
 // Exposto só para os testes resetarem o estado do módulo entre casos.

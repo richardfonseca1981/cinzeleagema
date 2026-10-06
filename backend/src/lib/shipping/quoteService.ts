@@ -5,43 +5,50 @@ import { computeShipment, getShipmentConfig, type ShipmentItem } from "./shipmen
 import { createMelhorEnvioProviderFromEnv } from "./melhorEnvioProvider";
 import { buildQuoteCacheKey, getCachedQuote, setCachedQuote } from "./quoteCache";
 import { lookupPostalCode } from "./viaCep";
-import type { ShippingQuoteResult, ShippingUnavailableReason } from "./types";
+import { InternationalTableProvider } from "./internationalProvider";
+import type { ShippingProviderResult, ShippingQuoteResult, ShippingUnavailableReason } from "./types";
 
 export interface ShippingQuoteRequestItem {
   productId: string;
   quantity: number;
 }
 
-function buildUnavailableResult(
+// Todo destino fora do Brasil é "international" e leva o aviso de impostos de
+// importação — inclusive quando o frete fica indisponível/"a combinar".
+export function buildUnavailableResult(
   country: string,
   postalCode: string,
   reason: ShippingUnavailableReason,
   city: string | null = null,
   state: string | null = null
 ): ShippingQuoteResult {
+  const international = country !== "BR";
   return {
     destination: { country, postalCode, city, state },
-    mode: "domestic",
+    mode: international ? "international" : "domestic",
     options: [],
     requiresConfirmation: false,
-    notice: null,
+    notice: international ? "taxes_not_included" : null,
     unavailable: { reason },
   };
 }
 
-// País diferente de BR: nesta parte (1A), o frete internacional ainda não
-// foi implementado (Parte 1B) — responde indisponível sem consultar banco
-// nem qualquer provedor. O contrato de resposta já reflete o que o
-// frontend deve fazer nesse caso (avisar sobre impostos e exigir
-// confirmação manual).
-function buildInternationalPlaceholderResult(country: string, postalCode: string): ShippingQuoteResult {
+// Resposta do provedor internacional no contrato público. As opções são
+// DEFINITIVAS (requiresConfirmation sempre false) e o aviso de impostos vale
+// em qualquer resultado fora do Brasil.
+export function buildInternationalResult(
+  country: string,
+  postalCode: string,
+  providerResult: ShippingProviderResult
+): ShippingQuoteResult {
+  if (!providerResult.ok) return buildUnavailableResult(country, postalCode, providerResult.reason);
   return {
     destination: { country, postalCode, city: null, state: null },
     mode: "international",
-    options: [],
-    requiresConfirmation: true,
+    options: providerResult.options,
+    requiresConfirmation: false,
     notice: "taxes_not_included",
-    unavailable: { reason: "not_configured" },
+    unavailable: null,
   };
 }
 
@@ -53,12 +60,6 @@ export async function getShippingQuote(
   const cacheKey = buildQuoteCacheKey(country, postalCode, items);
   const cached = getCachedQuote(cacheKey);
   if (cached) return cached;
-
-  if (country !== "BR") {
-    const result = buildInternationalPlaceholderResult(country, postalCode);
-    setCachedQuote(cacheKey, result);
-    return result;
-  }
 
   // Nunca confia em peso/preço/dimensões vindos do cliente — busca tudo no
   // banco pelo productId.
@@ -75,7 +76,7 @@ export async function getShippingQuote(
   }
 
   // Campos packageLength/Width/HeightCm do produto são obsoletos: o pedido é
-  // sempre uma única caixa fixa (shipment.ts).
+  // sempre uma única caixa fixa (shipment.ts). Vale para Brasil e exterior.
   const shipmentItems: ShipmentItem[] = items.map((item) => {
     const product = productById.get(item.productId)!;
     return {
@@ -85,6 +86,18 @@ export async function getShippingQuote(
       unitPriceBRL: Number(product.price),
     };
   });
+
+  if (country !== "BR") {
+    // Fora do Brasil: tabela cadastrada pelo cliente (sem API externa).
+    const providerResult = await new InternationalTableProvider().calculateForItems(
+      country,
+      shipmentItems,
+      getShipmentConfig(env)
+    );
+    const result = buildInternationalResult(country, postalCode, providerResult);
+    setCachedQuote(cacheKey, result);
+    return result;
+  }
 
   const computed = computeShipment(shipmentItems, getShipmentConfig(env));
   if (!computed.ok) {
@@ -117,7 +130,7 @@ export async function getShippingQuote(
   const result: ShippingQuoteResult = providerResult.ok
     ? {
         destination: { country, postalCode, city: destinationInfo.city, state: destinationInfo.state },
-        mode: "domestic",
+        mode: "domestic" as const,
         options: providerResult.options,
         requiresConfirmation: false,
         notice: null,

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { env } from "../lib/env";
+import { prisma } from "../lib/prisma";
 import { requireAuth } from "../middleware/auth";
 import { createIpRateLimiter } from "../middleware/rateLimit";
 import { asyncHandler } from "../utils/asyncHandler";
@@ -51,12 +52,14 @@ shippingRouter.get(
 );
 
 // Admin, somente leitura — nunca expõe o valor de nenhuma variável, só se
-// está configurada. Estrutura pronta para a seção de frete internacional da
-// Parte 1B.
+// está configurada. `international` resume a tabela (CRUD em
+// routes/shippingAdmin.routes.ts).
 shippingRouter.get(
   "/status",
   requireAuth,
   asyncHandler(async (_req, res) => {
+    const zones = await prisma.shippingZone.findMany({ select: { active: true, countries: true } });
+    const activeZones = zones.filter((zone) => zone.active);
     const { box, packagingWeightG } = getShipmentConfig(env);
     res.json({
       domestic: {
@@ -68,7 +71,11 @@ shippingRouter.get(
         originCepConfigured: Boolean(env.SHIPPING_ORIGIN_CEP),
         sandbox: env.MELHOR_ENVIO_SANDBOX,
       },
-      international: null,
+      international: {
+        zones: zones.length,
+        activeZones: activeZones.length,
+        activeCountries: new Set(activeZones.flatMap((zone) => zone.countries)).size,
+      },
     });
   })
 );
