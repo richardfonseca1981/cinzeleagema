@@ -9,14 +9,7 @@ function baseInput(overrides: Partial<ShippingCalculationInput> = {}): ShippingC
   return {
     originPostalCode: "01001000",
     destinationPostalCode: "20040020",
-    items: [
-      {
-        productId: "produto-a",
-        quantity: 1,
-        unitPriceBRL: 100,
-        package: { lengthCm: 16, widthCm: 11, heightCm: 2, weightGrams: 300 },
-      },
-    ],
+    shipment: { box: { lengthCm: 40, widthCm: 30, heightCm: 25 }, weightGrams: 380, insuranceValueBRL: 100 },
     ...overrides,
   };
 }
@@ -37,6 +30,18 @@ afterEach(() => {
 });
 
 describe("MelhorEnvioProvider.calculate", () => {
+  it("envia um único volume com a caixa fixa, peso total e seguro somado", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => [] } as unknown as Response);
+    vi.stubGlobal("fetch", fetchMock);
+
+    await new MelhorEnvioProvider(baseConfig).calculate(baseInput());
+
+    const payload = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(payload.products).toEqual([
+      { id: "pedido", length: 40, width: 30, height: 25, weight: 0.38, insurance_value: 100, quantity: 1 },
+    ]);
+  });
+
   it("mapeia uma resposta de sucesso para o contrato de ShippingOption", async () => {
     mockFetchResolved([
       {
@@ -75,11 +80,11 @@ describe("MelhorEnvioProvider.calculate", () => {
     expect(requestInit.headers["User-Agent"]).toBe("Teste (teste@example.com)");
     const payload = JSON.parse(requestInit.body);
     expect(payload.products[0]).toEqual({
-      id: "produto-a",
-      width: 11,
-      height: 2,
-      length: 16,
-      weight: 0.3,
+      id: "pedido",
+      width: 30,
+      height: 25,
+      length: 40,
+      weight: 0.38,
       insurance_value: 100,
       quantity: 1,
     });
@@ -144,14 +149,7 @@ describe("MelhorEnvioProvider.calculate", () => {
     const provider = new MelhorEnvioProvider(baseConfig);
     const result = await provider.calculate(
       baseInput({
-        items: [
-          {
-            productId: "produto-pesado",
-            quantity: 1,
-            unitPriceBRL: 100,
-            package: { lengthCm: 16, widthCm: 11, heightCm: 2, weightGrams: 40_000 },
-          },
-        ],
+        shipment: { box: { lengthCm: 40, widthCm: 30, heightCm: 25 }, weightGrams: 40_000, insuranceValueBRL: 100 },
       })
     );
 

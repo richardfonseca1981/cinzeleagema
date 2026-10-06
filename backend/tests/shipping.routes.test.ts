@@ -17,7 +17,9 @@ const originalShippingEnv = {
   MELHOR_ENVIO_SANDBOX: env.MELHOR_ENVIO_SANDBOX,
   SHIPPING_ORIGIN_CEP: env.SHIPPING_ORIGIN_CEP,
   SHIPPING_PACKAGING_WEIGHT_G: env.SHIPPING_PACKAGING_WEIGHT_G,
-  SHIPPING_PADDING_CM: env.SHIPPING_PADDING_CM,
+  SHIPPING_BOX_LENGTH_CM: env.SHIPPING_BOX_LENGTH_CM,
+  SHIPPING_BOX_WIDTH_CM: env.SHIPPING_BOX_WIDTH_CM,
+  SHIPPING_BOX_HEIGHT_CM: env.SHIPPING_BOX_HEIGHT_CM,
 };
 
 function configureMelhorEnvio() {
@@ -25,8 +27,10 @@ function configureMelhorEnvio() {
   env.MELHOR_ENVIO_USER_AGENT = "Teste (teste@example.com)";
   env.MELHOR_ENVIO_SANDBOX = true;
   env.SHIPPING_ORIGIN_CEP = "01001000";
-  env.SHIPPING_PACKAGING_WEIGHT_G = 200;
-  env.SHIPPING_PADDING_CM = 3;
+  env.SHIPPING_PACKAGING_WEIGHT_G = 300;
+  env.SHIPPING_BOX_LENGTH_CM = 40;
+  env.SHIPPING_BOX_WIDTH_CM = 30;
+  env.SHIPPING_BOX_HEIGHT_CM = 25;
 }
 
 function clearMelhorEnvioConfig() {
@@ -161,9 +165,8 @@ describe("POST /api/shipping/quote — produto", () => {
 
     const melhorEnvioCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("melhorenvio.com.br"));
     const payload = JSON.parse(melhorEnvioCall![1].body);
-    // Peso: 80g de peça + 200g de embalagem = 280g, clampado ao mínimo de
-    // 300g = 0.3kg (nunca o 99999 enviado pelo cliente)
-    expect(payload.products[0].weight).toBe(0.3);
+    // Peso: 80g de peça + 300g de embalagem = 0.38kg (nunca o 99999 do cliente)
+    expect(payload.products[0].weight).toBe(0.38);
     // insurance_value = preço real do produto (999), nunca o "price": 1 enviado pelo cliente
     expect(payload.products[0].insurance_value).toBe(999);
   });
@@ -314,7 +317,15 @@ describe("GET /api/shipping/status", () => {
     const res = await request(app).get("/api/shipping/status").set("Authorization", `Bearer ${token}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.domestic).toEqual({ melhorEnvioTokenConfigured: true, originCepConfigured: true, sandbox: true });
+    expect(res.body.domestic).toEqual({
+      melhorEnvioTokenConfigured: true,
+      originCepConfigured: true,
+      sandbox: true,
+      box: { lengthCm: 40, widthCm: 30, heightCm: 25 },
+      packagingWeightG: 300,
+      maxItemSizeCm: 25,
+      boxFillFactor: 0.6,
+    });
     expect(JSON.stringify(res.body)).not.toContain("test-token");
   });
 });

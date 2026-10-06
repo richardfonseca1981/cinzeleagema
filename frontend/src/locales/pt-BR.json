@@ -251,7 +251,7 @@
       "provider_error": "Não conseguimos consultar o frete agora. Tente de novo em instantes ou combine o frete pelo WhatsApp.",
       "no_rates_configured": "Ainda não temos tabela de frete para este destino. Nosso atendimento combina o frete pelo WhatsApp.",
       "invalid_destination": "Não encontramos este destino. Confira o CEP e tente de novo, ou combine o frete pelo WhatsApp.",
-      "over_limits": "Uma das peças é pesada ou grande demais para as opções automáticas. O frete dela é combinado com nosso atendimento pelo WhatsApp.",
+      "over_limits": "Esta peça ou este pedido é grande demais para a nossa embalagem padrão. O frete é combinado com nosso atendimento pelo WhatsApp.",
       "incomplete_product_data": "Ainda não temos o peso e as medidas completos de uma das peças para calcular o frete. Nosso atendimento combina o frete pelo WhatsApp.",
       "not_configured": "O cálculo automático de frete não está disponível agora. Nosso atendimento combina o frete pelo WhatsApp."
     },

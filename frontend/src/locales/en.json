@@ -268,7 +268,7 @@
       "provider_error": "We couldn't check shipping right now. Try again in a moment or arrange shipping on WhatsApp.",
       "no_rates_configured": "We don't have a shipping table for this destination yet. Our team arranges shipping with you on WhatsApp.",
       "invalid_destination": "We couldn't find this destination. Check the postal code and try again, or arrange shipping on WhatsApp.",
-      "over_limits": "One of the pieces is too heavy or too large for the automatic options. Its shipping is arranged with our team on WhatsApp.",
+      "over_limits": "This piece or this order is too large for our standard packaging. Shipping is arranged with our team on WhatsApp.",
       "incomplete_product_data": "We don't have the complete weight and dimensions of one of the pieces to calculate shipping. Our team arranges shipping with you on WhatsApp.",
       "not_configured": "Automatic shipping calculation isn't available right now. Our team arranges shipping with you on WhatsApp."
     },

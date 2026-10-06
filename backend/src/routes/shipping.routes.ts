@@ -5,6 +5,7 @@ import { createIpRateLimiter } from "../middleware/rateLimit";
 import { asyncHandler } from "../utils/asyncHandler";
 import { HttpError } from "../middleware/errorHandler";
 import { BRAZIL_POSTAL_CODE_REGEX, normalizePostalCode, shippingQuoteSchema } from "../schemas/shipping.schema";
+import { BOX_FILL_FACTOR, getShipmentConfig } from "../lib/shipping/shipment";
 import { getShippingQuote } from "../lib/shipping/quoteService";
 import { lookupPostalCode } from "../lib/shipping/viaCep";
 
@@ -56,8 +57,13 @@ shippingRouter.get(
   "/status",
   requireAuth,
   asyncHandler(async (_req, res) => {
+    const { box, packagingWeightG } = getShipmentConfig(env);
     res.json({
       domestic: {
+        box: { lengthCm: box.lengthCm, widthCm: box.widthCm, heightCm: box.heightCm },
+        packagingWeightG,
+        maxItemSizeCm: Math.min(box.lengthCm, box.widthCm, box.heightCm),
+        boxFillFactor: BOX_FILL_FACTOR,
         melhorEnvioTokenConfigured: Boolean(env.MELHOR_ENVIO_TOKEN),
         originCepConfigured: Boolean(env.SHIPPING_ORIGIN_CEP),
         sandbox: env.MELHOR_ENVIO_SANDBOX,

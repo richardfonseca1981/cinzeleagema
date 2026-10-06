@@ -76,6 +76,23 @@ export function Shipping() {
             ) : null}
           </section>
 
+          <section className="rounded-lg border border-[#E2E8F0] bg-white p-6">
+            <h2 className="mb-1 text-sm font-semibold text-[#1A1A1A]">Embalagem usada no cálculo</h2>
+            <p className="mb-4 text-xs text-[#64748B]">
+              Não há cadastro de caixa: todo pedido é cotado como uma única caixa padrão (valores da configuração do servidor).
+            </p>
+            <ul className="space-y-2 text-sm text-[#1A1A1A]">
+              <li>
+                Caixa padrão: {status.domestic.box.lengthCm} x {status.domestic.box.widthCm} x {status.domestic.box.heightCm} cm,
+                embalagem de {status.domestic.packagingWeightG} g
+              </li>
+              <li>Peça com mais de {status.domestic.maxItemSizeCm} cm no maior lado: frete combinado pelo atendimento</li>
+              <li>
+                Pedido que ocupa mais de {Math.round(status.domestic.boxFillFactor * 100)}% da caixa: frete combinado
+              </li>
+            </ul>
+          </section>
+
           <section className="rounded-lg border border-[#E2E8F0] bg-white p-6 opacity-60">
             <h2 className="mb-1 text-sm font-semibold text-[#1A1A1A]">Internacional</h2>
             <p className="text-xs text-[#64748B]">Ainda não implementado — chega em uma próxima etapa.</p>

@@ -41,11 +41,13 @@ const envSchema = z.object({
     .optional()
     .default("")
     .refine((value) => value === "" || /^\d{8}$/.test(value), "SHIPPING_ORIGIN_CEP deve ter 8 dígitos"),
-  // Peso da embalagem (gramas) somado ao peso da peça ao cotar frete.
-  SHIPPING_PACKAGING_WEIGHT_G: z.coerce.number().positive().optional().default(200),
-  // Folga (cm) adicionada por lado ao estimar uma caixa cúbica a partir do
-  // tamanho da peça, quando as dimensões de embalagem não foram informadas.
-  SHIPPING_PADDING_CM: z.coerce.number().nonnegative().optional().default(3),
+  // Caixa fixa única usada em todo pedido (decisão do cliente — sem cadastro
+  // de caixa; ver lib/shipping/shipment.ts). Comprimento x largura x altura.
+  SHIPPING_BOX_LENGTH_CM: z.coerce.number().positive().optional().default(40),
+  SHIPPING_BOX_WIDTH_CM: z.coerce.number().positive().optional().default(30),
+  SHIPPING_BOX_HEIGHT_CM: z.coerce.number().positive().optional().default(25),
+  // Peso da embalagem vazia (gramas), somado uma vez ao peso das peças.
+  SHIPPING_PACKAGING_WEIGHT_G: z.coerce.number().positive().optional().default(300),
 });
 
 export const env = envSchema.parse(process.env);

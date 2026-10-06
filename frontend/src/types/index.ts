@@ -157,6 +157,10 @@ export interface ShippingStatus {
     melhorEnvioTokenConfigured: boolean;
     originCepConfigured: boolean;
     sandbox: boolean;
+    box: { lengthCm: number; widthCm: number; heightCm: number };
+    packagingWeightG: number;
+    maxItemSizeCm: number;
+    boxFillFactor: number;
   };
   international: null;
 }

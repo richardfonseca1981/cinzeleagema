@@ -1,15 +1,7 @@
-import type { ShippingCalculationItem } from "./types";
+import type { ShippingShipment } from "./types";
 
-// Dimensões e peso mínimos de uma encomenda postal no Brasil (padrão
-// Correios/transportadoras parceiras da Melhor Envio). O endpoint de
-// cálculo da Melhor Envio não publica esses valores (conferido em
-// docs.melhorenvio.com.br/reference/calculo-de-fretes-por-produtos) — usados
-// aqui como piso de segurança para não cotar uma caixa menor do que
-// qualquer transportadora aceitaria. Ajustável se o cliente trocar de
-// transportadora.
-export const PACKAGE_MIN_LENGTH_CM = 16;
-export const PACKAGE_MIN_WIDTH_CM = 11;
-export const PACKAGE_MIN_HEIGHT_CM = 2;
+// Peso mínimo de uma encomenda postal no Brasil (padrão Correios/
+// transportadoras parceiras da Melhor Envio), usado como piso de segurança.
 export const PACKAGE_MIN_WEIGHT_G = 300;
 
 // Limites máximos aceitos por qualquer serviço (maior lado, soma dos três
@@ -20,13 +12,10 @@ export const PACKAGE_MAX_SIDE_CM = 105;
 export const PACKAGE_MAX_SUM_OF_SIDES_CM = 200;
 export const PACKAGE_MAX_TOTAL_WEIGHT_G = 30000;
 
-export function exceedsCarrierLimits(items: ShippingCalculationItem[]): boolean {
-  const totalWeightGrams = items.reduce((sum, item) => sum + item.package.weightGrams * item.quantity, 0);
-  if (totalWeightGrams > PACKAGE_MAX_TOTAL_WEIGHT_G) return true;
+export function exceedsCarrierLimits(shipment: ShippingShipment): boolean {
+  if (shipment.weightGrams > PACKAGE_MAX_TOTAL_WEIGHT_G) return true;
 
-  return items.some(({ package: pkg }) => {
-    const maxSide = Math.max(pkg.lengthCm, pkg.widthCm, pkg.heightCm);
-    const sumOfSides = pkg.lengthCm + pkg.widthCm + pkg.heightCm;
-    return maxSide > PACKAGE_MAX_SIDE_CM || sumOfSides > PACKAGE_MAX_SUM_OF_SIDES_CM;
-  });
+  const { lengthCm, widthCm, heightCm } = shipment.box;
+  const maxSide = Math.max(lengthCm, widthCm, heightCm);
+  return maxSide > PACKAGE_MAX_SIDE_CM || lengthCm + widthCm + heightCm > PACKAGE_MAX_SUM_OF_SIDES_CM;
 }

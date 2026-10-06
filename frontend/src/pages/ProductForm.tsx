@@ -45,9 +45,6 @@ export function ProductForm() {
   const [sku, setSku] = useState("");
   const [weightGrams, setWeightGrams] = useState("");
   const [sizeCm, setSizeCm] = useState("");
-  const [packageLengthCm, setPackageLengthCm] = useState("");
-  const [packageWidthCm, setPackageWidthCm] = useState("");
-  const [packageHeightCm, setPackageHeightCm] = useState("");
   const [trackStock, setTrackStock] = useState(false);
   const [stockQty, setStockQty] = useState("");
 
@@ -75,9 +72,6 @@ export function ProductForm() {
         setSku(product.sku ?? "");
         setWeightGrams(String(product.weightGrams));
         setSizeCm(String(product.sizeCm));
-        setPackageLengthCm(product.packageLengthCm !== null ? String(product.packageLengthCm) : "");
-        setPackageWidthCm(product.packageWidthCm !== null ? String(product.packageWidthCm) : "");
-        setPackageHeightCm(product.packageHeightCm !== null ? String(product.packageHeightCm) : "");
         setTrackStock(product.trackStock);
         setStockQty(product.stockQty !== null ? String(product.stockQty) : "");
         setImages(product.images);
@@ -113,9 +107,6 @@ export function ProductForm() {
       sku: sku || null,
       weightGrams: Number(weightGrams),
       sizeCm: Number(sizeCm),
-      packageLengthCm: packageLengthCm !== "" ? Number(packageLengthCm) : null,
-      packageWidthCm: packageWidthCm !== "" ? Number(packageWidthCm) : null,
-      packageHeightCm: packageHeightCm !== "" ? Number(packageHeightCm) : null,
       trackStock,
       stockQty: trackStock && stockQty !== "" ? Number(stockQty) : null,
     };
@@ -322,51 +313,6 @@ export function ProductForm() {
             </div>
           </div>
         </section>
-
-        <details className="group rounded-lg border border-[#E2E8F0] bg-white p-6">
-          <summary className="cursor-pointer text-sm font-semibold text-[#1A1A1A] marker:text-[#C78F50]">
-            Embalagem (opcional)
-          </summary>
-          <p className="mt-2 text-xs text-[#64748B]">
-            Se deixado em branco, o sistema estima automaticamente o tamanho da caixa a partir do tamanho da peça. Preencha só
-            para corrigir a estimativa quando a embalagem real for diferente.
-          </p>
-          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div>
-              <label className={labelClass}>Comprimento (cm)</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={packageLengthCm}
-                onChange={(e) => setPackageLengthCm(e.target.value)}
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>Largura (cm)</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={packageWidthCm}
-                onChange={(e) => setPackageWidthCm(e.target.value)}
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>Altura (cm)</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={packageHeightCm}
-                onChange={(e) => setPackageHeightCm(e.target.value)}
-                className={inputClass}
-              />
-            </div>
-          </div>
-        </details>
 
         <div className="flex items-center gap-3">
           <button

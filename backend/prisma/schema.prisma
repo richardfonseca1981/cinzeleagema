@@ -88,11 +88,8 @@ model Product {
   trackStock Boolean @default(false)
   stockQty   Int? // null quando trackStock = false
 
-  // Dimensões reais da caixa de envio — opcionais. Quando ausentes, o
-  // estimador de frete (lib/shipping/packageEstimator.ts) calcula uma caixa
-  // cúbica a partir de sizeCm + folga configurável. Preenchidos manualmente
-  // no admin só para corrigir casos em que a estimativa automática erraria
-  // (peça muito achatada/alongada, embalagem especial etc).
+  // OBSOLETOS (sem uso): o frete cota sempre uma caixa fixa única
+  // (lib/shipping/shipment.ts). Colunas mantidas para não exigir migration.
   packageLengthCm Decimal? @db.Decimal(10, 2)
   packageWidthCm  Decimal? @db.Decimal(10, 2)
   packageHeightCm Decimal? @db.Decimal(10, 2)

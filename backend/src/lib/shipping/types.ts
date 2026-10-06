@@ -21,26 +21,25 @@ export interface ShippingOption {
   kind: "quoted" | "estimated";
 }
 
-export interface EstimatedPackage {
+// Caixa fixa usada em todo pedido (ver shipment.ts).
+export interface ShippingBox {
   lengthCm: number;
   widthCm: number;
   heightCm: number;
-  weightGrams: number;
 }
 
-export interface ShippingCalculationItem {
-  productId: string;
-  quantity: number;
-  // Preço unitário em BRL — usado como valor declarado/segurado junto ao
-  // provedor, nunca confiar no que o cliente envia (ver quoteService.ts).
-  unitPriceBRL: number;
-  package: EstimatedPackage;
+// Um pedido = um único volume: caixa fixa, peso total (peças + embalagem) e
+// valor segurado (soma dos preços reais do banco, nunca do cliente).
+export interface ShippingShipment {
+  box: ShippingBox;
+  weightGrams: number;
+  insuranceValueBRL: number;
 }
 
 export interface ShippingCalculationInput {
   originPostalCode: string;
   destinationPostalCode: string;
-  items: ShippingCalculationItem[];
+  shipment: ShippingShipment;
 }
 
 export type ShippingProviderResult = { ok: true; options: ShippingOption[] } | { ok: false; reason: ShippingUnavailableReason };

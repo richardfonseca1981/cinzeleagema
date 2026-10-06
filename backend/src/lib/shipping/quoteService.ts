@@ -1,11 +1,11 @@
 import { prisma } from "../prisma";
 import { env } from "../env";
 import { HttpError } from "../../middleware/errorHandler";
-import { estimatePackage } from "./packageEstimator";
+import { computeShipment, getShipmentConfig, type ShipmentItem } from "./shipment";
 import { createMelhorEnvioProviderFromEnv } from "./melhorEnvioProvider";
 import { buildQuoteCacheKey, getCachedQuote, setCachedQuote } from "./quoteCache";
 import { lookupPostalCode } from "./viaCep";
-import type { ShippingCalculationItem, ShippingQuoteResult, ShippingUnavailableReason } from "./types";
+import type { ShippingQuoteResult, ShippingUnavailableReason } from "./types";
 
 export interface ShippingQuoteRequestItem {
   productId: string;
@@ -74,37 +74,23 @@ export async function getShippingQuote(
     }
   }
 
-  const estimatorConfig = {
-    paddingCm: env.SHIPPING_PADDING_CM,
-    packagingWeightG: env.SHIPPING_PACKAGING_WEIGHT_G,
-  };
-
-  const calculationItems: ShippingCalculationItem[] = [];
-  for (const item of items) {
+  // Campos packageLength/Width/HeightCm do produto são obsoletos: o pedido é
+  // sempre uma única caixa fixa (shipment.ts).
+  const shipmentItems: ShipmentItem[] = items.map((item) => {
     const product = productById.get(item.productId)!;
-    const estimate = estimatePackage(
-      {
-        weightGrams: Number(product.weightGrams),
-        sizeCm: Number(product.sizeCm),
-        packageLengthCm: product.packageLengthCm !== null ? Number(product.packageLengthCm) : null,
-        packageWidthCm: product.packageWidthCm !== null ? Number(product.packageWidthCm) : null,
-        packageHeightCm: product.packageHeightCm !== null ? Number(product.packageHeightCm) : null,
-      },
-      estimatorConfig
-    );
-
-    if (!estimate.ok) {
-      const result = buildUnavailableResult(country, postalCode, estimate.reason);
-      setCachedQuote(cacheKey, result);
-      return result;
-    }
-
-    calculationItems.push({
-      productId: item.productId,
+    return {
+      weightGrams: Number(product.weightGrams),
+      sizeCm: Number(product.sizeCm),
       quantity: item.quantity,
       unitPriceBRL: Number(product.price),
-      package: estimate.package,
-    });
+    };
+  });
+
+  const computed = computeShipment(shipmentItems, getShipmentConfig(env));
+  if (!computed.ok) {
+    const result = buildUnavailableResult(country, postalCode, computed.reason);
+    setCachedQuote(cacheKey, result);
+    return result;
   }
 
   const provider = createMelhorEnvioProviderFromEnv({
@@ -123,7 +109,7 @@ export async function getShippingQuote(
     provider.calculate({
       originPostalCode: env.SHIPPING_ORIGIN_CEP,
       destinationPostalCode: postalCode,
-      items: calculationItems,
+      shipment: computed.shipment,
     }),
     lookupPostalCode(postalCode),
   ]);

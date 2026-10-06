@@ -67,7 +67,7 @@ export class MelhorEnvioProvider implements ShippingProvider {
   constructor(private readonly config: MelhorEnvioProviderConfig) {}
 
   async calculate(input: ShippingCalculationInput): Promise<ShippingProviderResult> {
-    if (exceedsCarrierLimits(input.items)) {
+    if (exceedsCarrierLimits(input.shipment)) {
       return { ok: false, reason: "over_limits" };
     }
 
@@ -117,18 +117,23 @@ export class MelhorEnvioProvider implements ShippingProvider {
   }
 
   private buildPayload(input: ShippingCalculationInput): MelhorEnvioCalculateRequest {
+    const { box } = input.shipment;
     return {
       from: { postal_code: input.originPostalCode },
       to: { postal_code: input.destinationPostalCode },
-      products: input.items.map((item) => ({
-        id: item.productId,
-        width: Math.ceil(item.package.widthCm),
-        height: Math.ceil(item.package.heightCm),
-        length: Math.ceil(item.package.lengthCm),
-        weight: Number((item.package.weightGrams / 1000).toFixed(3)),
-        insurance_value: item.unitPriceBRL,
-        quantity: item.quantity,
-      })),
+      // Um único volume: a caixa fixa, com o peso total do pedido e o seguro
+      // somado — nunca um produto por item.
+      products: [
+        {
+          id: "pedido",
+          width: Math.ceil(box.widthCm),
+          height: Math.ceil(box.heightCm),
+          length: Math.ceil(box.lengthCm),
+          weight: Number((input.shipment.weightGrams / 1000).toFixed(3)),
+          insurance_value: input.shipment.insuranceValueBRL,
+          quantity: 1,
+        },
+      ],
     };
   }
 
