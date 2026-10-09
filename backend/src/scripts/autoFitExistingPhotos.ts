@@ -331,7 +331,10 @@ export interface RevertReport {
   errors: number;
 }
 
-export async function runRevert(options: Options, deps: BatchDeps): Promise<RevertReport> {
+export async function runRevert(
+  options: Pick<Options, "apply" | "revert">,
+  deps: Pick<BatchDeps, "getPhoto" | "getObjectText" | "updatePhoto" | "log">
+): Promise<RevertReport> {
   const report: RevertReport = { mode: options.apply ? "apply" : "simulation", restored: 0, skipped: {}, errors: 0 };
   const raw = JSON.parse(await deps.getObjectText(options.revert!)) as Manifest | ManifestEntry[];
   const entries = Array.isArray(raw) ? raw : raw.entries;

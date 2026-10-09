@@ -1,6 +1,10 @@
 import sharp, { type Sharp } from "sharp";
 import { removeBackground } from "./rembg";
+import { isPortrait916 } from "./photoFormat";
 
+// Fotos que já estão em 9:16 em pé (formato final do site) NÃO são tocadas: o
+// enquadramento recortaria e aproximaria a peça, mudando a composição aprovada.
+//
 // Enquadramento automático da peça: recorta em volta da peça, com uma folga,
 // para ela ocupar bem o quadro. NUNCA remove o fundo de fotos opacas (o rembg
 // só LOCALIZA a peça; o recorte é aplicado na foto original), NUNCA estica e
@@ -33,6 +37,7 @@ export const AUTOFIT_REMBG_MAX_RETRIES = 1;
 export type AutoFitAction = "cropped" | "unchanged" | "skipped";
 export type AutoFitReason =
   | "already_fitted"
+  | "portrait_9x16"
   | "too_small_after_crop"
   | "rembg_unavailable"
   | "subject_not_found"
@@ -154,6 +159,12 @@ export async function autoFitSubject(input: Buffer, opts: AutoFitOptions = {}): 
   const own = await readAlpha(input);
   const { width: W, height: H } = own;
 
+  // Foto já em 9:16: exibida inteira como foi tirada — nada a enquadrar.
+  if (isPortrait916(W, H)) {
+    const m = { w: W, h: H, coverage: null };
+    return { buffer: input, contentType, action: "unchanged", reason: "portrait_9x16", before: m, after: m };
+  }
+
   let transparentPixels = 0;
   for (let i = 0; i < own.alpha.length; i++) if (own.alpha[i] < AUTOFIT_ALPHA_THRESHOLD) transparentPixels++;
   const hasTransparency = transparentPixels / own.alpha.length > AUTOFIT_TRANSPARENT_PIXELS_MIN_RATIO;
@@ -247,6 +258,8 @@ export function describeAutoFit(result: AutoFitResult): string {
   switch (result.reason) {
     case "already_fitted":
       return "A peça já ocupa bem o quadro — não há o que enquadrar.";
+    case "portrait_9x16":
+      return "A foto já está em 9:16 (em pé) e aparece inteira no site — não é preciso enquadrar.";
     case "too_small_after_crop":
       return `A foto é pequena demais para recortar sem perder nitidez (o resultado ficaria com menos de ${AUTOFIT_MIN_RESULT_LONG_SIDE_PX} px).`;
     case "rembg_unavailable":

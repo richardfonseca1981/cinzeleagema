@@ -13,7 +13,14 @@ import {
   type ImageEntry,
   type NewEntry,
 } from "../lib/imageStaging";
-import { smallImageWarning } from "../lib/imageSize";
+import {
+  ACCEPTED_PHOTO_TYPES,
+  PHOTO_ASPECT_CSS,
+  PHOTO_GUIDANCE,
+  photoFileError,
+  photoFormatWarnings,
+} from "../lib/photoFormat";
+import { ProductImage as SitePhoto } from "./ProductImage";
 import {
   classifyPreviewResult,
   colorEnhanceMeta,
@@ -86,17 +93,17 @@ function Spinner({ className = "h-5 w-5" }: { className?: string }) {
   );
 }
 
-// Mede a foto (salva ou staged) e mostra um aviso discreto, sem bloquear,
-// quando ela é pequena demais para ficar nítida no site.
-function SmallImageWarning({ url }: { url: string }) {
-  const [warning, setWarning] = useState<string | null>(null);
+// Mede a foto (salva ou staged) e mostra avisos discretos, sem bloquear o
+// envio: fora de 9:16 (tolerância de 3%) ou menor que 720×1280.
+function PhotoFormatWarnings({ url }: { url: string }) {
+  const [warnings, setWarnings] = useState<string[]>([]);
 
   useEffect(() => {
     let cancelled = false;
-    setWarning(null);
+    setWarnings([]);
     const probe = new Image();
     probe.onload = () => {
-      if (!cancelled) setWarning(smallImageWarning(probe.naturalWidth, probe.naturalHeight));
+      if (!cancelled) setWarnings(photoFormatWarnings(probe.naturalWidth, probe.naturalHeight).map((w) => w.message));
     };
     probe.src = url;
     return () => {
@@ -105,8 +112,15 @@ function SmallImageWarning({ url }: { url: string }) {
     };
   }, [url]);
 
-  if (!warning) return null;
-  return <p className="mt-1 rounded border border-[#F59E0B]/40 bg-[#FFFBEB] px-1.5 py-1 text-[11px] text-[#B45309]">{warning}</p>;
+  return (
+    <>
+      {warnings.map((message) => (
+        <p key={message} className="mt-1 rounded border border-[#F59E0B]/40 bg-[#FFFBEB] px-1.5 py-1 text-[11px] text-[#B45309]">
+          {message}
+        </p>
+      ))}
+    </>
+  );
 }
 
 function revokeNewEntryUrls(entry: NewEntry) {
@@ -170,6 +184,13 @@ export const ImageManager = forwardRef<ImageManagerHandle, ImageManagerProps>(fu
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const fileError = photoFileError(file);
+    if (fileError) {
+      showToast("error", fileError);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
     const localId = `local-${Date.now()}-${localIdCounter.current++}`;
     const previewUrl = URL.createObjectURL(file);
     setEntries((prev) => addNewEntry(prev, localId, file, previewUrl));
@@ -219,19 +240,16 @@ export const ImageManager = forwardRef<ImageManagerHandle, ImageManagerProps>(fu
         {entries.map((entry, index) => (
           <div
             key={entry.kind === "existing" ? entry.image.id : entry.localId}
-            className="relative w-56 rounded-lg border border-[#E2E8F0] bg-white p-2 shadow-sm"
+            className="relative w-44 rounded-lg border border-[#E2E8F0] bg-white p-2 shadow-sm"
           >
             {entry.kind === "new" && (
               <span className="absolute left-3 top-3 rounded bg-[#1B3A6B] px-1.5 py-0.5 text-[10px] font-medium text-white">
                 nova — salva ao confirmar
               </span>
             )}
-            <img
-              src={entry.kind === "existing" ? entry.image.url : entry.previewUrl}
-              alt=""
-              className="h-32 w-full rounded object-cover"
-            />
-            <SmallImageWarning url={entry.kind === "existing" ? entry.image.url : entry.previewUrl} />
+            {/* Preview 9:16: o mesmo componente do site, para ver como a foto vai aparecer. */}
+            <SitePhoto src={entry.kind === "existing" ? entry.image.url : entry.previewUrl} alt="" className="rounded" />
+            <PhotoFormatWarnings url={entry.kind === "existing" ? entry.image.url : entry.previewUrl} />
             <div className="mt-1 flex items-center justify-between text-xs text-[#64748B]">
               <button
                 type="button"
@@ -279,12 +297,13 @@ export const ImageManager = forwardRef<ImageManagerHandle, ImageManagerProps>(fu
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept={ACCEPTED_PHOTO_TYPES}
           onChange={handleFileSelected}
           disabled={committing}
           className="hidden"
         />
       </label>
+      <p className="mt-2 text-xs font-medium text-[#1B3A6B]">{PHOTO_GUIDANCE}.</p>
       <p className="mt-1 text-xs text-[#64748B]">
         As fotos só são enviadas e as exclusões só são aplicadas quando você clicar em "Salvar produto".
       </p>
@@ -580,15 +599,16 @@ function ImageTreatmentPanel({ target, showToast }: ImageTreatmentPanelProps) {
               <div className="flex gap-2">
                 <div>
                   <p className="text-[#64748B]">antes</p>
-                  <img src={currentUrl} alt="" className="h-28 w-28 rounded object-contain" />
+                  <img src={currentUrl} alt="" className="h-40 rounded object-contain" style={{ aspectRatio: PHOTO_ASPECT_CSS }} />
                 </div>
                 <div>
                   <p className="text-[#64748B]">depois</p>
                   <img
                     src={preview.displayUrl}
                     alt=""
-                    className="h-28 w-28 rounded object-contain"
+                    className="h-40 rounded object-contain"
                     style={{
+                      aspectRatio: PHOTO_ASPECT_CSS,
                       backgroundImage:
                         "linear-gradient(45deg, #E2E8F0 25%, transparent 25%), linear-gradient(-45deg, #E2E8F0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #E2E8F0 75%), linear-gradient(-45deg, transparent 75%, #E2E8F0 75%)",
                       backgroundSize: "10px 10px",

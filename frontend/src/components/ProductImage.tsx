@@ -1,25 +1,25 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { computeDisplaySize, type Size } from "../lib/imageDisplay";
+import { PHOTO_ASPECT_CSS } from "../lib/photoFormat";
 
-// Único componente de foto de produto do site público — a mesma regra vale
-// no card (catálogo e destaques), no detalhe e no carrinho:
-//  - "frame" (padrão): moldura de proporção fixa; a foto fica INTEIRA dentro
-//    (contain), centralizada, sem cortar nem esticar, e nunca é ampliada além
-//    de ~1,5x o tamanho original (ver lib/imageDisplay.ts). O espaço que
+// Único componente de foto de produto do site — a mesma regra vale no card
+// (catálogo e destaques), no detalhe, no carrinho e no admin:
+//  - "frame" (padrão): moldura 9:16 EM PÉ (reserva o espaço, sem salto de
+//    layout); a foto fica INTEIRA dentro (contain), centralizada, sem cortar
+//    nem esticar, e nunca é ampliada além de ~1,5x o tamanho original (ver
+//    lib/imageDisplay.ts). Fotos novas já saem do servidor em 9:16 e preenchem
+//    a moldura; fotos antigas em outra proporção ficam inteiras e o espaço que
 //    sobra é preenchido pela própria foto desfocada e ampliada ao fundo.
-//  - "thumb": miniatura quadrada pequena (carrinho), com object-cover.
+//  - "thumb": miniatura 9:16 pequena (carrinho), também inteira (contain).
 // Sem foto ou erro de carregamento mostram o mesmo placeholder.
 
-export type ProductImageRatio = "4:3" | "1:1";
-
-const ASPECT_RATIO: Record<ProductImageRatio, string> = { "4:3": "4 / 3", "1:1": "1 / 1" };
+const ASPECT_RATIO = PHOTO_ASPECT_CSS;
 
 interface ProductImageProps {
   src: string | null | undefined;
   alt: string;
   variant?: "frame" | "thumb";
-  ratio?: ProductImageRatio;
   // Primeiras imagens visíveis da página: carregam sem lazy.
   priority?: boolean;
   className?: string;
@@ -38,7 +38,7 @@ export function ProductImage(props: ProductImageProps) {
   return <ProductImageInner key={props.src ?? "none"} {...props} />;
 }
 
-function ProductImageInner({ src, alt, variant = "frame", ratio = "4:3", priority = false, className = "" }: ProductImageProps) {
+function ProductImageInner({ src, alt, variant = "frame", priority = false, className = "" }: ProductImageProps) {
   const { t } = useTranslation();
   const noPhoto = t("productCard.noPhoto");
   const [failed, setFailed] = useState(false);
@@ -65,21 +65,25 @@ function ProductImageInner({ src, alt, variant = "frame", ratio = "4:3", priorit
   }, [src, failed]);
 
   if (variant === "thumb") {
-    const size = className || "h-16 w-16";
-    if (!src || failed) return <Placeholder label={noPhoto} className={`rounded-lg text-xs ${size}`} />;
+    const size = className || "w-12";
+    if (!src || failed) {
+      return <Placeholder label={noPhoto} className={`shrink-0 rounded-lg text-[10px] ${size}`} style={{ aspectRatio: ASPECT_RATIO }} />;
+    }
     return (
-      <img
-        src={src}
-        alt={alt}
-        loading={loading}
-        decoding="async"
-        onError={() => setFailed(true)}
-        className={`rounded-lg object-cover ${size}`}
-      />
+      <div className={`shrink-0 overflow-hidden rounded-lg bg-[#E2E8F0] ${size}`} style={{ aspectRatio: ASPECT_RATIO }}>
+        <img
+          src={src}
+          alt={alt}
+          loading={loading}
+          decoding="async"
+          onError={() => setFailed(true)}
+          className="h-full w-full object-contain"
+        />
+      </div>
     );
   }
 
-  const aspectRatio = ASPECT_RATIO[ratio];
+  const aspectRatio = ASPECT_RATIO;
   if (!src || failed) {
     return <Placeholder label={noPhoto} className={`w-full text-sm ${className}`} style={{ aspectRatio }} />;
   }

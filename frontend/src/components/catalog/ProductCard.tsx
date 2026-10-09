@@ -33,7 +33,7 @@ export function ProductCard({ product, priority = false }: { product: Product; p
   return (
     <div className="flex flex-col overflow-hidden rounded-xl border border-[#E2E8F0] bg-white shadow-sm transition hover:shadow-md">
       <Link to={`/catalogo/${product.id}`} className="block">
-        <ProductImage src={image} alt={displayName} ratio="4:3" priority={priority} />
+        <ProductImage src={image} alt={displayName} priority={priority} />
       </Link>
       <div className="flex flex-1 flex-col p-4">
         <Link to={`/catalogo/${product.id}`}>

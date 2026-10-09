@@ -69,13 +69,15 @@ export function ProductDetail() {
 
         {product && (
           <div className="mt-6 grid gap-8 sm:grid-cols-2">
-            <ProductImage
-              src={product.images[0]?.url}
-              alt={displayName}
-              ratio="1:1"
-              priority
-              className="rounded-xl border border-[#E2E8F0]"
-            />
+            {/* Largura limitada para a altura (9:16) nunca passar de 85vh em desktop. */}
+            <div className="mx-auto w-full sm:max-w-[calc(85vh*9/16)]">
+              <ProductImage
+                src={product.images[0]?.url}
+                alt={displayName}
+                priority
+                className="rounded-xl border border-[#E2E8F0]"
+              />
+            </div>
 
             <div>
               {(product.category || product.subcategory) && (
