@@ -6,6 +6,7 @@ import {
   entriesFromImages,
   hasPendingChanges,
   moveEntry,
+  moveToFront,
   removeEntryAt,
   updateExistingImage,
   withNewEntryTreatment,
@@ -15,6 +16,8 @@ import {
 } from "../lib/imageStaging";
 import {
   ACCEPTED_PHOTO_TYPES,
+  MAX_PHOTOS_PER_PRODUCT,
+  maxPhotosMessage,
   PHOTO_ASPECT_CSS,
   PHOTO_GUIDANCE,
   photoFileError,
@@ -135,6 +138,8 @@ export const ImageManager = forwardRef<ImageManagerHandle, ImageManagerProps>(fu
   const { showToast } = useToast();
   const [entries, setEntries] = useState<ImageEntry[]>(() => entriesFromImages(images));
   const [committing, setCommitting] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<ProductImage | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const deletedIdsRef = useRef<Set<string>>(new Set());
   const entriesRef = useRef(entries);
   entriesRef.current = entries;
@@ -184,6 +189,12 @@ export const ImageManager = forwardRef<ImageManagerHandle, ImageManagerProps>(fu
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (entriesRef.current.length >= MAX_PHOTOS_PER_PRODUCT) {
+      showToast("error", maxPhotosMessage());
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
     const fileError = photoFileError(file);
     if (fileError) {
       showToast("error", fileError);
@@ -201,17 +212,42 @@ export const ImageManager = forwardRef<ImageManagerHandle, ImageManagerProps>(fu
     setEntries((prev) => moveEntry(prev, index, direction));
   }
 
+  // Foto nova (ainda não enviada): sai da lista na hora, nada foi gravado.
+  // Foto já salva: pede confirmação — a exclusão é definitiva e feita na hora.
   function handleRemove(index: number) {
     const entry = entries[index];
     if (!entry) return;
 
-    setEntries((prev) => removeEntryAt(prev, index));
     if (entry.kind === "new") {
+      setEntries((prev) => removeEntryAt(prev, index));
       revokeNewEntryUrls(entry);
     } else {
-      deletedIdsRef.current.add(entry.image.id);
-      showToast("success", "Foto marcada para remoção — será excluída ao salvar o produto");
+      setPendingDelete(entry.image);
     }
+  }
+
+  async function confirmDelete() {
+    const image = pendingDelete;
+    if (!image) return;
+    setDeleting(true);
+    try {
+      await api.deleteImage(productId, image.id);
+      const next = entriesRef.current.filter((e) => !(e.kind === "existing" && e.image.id === image.id));
+      setEntries(next);
+      onChange(
+        next.filter((e): e is Extract<ImageEntry, { kind: "existing" }> => e.kind === "existing").map((e) => e.image)
+      );
+      showToast("success", "Foto excluída definitivamente");
+      setPendingDelete(null);
+    } catch {
+      showToast("error", "Não foi possível excluir a foto. Nada foi apagado; tente de novo.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  function handleMakeCover(index: number) {
+    setEntries((prev) => moveToFront(prev, index));
   }
 
   function handleImageUpdated(updated: ProductImage) {
@@ -242,8 +278,13 @@ export const ImageManager = forwardRef<ImageManagerHandle, ImageManagerProps>(fu
             key={entry.kind === "existing" ? entry.image.id : entry.localId}
             className="relative w-44 rounded-lg border border-[#E2E8F0] bg-white p-2 shadow-sm"
           >
+            {index === 0 && (
+              <span className="absolute right-3 top-3 z-10 rounded bg-[#C78F50] px-1.5 py-0.5 text-[10px] font-semibold text-[#010B1A]">
+                Capa
+              </span>
+            )}
             {entry.kind === "new" && (
-              <span className="absolute left-3 top-3 rounded bg-[#1B3A6B] px-1.5 py-0.5 text-[10px] font-medium text-white">
+              <span className="absolute left-3 top-3 z-10 rounded bg-[#1B3A6B] px-1.5 py-0.5 text-[10px] font-medium text-white">
                 nova — salva ao confirmar
               </span>
             )}
@@ -259,8 +300,16 @@ export const ImageManager = forwardRef<ImageManagerHandle, ImageManagerProps>(fu
               >
                 ↑
               </button>
+              <button
+                type="button"
+                disabled={index === 0 || committing}
+                onClick={() => handleMakeCover(index)}
+                className="underline disabled:opacity-30 disabled:no-underline"
+              >
+                tornar capa
+              </button>
               <button type="button" disabled={committing} onClick={() => handleRemove(index)} className="text-[#EF4444] disabled:opacity-30">
-                remover
+                {entry.kind === "existing" ? "excluir" : "remover"}
               </button>
               <button
                 type="button"
@@ -292,6 +341,27 @@ export const ImageManager = forwardRef<ImageManagerHandle, ImageManagerProps>(fu
         </p>
       )}
 
+      {pendingDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="presentation">
+          <div role="alertdialog" aria-modal="true" aria-labelledby="delete-photo-title" aria-describedby="delete-photo-text" className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
+            <h2 id="delete-photo-title" className="text-base font-semibold text-[#1A1A1A]">Excluir esta foto?</h2>
+            <img src={pendingDelete.url} alt="" className="mx-auto mt-3 h-40 rounded object-contain" style={{ aspectRatio: PHOTO_ASPECT_CSS }} />
+            <p id="delete-photo-text" className="mt-3 text-sm text-[#1A1A1A]">
+              A exclusão é <strong>definitiva</strong>: a foto e os arquivos dela serão apagados e não poderão ser recuperados.
+              {pendingDelete.previousUrl && ' O "Desfazer" do tratamento desta foto também deixa de funcionar.'}
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button type="button" autoFocus disabled={deleting} onClick={() => setPendingDelete(null)} className="rounded-lg border border-[#E2E8F0] px-4 py-2 text-sm text-[#1A1A1A] hover:bg-[#F8FAFC] disabled:opacity-40">
+                Cancelar
+              </button>
+              <button type="button" disabled={deleting} onClick={confirmDelete} className="rounded-lg bg-[#EF4444] px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-40">
+                {deleting ? "Excluindo..." : "Excluir definitivamente"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm text-[#1A1A1A] hover:bg-[#F8FAFC]">
         <span>Adicionar foto</span>
         <input
@@ -305,7 +375,8 @@ export const ImageManager = forwardRef<ImageManagerHandle, ImageManagerProps>(fu
       </label>
       <p className="mt-2 text-xs font-medium text-[#1B3A6B]">{PHOTO_GUIDANCE}.</p>
       <p className="mt-1 text-xs text-[#64748B]">
-        As fotos só são enviadas e as exclusões só são aplicadas quando você clicar em "Salvar produto".
+        Até {MAX_PHOTOS_PER_PRODUCT} fotos por peça ({entries.length}/{MAX_PHOTOS_PER_PRODUCT}). A primeira é a capa. Fotos novas e a ordem só são salvas ao clicar em "Salvar produto".
+        A exclusão de uma foto já salva é imediata e definitiva.
       </p>
     </div>
   );

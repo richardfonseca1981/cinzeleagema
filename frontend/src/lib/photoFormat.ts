@@ -11,11 +11,14 @@ export const PHOTO_MAX_LONG_SIDE = 1920;
 // Tamanho mínimo recomendado.
 export const PHOTO_MIN_WIDTH = 720;
 export const PHOTO_MIN_HEIGHT = 1280;
+// Máximo de fotos por peça (o backend valida; o admin mostra a mensagem).
+export const MAX_PHOTOS_PER_PRODUCT = 10;
 
 // Valor do CSS aspect-ratio (sempre em pé, nunca 16:9 deitado).
 export const PHOTO_ASPECT_CSS = `${PHOTO_ASPECT_WIDTH} / ${PHOTO_ASPECT_HEIGHT}`;
 
-export const PHOTO_GUIDANCE = "Fotografe com o celular em pé e a proporção 16:9 selecionada na câmera";
+export const PHOTO_GUIDANCE =
+  "Fotografe com o celular em pé e a proporção 16:9 selecionada na câmera, com a peça centralizada e ocupando cerca de dois terços da largura da foto";
 
 export function isPortrait916(width: number, height: number): boolean {
   if (!(width > 0) || !(height > 0)) return false;
@@ -56,6 +59,10 @@ export function photoFormatWarnings(width: number, height: number): PhotoFormatW
     });
   }
   return warnings;
+}
+
+export function maxPhotosMessage(): string {
+  return `Limite de ${MAX_PHOTOS_PER_PRODUCT} fotos por peça atingido. Apague uma foto antes de adicionar outra.`;
 }
 
 const HEIC_TYPES = new Set(["image/heic", "image/heif", "image/heic-sequence", "image/heif-sequence"]);

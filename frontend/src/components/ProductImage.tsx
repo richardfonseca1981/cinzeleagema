@@ -23,6 +23,10 @@ interface ProductImageProps {
   // Primeiras imagens visíveis da página: carregam sem lazy.
   priority?: boolean;
   className?: string;
+  // Razão e encaixe da moldura (padrão: 9/16 e contain). O card do catálogo
+  // os recebe de CATALOG_CARD (lib/catalogCard.ts).
+  aspectRatio?: string;
+  fit?: "contain" | "cover";
 }
 
 function Placeholder({ label, className, style }: { label: string; className: string; style?: React.CSSProperties }) {
@@ -38,7 +42,7 @@ export function ProductImage(props: ProductImageProps) {
   return <ProductImageInner key={props.src ?? "none"} {...props} />;
 }
 
-function ProductImageInner({ src, alt, variant = "frame", priority = false, className = "" }: ProductImageProps) {
+function ProductImageInner({ src, alt, variant = "frame", priority = false, className = "", aspectRatio = ASPECT_RATIO, fit = "contain" }: ProductImageProps) {
   const { t } = useTranslation();
   const noPhoto = t("productCard.noPhoto");
   const [failed, setFailed] = useState(false);
@@ -83,9 +87,23 @@ function ProductImageInner({ src, alt, variant = "frame", priority = false, clas
     );
   }
 
-  const aspectRatio = ASPECT_RATIO;
   if (!src || failed) {
     return <Placeholder label={noPhoto} className={`w-full text-sm ${className}`} style={{ aspectRatio }} />;
+  }
+
+  if (fit === "cover") {
+    return (
+      <div className={`relative w-full overflow-hidden bg-[#E2E8F0] ${className}`} style={{ aspectRatio }}>
+        <img
+          src={src}
+          alt={alt}
+          loading={loading}
+          decoding="async"
+          onError={() => setFailed(true)}
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      </div>
+    );
   }
 
   const display = natural && frame ? computeDisplaySize(natural, frame) : null;

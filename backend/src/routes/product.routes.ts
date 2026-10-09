@@ -5,6 +5,7 @@ import { asyncHandler } from "../utils/asyncHandler";
 import { HttpError } from "../middleware/errorHandler";
 import { createProductSchema, listProductsQuerySchema, updateProductSchema } from "../schemas/product.schema";
 import { escapeLikePattern } from "../utils/escapeLike";
+import { isPortrait916 } from "../lib/photoFormat";
 import { translateAndSaveProduct, translateProductInBackground } from "../lib/productTranslation";
 
 export const productRouter = Router();
@@ -71,6 +72,23 @@ productRouter.get(
     ]);
 
     res.json({ items, total, page, pageSize });
+  })
+);
+
+// Admin: quantas peças já têm a foto principal (capa) em 9:16. Foto sem
+// dimensões gravadas (antiga) ou peça sem foto contam como "a trocar".
+productRouter.get(
+  "/photo-stats",
+  requireAuth,
+  asyncHandler(async (_req, res) => {
+    const products = await prisma.product.findMany({
+      select: { images: { orderBy: { position: "asc" }, take: 1, select: { width: true, height: true } } },
+    });
+    const portrait = products.filter((p) => {
+      const cover = p.images[0];
+      return Boolean(cover?.width && cover?.height && isPortrait916(cover.width, cover.height));
+    }).length;
+    res.json({ total: products.length, portrait });
   })
 );
 

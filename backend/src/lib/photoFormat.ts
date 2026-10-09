@@ -15,6 +15,8 @@ export const PHOTO_MAX_LONG_SIDE = 1920;
 // Tamanho mínimo recomendado (abaixo disto o admin recebe um aviso).
 export const PHOTO_MIN_WIDTH = 720;
 export const PHOTO_MIN_HEIGHT = 1280;
+// Máximo de fotos por peça (o backend valida; o admin mostra a mensagem).
+export const MAX_PHOTOS_PER_PRODUCT = 10;
 
 export const PHOTO_OUTPUT_QUALITY = 90;
 // Maior arquivo aceito no envio (antes de qualquer processamento).

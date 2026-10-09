@@ -80,6 +80,8 @@ export const api = {
     if (params.pageSize !== undefined) query.set("pageSize", String(params.pageSize));
     return request<ProductListResponse>(`/api/products?${query.toString()}`);
   },
+  // Admin: quantas peças já têm a capa em 9:16.
+  getPhotoStats: () => request<{ total: number; portrait: number }>("/api/products/photo-stats"),
   getProduct: (id: string) => request<Product>(`/api/products/${id}`),
 
   createOrder: (data: {

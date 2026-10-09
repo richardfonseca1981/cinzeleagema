@@ -123,7 +123,7 @@ describe("foto salva — operação autoFit (R2 mockado)", () => {
     expect(mockedInterpret).not.toHaveBeenCalled();
 
     const uploaded = mockedPutObject.mock.calls[0][1] as Buffer;
-    expect(await dims(uploaded)).toMatchObject({ w: 620, h: 520, format: "png", hasAlpha: true });
+    expect(await dims(uploaded)).toMatchObject({ w: 620, h: 1103, format: "webp" });
   });
 
   it('instruction "enquadra a peça" (Claude mockada → autoFit): mesmo resultado', async () => {
@@ -133,7 +133,7 @@ describe("foto salva — operação autoFit (R2 mockado)", () => {
 
     expect(res.status).toBe(200);
     expect(mockedInterpret).toHaveBeenCalledWith("enquadra a peça");
-    expect(await dims(mockedPutObject.mock.calls[0][1] as Buffer)).toMatchObject({ w: 620, h: 520 });
+    expect(await dims(mockedPutObject.mock.calls[0][1] as Buffer)).toMatchObject({ w: 620, h: 1103 });
   });
 
   it("peça que já ocupa bem o quadro: 200 com noChange e razão amigável, sem erro e sem gravar no R2", async () => {
@@ -181,7 +181,7 @@ describe("foto salva — operação autoFit (R2 mockado)", () => {
     expect(undo.body).toMatchObject({ url: "https://example.com/original.png", key: "products/x/original.png", previousUrl: null, previousKey: null });
   });
 
-  it("descartar o preview só remove o objeto do R2 e não altera a foto", async () => {
+  it("descartar o preview não apaga nada no R2 e não altera a foto", async () => {
     const preview = await request(app).post(previewUrl()).set("Authorization", `Bearer ${token}`).send({ operations: [{ operation: "autoFit" }] });
 
     const discard = await request(app)
@@ -190,7 +190,7 @@ describe("foto salva — operação autoFit (R2 mockado)", () => {
       .send({ previewKey: preview.body.previewKey });
 
     expect(discard.status).toBe(204);
-    expect(mockedDeleteObject).toHaveBeenCalledWith(preview.body.previewKey);
+    expect(mockedDeleteObject).not.toHaveBeenCalled(); // nenhuma rota de tratamento apaga arquivos
     expect((await prisma.productImage.findUnique({ where: { id: imageId } }))!.url).toBe("https://example.com/original.png");
   });
 });
@@ -212,7 +212,7 @@ describe("foto staged — rota sem estado", () => {
     expect(res.status).toBe(200);
     expect(res.body.unclear).toBe(false);
     expect(res.body.notice).toMatch(/Peça enquadrada/);
-    expect(await dims(bufferFromDataUrl(res.body.previewDataUrl))).toMatchObject({ w: 620, h: 520, format: "png", hasAlpha: true });
+    expect(await dims(bufferFromDataUrl(res.body.previewDataUrl))).toMatchObject({ w: 620, h: 1103, format: "webp" });
 
     expect(mockedPutObject).not.toHaveBeenCalled();
     expect(mockedGetObject).not.toHaveBeenCalled();
@@ -223,7 +223,7 @@ describe("foto staged — rota sem estado", () => {
     mockedInterpret.mockResolvedValue({ unclear: false, operations: [{ operation: "autoFit" }] });
     const res = await raw((r) => r.field("instruction", "centraliza a pedra"), original);
     expect(res.status).toBe(200);
-    expect(await dims(bufferFromDataUrl(res.body.previewDataUrl))).toMatchObject({ w: 620, h: 520 });
+    expect(await dims(bufferFromDataUrl(res.body.previewDataUrl))).toMatchObject({ w: 620, h: 1103 });
   });
 
   it("peça já enquadrada: noChange com razão amigável (sem previewDataUrl)", async () => {
@@ -241,7 +241,7 @@ describe("foto staged — rota sem estado", () => {
     const res = await raw((r) => r.field("operations", JSON.stringify([{ operation: "autoFit" }])), await opaquePhoto(1600, 1200, subject), "foto.jpg", "image/jpeg");
 
     expect(res.status).toBe(200);
-    expect(await dims(bufferFromDataUrl(res.body.previewDataUrl))).toMatchObject({ w: 744, h: 594, format: "jpeg", hasAlpha: false });
+    expect(await dims(bufferFromDataUrl(res.body.previewDataUrl))).toMatchObject({ w: 744, h: 1323, format: "webp", hasAlpha: false });
   });
 
   it("rembg indisponível numa foto opaca: noChange com mensagem clara, não 500", async () => {

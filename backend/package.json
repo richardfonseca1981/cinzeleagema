@@ -19,8 +19,6 @@
     "wipe-product-data": "tsx src/scripts/wipeProductData.ts",
     "autofit:photos": "tsx src/scripts/autoFitExistingPhotos.ts",
     "autofit:photos:prod": "node dist/scripts/autoFitExistingPhotos.js",
-    "reframe:photos": "tsx src/scripts/reframeExistingPhotos.ts",
-    "reframe:photos:prod": "node dist/scripts/reframeExistingPhotos.js",
     "promote-formas": "tsx src/scripts/promoteFormasToCategory.ts",
     "promote-formas:prod": "node dist/scripts/promoteFormasToCategory.js"
   },

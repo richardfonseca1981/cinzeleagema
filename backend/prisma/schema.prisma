@@ -107,6 +107,11 @@ model ProductImage {
   key      String // chave do objeto no bucket R2 (para permitir exclusão futura)
   position Int    @default(0)
 
+  // Dimensões (px) da foto exibida, gravadas pelo upload/tratamento (já em
+  // 9:16). Null em fotos antigas = proporção desconhecida ("a trocar").
+  width  Int?
+  height Int?
+
   // Preenchidos quando um tratamento de foto por IA é confirmado — guardam a
   // URL/key da versão anterior para permitir desfazer (um único nível).
   previousUrl String?

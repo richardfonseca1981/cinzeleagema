@@ -14,6 +14,7 @@ import {
   type ProductListState,
   type StatusFilter,
 } from "../lib/productListState";
+import { isPortrait916 } from "../lib/photoFormat";
 import type { Category, Product } from "../types";
 
 // Debounce da busca por nome/SKU (ms).
@@ -33,6 +34,19 @@ interface PageData {
   pageSize: number;
 }
 
+// Foto principal (capa): em 9:16, a trocar (proporção antiga ou desconhecida) ou sem foto.
+function CoverBadge({ cover }: { cover: Product["images"][number] | undefined }) {
+  if (!cover) {
+    return <span className="rounded-full border border-[#E2E8F0] bg-[#F8FAFC] px-2 py-0.5 text-xs font-medium text-[#64748B]">Sem foto</span>;
+  }
+  const ok = Boolean(cover.width && cover.height && isPortrait916(cover.width, cover.height));
+  return ok ? (
+    <span className="rounded-full border border-[#22C55E] bg-[#F0FDF4] px-2 py-0.5 text-xs font-medium text-[#15803D]">9:16 ✓</span>
+  ) : (
+    <span className="rounded-full border border-[#F59E0B] bg-[#FFFBEB] px-2 py-0.5 text-xs font-medium text-[#B45309]">A trocar</span>
+  );
+}
+
 export function ProductList() {
   const { showToast } = useToast();
   const location = useLocation();
@@ -47,6 +61,8 @@ export function ProductList() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
+  // Contador global (todas as peças, não só a página): capa já em 9:16.
+  const [photoStats, setPhotoStats] = useState<{ total: number; portrait: number } | null>(null);
   const [searchInput, setSearchInput] = useState(state.q);
   const topRef = useRef<HTMLDivElement>(null);
   // Último valor de busca que ESTE componente escreveu na URL — distingue a
@@ -64,6 +80,11 @@ export function ProductList() {
   useEffect(() => {
     api.listCategories().then(setCategories);
   }, []);
+
+  // Recarrega o contador ao voltar da edição (a lista remonta) e a cada recarga.
+  useEffect(() => {
+    api.getPhotoStats().then(setPhotoStats).catch(() => setPhotoStats(null));
+  }, [reloadTick]);
 
   // Categoria/subcategoria que não existem (link antigo) saem da URL.
   useEffect(() => {
@@ -196,6 +217,15 @@ export function ProductList() {
         </Link>
       </div>
 
+      {photoStats && (
+        <p className="mb-3 text-sm text-[#64748B]" aria-live="polite">
+          <strong className="text-[#1A1A1A]">
+            {photoStats.portrait} de {photoStats.total} peças
+          </strong>{" "}
+          com foto em 9:16. {photoStats.total - photoStats.portrait > 0 ? `Faltam ${photoStats.total - photoStats.portrait} a trocar.` : "Todas em 9:16!"}
+        </p>
+      )}
+
       <div className="mb-4 flex flex-wrap gap-3">
         <input
           type="text"
@@ -277,6 +307,7 @@ export function ProductList() {
               <th className="px-4 py-2">Nome</th>
               <th className="px-4 py-2">Preço</th>
               <th className="px-4 py-2">Estoque</th>
+              <th className="px-4 py-2">Foto principal</th>
               <th className="px-4 py-2">Status</th>
               <th className="px-4 py-2"></th>
             </tr>
@@ -284,14 +315,14 @@ export function ProductList() {
           <tbody>
             {loading && !data && (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-[#64748B]">
+                <td colSpan={6} className="px-4 py-6 text-center text-[#64748B]">
                   Carregando...
                 </td>
               </tr>
             )}
             {!loading && !loadError && items.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-10 text-center">
+                <td colSpan={6} className="px-4 py-10 text-center">
                   <p className="font-medium text-[#1A1A1A]">
                     {hasFilters ? "Nenhum produto encontrado" : "Nenhum produto cadastrado ainda"}
                   </p>
@@ -311,6 +342,9 @@ export function ProductList() {
                 </td>
                 <td className="px-4 py-2 text-[#64748B]">
                   {product.trackStock ? product.stockQty : "Peça única"}
+                </td>
+                <td className="px-4 py-2">
+                  <CoverBadge cover={product.images[0]} />
                 </td>
                 <td className="px-4 py-2">
                   <span

@@ -197,27 +197,3 @@ describe("POST /undo — restaura os metadados colorEnhanced junto com a imagem 
     expect(undone.body.colorEnhanceLevel).toBeNull();
   });
 });
-
-describe("POST /api/products/:productId/images — metadados colorEnhanced em foto staged recém-enviada", () => {
-  it("persiste colorEnhanced e o nível quando informados na confirmação do upload", async () => {
-    const res = await request(app)
-      .post(`/api/products/${productId}/images`)
-      .set("Authorization", `Bearer ${token}`)
-      .send({ url: "https://example.com/staged.webp", key: "products/x/staged.webp", colorEnhanced: true, colorEnhanceLevel: "forte" });
-
-    expect(res.status).toBe(201);
-    expect(res.body.colorEnhanced).toBe(true);
-    expect(res.body.colorEnhanceLevel).toBe("forte");
-  });
-
-  it("colorEnhanced=false por padrão quando não informado", async () => {
-    const res = await request(app)
-      .post(`/api/products/${productId}/images`)
-      .set("Authorization", `Bearer ${token}`)
-      .send({ url: "https://example.com/staged2.webp", key: "products/x/staged2.webp" });
-
-    expect(res.status).toBe(201);
-    expect(res.body.colorEnhanced).toBe(false);
-    expect(res.body.colorEnhanceLevel).toBeNull();
-  });
-});

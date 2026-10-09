@@ -36,8 +36,8 @@ const token = generateTestToken();
 // Foto sintética "de pedra": faixas azul/verde/roxa/turquesa de saturação
 // média (~0,3) sobre um fundo claro quase neutro, com gradiente de brilho.
 async function makeStoneLikeImage(): Promise<Buffer> {
-  const width = 240;
-  const height = 120;
+  const width = 120;
+  const height = 214; // 9:16: sem o canvas de fundo desfocado, a saturação medida é só da peça
   const raw = Buffer.alloc(width * height * 3);
   const bands: [number, number, number][] = [
     [90, 110, 150],
@@ -49,7 +49,7 @@ async function makeStoneLikeImage(): Promise<Buffer> {
     for (let x = 0; x < width; x++) {
       const i = (y * width + x) * 3;
       const inStone = y > 15 && y < height - 15;
-      const base: [number, number, number] = inStone ? bands[Math.floor(x / 60)] : [235, 236, 238];
+      const base: [number, number, number] = inStone ? bands[Math.floor(x / 30)] : [235, 236, 238];
       const v = inStone ? 0.8 + 0.4 * (y / height) : 1;
       raw[i] = Math.min(255, base[0] * v);
       raw[i + 1] = Math.min(255, base[1] * v);

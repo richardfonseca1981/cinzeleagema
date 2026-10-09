@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isPortrait916, photoFileError, photoFormatWarnings, PHOTO_ASPECT_CSS } from "./photoFormat";
+import { MAX_PHOTOS_PER_PRODUCT, PHOTO_GUIDANCE, maxPhotosMessage, isPortrait916, photoFileError, photoFormatWarnings, PHOTO_ASPECT_CSS } from "./photoFormat";
 
 describe("photoFormatWarnings", () => {
   it("720×1280 exatos não geram aviso", () => {
@@ -60,5 +60,17 @@ describe("photoFileError", () => {
   it("aceita JPEG e recusa arquivo grande", () => {
     expect(photoFileError({ name: "a.jpg", type: "image/jpeg", size: 10 })).toBeNull();
     expect(photoFileError({ name: "a.jpg", type: "image/jpeg", size: 16 * 1024 * 1024 })).toMatch(/15 MB/);
+  });
+});
+
+describe("textos do admin", () => {
+  it("orientação de fotografia completa", () => {
+    expect(PHOTO_GUIDANCE).toBe(
+      "Fotografe com o celular em pé e a proporção 16:9 selecionada na câmera, com a peça centralizada e ocupando cerca de dois terços da largura da foto"
+    );
+  });
+  it("limite de fotos por peça numa constante, com mensagem em português", () => {
+    expect(MAX_PHOTOS_PER_PRODUCT).toBe(10);
+    expect(maxPhotosMessage()).toBe("Limite de 10 fotos por peça atingido. Apague uma foto antes de adicionar outra.");
   });
 });

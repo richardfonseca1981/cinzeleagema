@@ -152,6 +152,15 @@
     "notFound": "Piece not found.",
     "quantity": "Quantity"
   },
+  "gallery": {
+    "photoAlt": "{{name}}, photo {{n}} of {{total}}",
+    "counter": "{{n}}/{{total}}",
+    "previous": "Previous photo",
+    "next": "Next photo",
+    "goTo": "Go to photo {{n}} of {{total}}",
+    "thumbnail": "Show photo {{n}} of {{total}}",
+    "region": "Photos of {{name}}"
+  },
   "cart": {
     "title": "Your order",
     "empty": "Your order is empty.",

@@ -94,16 +94,17 @@ describe("POST /api/images/treatment-preview-raw", () => {
     expect(res.status).toBe(200);
     expect(res.body.unclear).toBe(false);
     expect(res.body.operations).toEqual([{ operation: "sharpen", intensity: "leve" }]);
-    expect(res.body.previewDataUrl).toMatch(/^data:image\/jpeg;base64,/);
+    expect(res.body.previewDataUrl).toMatch(/^data:image\/webp;base64,/);
 
     const base64 = res.body.previewDataUrl.split(",")[1];
     const resultBuffer = Buffer.from(base64, "base64");
     const meta = await sharp(resultBuffer).metadata();
+    // 40×40 vira 9:16 (40×72): foto inteira num canvas em pé, sem ampliar
     expect(meta.width).toBe(40);
-    expect(meta.height).toBe(40);
+    expect(meta.height).toBe(72);
   });
 
-  it("processa removeBackground via rembg (mockado) e devolve PNG com alpha", async () => {
+  it("processa removeBackground via rembg (mockado) e devolve a imagem em 9:16", async () => {
     mockedInterpret.mockResolvedValue({ unclear: false, operations: [{ operation: "removeBackground" }] });
 
     const transparentPng = await sharp({
@@ -123,12 +124,13 @@ describe("POST /api/images/treatment-preview-raw", () => {
     expect(res.status).toBe(200);
     expect(res.body.unclear).toBe(false);
     expect(mockedRemoveBackground).toHaveBeenCalledTimes(1);
-    expect(res.body.previewDataUrl).toMatch(/^data:image\/png;base64,/);
+    expect(res.body.previewDataUrl).toMatch(/^data:image\/webp;base64,/);
 
     const base64 = res.body.previewDataUrl.split(",")[1];
     const resultBuffer = Buffer.from(base64, "base64");
     const meta = await sharp(resultBuffer).metadata();
-    expect(meta.hasAlpha).toBe(true);
+    // todo tratamento sai em 9:16
+    expect(meta.width! / meta.height!).toBeCloseTo(9 / 16, 1);
   });
 
   it("retorna unclear sem processar a imagem quando o pedido é pouco claro", async () => {

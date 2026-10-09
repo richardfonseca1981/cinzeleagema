@@ -65,6 +65,7 @@ describe("constantes 9:16 iguais no backend e no frontend", () => {
       "PHOTO_MAX_LONG_SIDE",
       "PHOTO_MIN_WIDTH",
       "PHOTO_MIN_HEIGHT",
+      "MAX_PHOTOS_PER_PRODUCT",
     ] as const) {
       expect(read(name), name).toBe(photoFormat[name]);
     }

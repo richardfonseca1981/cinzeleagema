@@ -6,9 +6,9 @@ import { prisma } from "../lib/prisma";
 import { requireAuth } from "../middleware/auth";
 import { asyncHandler } from "../utils/asyncHandler";
 import { HttpError } from "../middleware/errorHandler";
-import { confirmImageSchema, presignImageSchema, reorderImagesSchema } from "../schemas/product.schema";
-import { createPresignedUpload, deleteObject, isR2Configured, putObject } from "../lib/r2";
-import { normalizeToPortrait, PHOTO_MAX_UPLOAD_BYTES, TOO_LARGE_MESSAGE } from "../lib/photoFormat";
+import { reorderImagesSchema } from "../schemas/product.schema";
+import { deleteObject, isR2Configured, putObject } from "../lib/r2";
+import { MAX_PHOTOS_PER_PRODUCT, normalizeToPortrait, PHOTO_MAX_UPLOAD_BYTES, TOO_LARGE_MESSAGE } from "../lib/photoFormat";
 
 export const imageRouter = Router({ mergeParams: true });
 
@@ -34,10 +34,10 @@ const uploadFieldsSchema = z.object({
   colorEnhanceLevel: z.enum(["leve", "medio", "forte"]).optional(),
 });
 
-// Caminho oficial para fotos NOVAS: o arquivo passa pelo servidor, é colocado
-// no formato final 9:16 (ver lib/photoFormat.ts), sem EXIF/GPS, e só então vai
-// ao R2 e vira ProductImage. (O fluxo presign abaixo grava o arquivo bruto e
-// não é mais usado pelo admin.)
+// ÚNICO caminho que grava fotos novas no R2: o arquivo passa pelo servidor, é
+// colocado no formato final 9:16 (ver lib/photoFormat.ts), sem EXIF/GPS, e só
+// então vai ao R2 (sempre com chave NOVA — nunca reaproveita o nome de uma foto
+// anterior, por causa de cache) e vira ProductImage.
 imageRouter.post(
   "/upload",
   receiveFile,
@@ -49,6 +49,11 @@ imageRouter.post(
       throw new HttpError(503, "Upload de imagens não configurado (variáveis R2 ausentes)");
     }
     if (!req.file) throw new HttpError(400, "Arquivo de imagem ausente");
+
+    const count = await prisma.productImage.count({ where: { productId } });
+    if (count >= MAX_PHOTOS_PER_PRODUCT) {
+      throw new HttpError(400, `Limite de ${MAX_PHOTOS_PER_PRODUCT} fotos por peça atingido. Apague uma foto antes de enviar outra.`);
+    }
 
     const fields = uploadFieldsSchema.parse(req.body ?? {});
     const colorEnhanced = fields.colorEnhanced === "true";
@@ -64,6 +69,8 @@ imageRouter.post(
         url,
         key,
         position: (lastImage?.position ?? -1) + 1,
+        width: photo.after.w,
+        height: photo.after.h,
         colorEnhanced,
         colorEnhanceLevel: colorEnhanced ? fields.colorEnhanceLevel ?? null : null,
       },
@@ -73,53 +80,7 @@ imageRouter.post(
   })
 );
 
-// Passo 1 (fluxo antigo, sem processamento): gera uma URL assinada para o frontend enviar o arquivo direto ao R2
-imageRouter.post(
-  "/presign",
-  asyncHandler(async (req, res) => {
-    const { productId } = req.params as { productId: string };
-    await ensureProductExists(productId);
-
-    if (!isR2Configured()) {
-      throw new HttpError(503, "Upload de imagens não configurado (variáveis R2 ausentes)");
-    }
-
-    const { fileName, contentType } = presignImageSchema.parse(req.body);
-    const presigned = await createPresignedUpload(productId, fileName, contentType);
-    res.json(presigned);
-  })
-);
-
-// Passo 2: depois do upload direto ao R2 ter sucesso, o frontend confirma
-// criando o registro ProductImage com a posição seguinte disponível
-imageRouter.post(
-  "/",
-  asyncHandler(async (req, res) => {
-    const { productId } = req.params as { productId: string };
-    await ensureProductExists(productId);
-
-    const { url, key, colorEnhanced, colorEnhanceLevel } = confirmImageSchema.parse(req.body);
-
-    const lastImage = await prisma.productImage.findFirst({
-      where: { productId },
-      orderBy: { position: "desc" },
-    });
-
-    const image = await prisma.productImage.create({
-      data: {
-        productId,
-        url,
-        key,
-        position: (lastImage?.position ?? -1) + 1,
-        colorEnhanced: colorEnhanced ?? false,
-        colorEnhanceLevel: colorEnhanced ? colorEnhanceLevel ?? null : null,
-      },
-    });
-
-    res.status(201).json(image);
-  })
-);
-
+// A ordem define a capa: a primeira foto da lista é a principal.
 imageRouter.patch(
   "/reorder",
   asyncHandler(async (req, res) => {
@@ -153,6 +114,10 @@ imageRouter.patch(
   })
 );
 
+// ÚNICO lugar do sistema que apaga arquivos do R2. Ação manual do admin, uma
+// foto por vez (o frontend pede confirmação antes). Remove o registro e os
+// arquivos DESTA foto — a imagem exibida e o "antes" guardado pelo tratamento
+// (previousKey) — mas só os que nenhuma outra foto usa.
 imageRouter.delete(
   "/:imageId",
   asyncHandler(async (req, res) => {
@@ -164,10 +129,29 @@ imageRouter.delete(
       throw new HttpError(404, "Imagem não encontrada");
     }
 
-    if (isR2Configured()) {
-      await deleteObject(image.key);
-    }
+    const candidates = [...new Set([image.key, image.previousKey].filter((k): k is string => Boolean(k)))];
+    // Qualquer OUTRA foto (deste ou de outro produto) que use o mesmo arquivo
+    // como imagem atual ou como "antes" mantém o arquivo no R2.
+    const sharedElsewhere = await prisma.productImage.findMany({
+      where: { id: { not: image.id }, OR: [{ key: { in: candidates } }, { previousKey: { in: candidates } }] },
+      select: { key: true, previousKey: true },
+    });
+    const inUse = new Set(sharedElsewhere.flatMap((i) => [i.key, i.previousKey]));
+    const toRemove = candidates.filter((k) => !inUse.has(k));
+
+    // Registro primeiro: se o R2 falhar sobra um arquivo órfão (inofensivo),
+    // nunca uma foto no site apontando para um arquivo que não existe.
     await prisma.productImage.delete({ where: { id: imageId } });
+
+    if (isR2Configured()) {
+      for (const key of toRemove) {
+        try {
+          await deleteObject(key);
+        } catch (err) {
+          console.error(`Não foi possível remover do R2 o arquivo ${key}:`, err);
+        }
+      }
+    }
 
     res.status(204).send();
   })

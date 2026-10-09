@@ -8,6 +8,9 @@ export interface ProductImage {
   url: string;
   key: string;
   position: number;
+  // Dimensões da foto exibida; ausentes/null em fotos antigas (proporção desconhecida).
+  width?: number | null;
+  height?: number | null;
   previousUrl?: string | null;
   previousKey?: string | null;
   colorEnhanced?: boolean;
@@ -29,7 +32,7 @@ export interface PhotoTreatmentOperation {
     | "enhance_color";
   width?: number;
   height?: number;
-  aspectRatio?: "1:1" | "4:3" | "16:9";
+  aspectRatio?: "1:1" | "4:3" | "9:16";
   value?: number;
   intensity?: "leve" | "médio" | "forte";
   degrees?: 90 | 180 | 270;

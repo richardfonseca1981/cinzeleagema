@@ -40,25 +40,9 @@ export const reorderImagesSchema = z.object({
   order: z.array(z.string().min(1)).min(1),
 });
 
-export const presignImageSchema = z.object({
-  fileName: z.string().min(1),
-  contentType: z.string().min(1),
-});
-
 // Nível fechado — qualquer outro valor é rejeitado (mesmo enum do parâmetro
 // "level" da operação enhance_color, ver lib/imageOperations.ts).
 const colorEnhanceLevelSchema = z.enum(["leve", "medio", "forte"]);
-
-export const confirmImageSchema = z.object({
-  url: z.string().min(1),
-  key: z.string().min(1),
-  // Preenchidos quando a foto staged já passou por enhance_color antes do
-  // upload (ver ImageTreatmentPanel no frontend) — persistidos direto na
-  // criação do registro, já que fotos staged não passam por
-  // /treatment/confirm (esse endpoint só existe para fotos já salvas).
-  colorEnhanced: z.boolean().optional(),
-  colorEnhanceLevel: colorEnhanceLevelSchema.optional(),
-});
 
 // Atalhos do admin (botões "Realçar cores"/"Mais nitidez"/"Remover fundo")
 // mandam "operations" prontas, sem passar pela Claude API — texto livre

@@ -2,6 +2,7 @@ import sharp from "sharp";
 import { z } from "zod";
 import { removeBackground } from "./rembg";
 import { autoFitSubject, type AutoFitResult } from "./autoFit";
+import { normalizeToPortrait } from "./photoFormat";
 
 // Lista fechada de operações permitidas — nenhuma outra é aceita, mesmo que
 // a Claude API retorne algo diferente (o backend valida de novo aqui).
@@ -17,7 +18,7 @@ const resizeSchema = z.object({
 
 const cropSchema = z.object({
   operation: z.literal("crop"),
-  aspectRatio: z.enum(["1:1", "4:3", "16:9"]).optional(),
+  aspectRatio: z.enum(["1:1", "4:3", "9:16"]).optional(),
   width: z.number().int().positive().max(8000).optional(),
   height: z.number().int().positive().max(8000).optional(),
 });
@@ -103,10 +104,10 @@ const SHARPEN_SIGMA: Record<"leve" | "médio" | "forte", number> = {
   forte: 3,
 };
 
-const ASPECT_RATIOS: Record<"1:1" | "4:3" | "16:9", [number, number]> = {
+const ASPECT_RATIOS: Record<"1:1" | "4:3" | "9:16", [number, number]> = {
   "1:1": [1, 1],
   "4:3": [4, 3],
-  "16:9": [16, 9],
+  "9:16": [9, 16],
 };
 
 function clampMultiplier(value: number): number {
@@ -258,16 +259,12 @@ async function applyOperation(buffer: Buffer, op: Operation): Promise<Buffer> {
   }
 }
 
-function formatMeta(format: string | undefined): { contentType: string; ext: string } {
-  if (format === "png") return { contentType: "image/png", ext: ".png" };
-  if (format === "webp") return { contentType: "image/webp", ext: ".webp" };
-  return { contentType: "image/jpeg", ext: ".jpg" };
-}
-
-export async function executeOperations(
+// Executa as operações na ordem, SEM a normalização final para 9:16 (usado
+// pelos testes de cada operação isolada e por executeOperations).
+export async function applyOperations(
   buffer: Buffer,
   ops: Operation[]
-): Promise<{ buffer: Buffer; contentType: string; ext: string; autoFit?: AutoFitResult }> {
+): Promise<{ buffer: Buffer; autoFit?: AutoFitResult }> {
   let working = buffer;
   let autoFit: AutoFitResult | undefined;
   for (const op of ops) {
@@ -280,7 +277,17 @@ export async function executeOperations(
     }
     working = await applyOperation(working, op);
   }
-  const meta = await sharp(working).metadata();
-  const { contentType, ext } = formatMeta(meta.format);
-  return { buffer: working, contentType, ext, ...(autoFit ? { autoFit } : {}) };
+  return { buffer: working, ...(autoFit ? { autoFit } : {}) };
+}
+
+export async function executeOperations(
+  buffer: Buffer,
+  ops: Operation[]
+): Promise<{ buffer: Buffer; contentType: string; ext: string; autoFit?: AutoFitResult }> {
+  const { buffer: working, autoFit } = await applyOperations(buffer, ops);
+  // Todo tratamento sai em 9:16 em pé, com a mesma normalização do upload
+  // (foto inteira, sem EXIF/GPS, lado maior <= 1920): nenhuma operação
+  // (cortar, girar, remover fundo...) deixa a foto fora do formato do site.
+  const final = await normalizeToPortrait(working);
+  return { buffer: final.buffer, contentType: final.contentType, ext: `.${final.ext}`, ...(autoFit ? { autoFit } : {}) };
 }

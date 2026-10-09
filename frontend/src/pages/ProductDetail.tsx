@@ -10,7 +10,8 @@ import { WHATSAPP_HREF } from "../lib/whatsapp";
 import { useCart } from "../lib/cart";
 import { useExchangeRate } from "../lib/exchangeRate";
 import { useToast } from "../components/Toast";
-import { ProductImage } from "../components/ProductImage";
+import { ProductGallery } from "../components/ProductGallery";
+import { galleryItemsFromImages } from "../lib/gallery";
 
 export function ProductDetail() {
   const { t, i18n } = useTranslation();
@@ -47,7 +48,7 @@ export function ProductDetail() {
         name: product.name,
         nameEn: product.nameEn,
         unitPrice: Number(product.price),
-        imageUrl: product.images[0]?.url ?? null,
+        imageUrl: galleryItemsFromImages(product.images)[0]?.url ?? null,
         weightGrams: Number(product.weightGrams),
         sizeCm: Number(product.sizeCm),
       },
@@ -69,15 +70,7 @@ export function ProductDetail() {
 
         {product && (
           <div className="mt-6 grid gap-8 sm:grid-cols-2">
-            {/* Largura limitada para a altura (9:16) nunca passar de 85vh em desktop. */}
-            <div className="mx-auto w-full sm:max-w-[calc(85vh*9/16)]">
-              <ProductImage
-                src={product.images[0]?.url}
-                alt={displayName}
-                priority
-                className="rounded-xl border border-[#E2E8F0]"
-              />
-            </div>
+            <ProductGallery items={galleryItemsFromImages(product.images)} name={displayName} />
 
             <div>
               {(product.category || product.subcategory) && (

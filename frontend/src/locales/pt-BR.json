@@ -152,6 +152,15 @@
     "notFound": "Peça não encontrada.",
     "quantity": "Quantidade"
   },
+  "gallery": {
+    "photoAlt": "{{name}}, foto {{n}} de {{total}}",
+    "counter": "{{n}}/{{total}}",
+    "previous": "Foto anterior",
+    "next": "Próxima foto",
+    "goTo": "Ir para a foto {{n}} de {{total}}",
+    "thumbnail": "Ver foto {{n}} de {{total}}",
+    "region": "Fotos de {{name}}"
+  },
   "cart": {
     "title": "Seu pedido",
     "empty": "Seu pedido está vazio.",

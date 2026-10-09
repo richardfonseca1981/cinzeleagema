@@ -5,6 +5,7 @@ import {
   entriesFromImages,
   hasPendingChanges,
   moveEntry,
+  moveToFront,
   removeEntryAt,
   withNewEntryTreatment,
   withNewEntryUndo,
@@ -299,5 +300,18 @@ describe("tratamento por IA em foto staged (sem backend com estado)", () => {
     // documenta que a entrada staged permanece byte-a-byte a mesma.
     expect(entry.file.name).toBe("original.jpg");
     expect(entry.previewUrl).toBe("blob:original");
+  });
+});
+
+describe("moveToFront (tornar capa)", () => {
+  const entries = () => entriesFromImages([makeImage({ id: "a", position: 0 }), makeImage({ id: "b", position: 1 }), makeImage({ id: "c", position: 2 })]);
+  const ids = (list: ReturnType<typeof entries>) => list.map((e) => (e.kind === "existing" ? e.image.id : e.localId));
+
+  it("leva a foto escolhida para a primeira posição, mantendo a ordem das demais", () => {
+    expect(ids(moveToFront(entries(), 2))).toEqual(["c", "a", "b"]);
+  });
+  it("capa atual ou índice inválido não mudam nada", () => {
+    expect(ids(moveToFront(entries(), 0))).toEqual(["a", "b", "c"]);
+    expect(ids(moveToFront(entries(), 9))).toEqual(["a", "b", "c"]);
   });
 });
