@@ -5,6 +5,7 @@ import type { Category, ProductImage } from "../types";
 import { ImageManager, type ImageManagerHandle } from "../components/ImageManager";
 import { useToast } from "../components/Toast";
 import { backToListPath } from "../lib/productListState";
+import { canConfirmDelete, deleteConfirmTarget } from "../lib/productDelete";
 
 const DIACRITICS_REGEX = new RegExp("[̀-ͯ]", "g");
 
@@ -52,6 +53,11 @@ export function ProductForm() {
   const [savingPhase, setSavingPhase] = useState<"data" | "images" | null>(null);
   const [loading, setLoading] = useState(isEditing);
   const imageManagerRef = useRef<ImageManagerHandle>(null);
+  // Dados SALVOS da peça (não o que está sendo digitado) para a exclusão definitiva.
+  const [saved, setSaved] = useState<{ name: string; sku: string | null; active: boolean } | null>(null);
+  const [showDelete, setShowDelete] = useState(false);
+  const [typedConfirm, setTypedConfirm] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     api.listCategories().then(setCategories);
@@ -74,7 +80,8 @@ export function ProductForm() {
         setSizeCm(String(product.sizeCm));
         setTrackStock(product.trackStock);
         setStockQty(product.stockQty !== null ? String(product.stockQty) : "");
-        setImages(product.images);
+        setImages(product.images ?? []);
+        setSaved({ name: product.name, sku: product.sku, active: product.active });
         setProductId(product.id);
       })
       .finally(() => setLoading(false));
@@ -135,6 +142,26 @@ export function ProductForm() {
     } finally {
       setSaving(false);
       setSavingPhase(null);
+    }
+  }
+
+  async function handleDeleteProduct() {
+    if (!productId || !saved) return;
+    setDeleting(true);
+    try {
+      const result = await api.deleteProduct(productId);
+      if (result.filesFailed > 0) {
+        showToast(
+          "warning",
+          `Peça excluída, mas ${result.filesFailed} arquivo(s) de foto não puderam ser removidos do armazenamento. Eles ficam sem uso e não aparecem no site.`
+        );
+      } else {
+        showToast("success", "Peça excluída definitivamente");
+      }
+      navigate(listPath);
+    } catch (err) {
+      showToast("error", err instanceof ApiError ? err.message : "Não foi possível excluir a peça. Nada foi apagado.");
+      setDeleting(false);
     }
   }
 
@@ -332,6 +359,74 @@ export function ProductForm() {
           </button>
         </div>
       </form>
+
+      {isEditing && saved && (
+        <section className="mt-6 rounded-lg border border-[#FCA5A5] bg-white p-6">
+          <h2 className="mb-2 text-sm font-semibold text-[#B91C1C]">Excluir peça</h2>
+          <p className="mb-3 text-sm text-[#64748B]">
+            Apaga a peça e todas as fotos dela de forma definitiva. Só é possível com a peça inativa.
+          </p>
+          <button
+            type="button"
+            disabled={saved.active || saving}
+            onClick={() => {
+              setTypedConfirm("");
+              setShowDelete(true);
+            }}
+            className="rounded-lg bg-[#EF4444] px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Excluir peça
+          </button>
+          {saved.active && <p className="mt-2 text-xs text-[#B45309]">Desative a peça antes de excluir.</p>}
+        </section>
+      )}
+
+      {showDelete && saved && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="presentation">
+          <div role="alertdialog" aria-modal="true" aria-labelledby="delete-product-title" className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
+            <h2 id="delete-product-title" className="text-base font-semibold text-[#1A1A1A]">Excluir a peça definitivamente?</h2>
+            <p className="mt-3 text-sm text-[#1A1A1A]">
+              <strong>{saved.name}</strong>
+              {saved.sku ? ` — SKU ${saved.sku}` : " — sem SKU"}
+            </p>
+            <p className="mt-2 text-sm text-[#1A1A1A]">
+              Serão apagadas <strong>{images.length} {images.length === 1 ? "foto" : "fotos"}</strong> e a peça. A exclusão é{" "}
+              <strong>definitiva</strong> e não pode ser desfeita.
+            </p>
+            {(() => {
+              const target = deleteConfirmTarget(saved);
+              return (
+                <>
+                  <label className="mt-4 block text-sm font-medium text-[#1A1A1A]" htmlFor="confirm-delete">
+                    Para confirmar, digite o {target.label} da peça: <span className="font-mono">{target.value}</span>
+                  </label>
+                  <input
+                    id="confirm-delete"
+                    autoFocus
+                    autoComplete="off"
+                    value={typedConfirm}
+                    onChange={(e) => setTypedConfirm(e.target.value)}
+                    className={inputClass}
+                  />
+                  <div className="mt-4 flex justify-end gap-2">
+                    <button type="button" disabled={deleting} onClick={() => setShowDelete(false)} className="rounded-lg border border-[#E2E8F0] px-4 py-2 text-sm hover:bg-[#F8FAFC] disabled:opacity-40">
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      disabled={deleting || !canConfirmDelete(typedConfirm, target)}
+                      onClick={handleDeleteProduct}
+                      className="rounded-lg bg-[#EF4444] px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {deleting ? "Excluindo..." : "Excluir definitivamente"}
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

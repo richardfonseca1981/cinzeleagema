@@ -6,9 +6,15 @@ import { HttpError } from "../middleware/errorHandler";
 import { createProductSchema, listProductsQuerySchema, updateProductSchema } from "../schemas/product.schema";
 import { escapeLikePattern } from "../utils/escapeLike";
 import { isPortrait916 } from "../lib/photoFormat";
+import { Prisma } from "@prisma/client";
+import { filesSafeToRemove, removeFiles } from "../lib/photoFiles";
 import { translateAndSaveProduct, translateProductInBackground } from "../lib/productTranslation";
 
 export const productRouter = Router();
+
+// Mesmo formato em TODAS as rotas que devolvem uma peça (a lista do admin
+// troca a linha pela resposta; sem "images" a coluna de foto quebrava).
+const PRODUCT_INCLUDE = { images: { orderBy: { position: "asc" as const } }, category: true, subcategory: true };
 
 // GET fica público: alimenta o catálogo do site (navegação/filtro por
 // categoria e página de detalhe). Só as rotas que alteram dados exigem login.
@@ -174,7 +180,8 @@ productRouter.post(
     const updated = await translateAndSaveProduct(product.id, product.name, product.description);
     if (!updated) throw new HttpError(502, "Não foi possível traduzir o produto agora, tente novamente");
 
-    res.json(updated);
+    // Mesmo formato das demais rotas (com fotos e categorias).
+    res.json(await prisma.product.findUnique({ where: { id: product.id }, include: PRODUCT_INCLUDE }));
   })
 );
 
@@ -185,6 +192,7 @@ productRouter.patch(
     const product = await prisma.product.update({
       where: { id: req.params.id },
       data: { active: false },
+      include: PRODUCT_INCLUDE,
     });
     res.json(product);
   })
@@ -197,7 +205,46 @@ productRouter.patch(
     const product = await prisma.product.update({
       where: { id: req.params.id },
       data: { active: true },
+      include: PRODUCT_INCLUDE,
     });
     res.json(product);
+  })
+);
+
+// Exclusão DEFINITIVA de uma peça (manual, uma por vez, só admin). Só peça
+// inativa e sem nenhuma ligação com pedidos/histórico. Relações do Product no
+// banco: apenas ProductImage (fotos, onDelete Cascade); traduções são colunas
+// do próprio Product (nameEn/descriptionEn). Pedidos não são gravados no banco
+// (o POST /api/orders só encaminha ao FluxioDesk); se um dia houver tabela que
+// aponte para Product sem cascade, o banco recusa (P2003) e respondemos 409.
+productRouter.delete(
+  "/:id",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const product = await prisma.product.findUnique({ where: { id: req.params.id }, include: { images: true } });
+    if (!product) throw new HttpError(404, "Produto não encontrado");
+    if (product.active) {
+      throw new HttpError(409, "Desative a peça antes de excluir.");
+    }
+
+    // Arquivos que só estas fotos usam (conferido ANTES de apagar os registros).
+    const filesToRemove = await filesSafeToRemove(product.images);
+
+    try {
+      // Tudo ou nada: fotos e peça saem juntas.
+      await prisma.$transaction([
+        prisma.productImage.deleteMany({ where: { productId: product.id } }),
+        prisma.product.delete({ where: { id: product.id } }),
+      ]);
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2003") {
+        throw new HttpError(409, "Esta peça aparece em pedidos; mantenha-a inativa.");
+      }
+      throw err;
+    }
+
+    // Registro primeiro; falha no R2 deixa só arquivos órfãos e vira aviso.
+    const filesFailed = await removeFiles(filesToRemove);
+    res.json({ deleted: true, photosRemoved: product.images.length, filesFailed });
   })
 );

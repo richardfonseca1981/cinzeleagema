@@ -7,7 +7,8 @@ import { requireAuth } from "../middleware/auth";
 import { asyncHandler } from "../utils/asyncHandler";
 import { HttpError } from "../middleware/errorHandler";
 import { reorderImagesSchema } from "../schemas/product.schema";
-import { deleteObject, isR2Configured, putObject } from "../lib/r2";
+import { isR2Configured, putObject } from "../lib/r2";
+import { filesSafeToRemove, removeFiles } from "../lib/photoFiles";
 import { MAX_PHOTOS_PER_PRODUCT, normalizeToPortrait, PHOTO_MAX_UPLOAD_BYTES, TOO_LARGE_MESSAGE } from "../lib/photoFormat";
 
 export const imageRouter = Router({ mergeParams: true });
@@ -129,29 +130,12 @@ imageRouter.delete(
       throw new HttpError(404, "Imagem não encontrada");
     }
 
-    const candidates = [...new Set([image.key, image.previousKey].filter((k): k is string => Boolean(k)))];
-    // Qualquer OUTRA foto (deste ou de outro produto) que use o mesmo arquivo
-    // como imagem atual ou como "antes" mantém o arquivo no R2.
-    const sharedElsewhere = await prisma.productImage.findMany({
-      where: { id: { not: image.id }, OR: [{ key: { in: candidates } }, { previousKey: { in: candidates } }] },
-      select: { key: true, previousKey: true },
-    });
-    const inUse = new Set(sharedElsewhere.flatMap((i) => [i.key, i.previousKey]));
-    const toRemove = candidates.filter((k) => !inUse.has(k));
+    const toRemove = await filesSafeToRemove([image]);
 
     // Registro primeiro: se o R2 falhar sobra um arquivo órfão (inofensivo),
     // nunca uma foto no site apontando para um arquivo que não existe.
     await prisma.productImage.delete({ where: { id: imageId } });
-
-    if (isR2Configured()) {
-      for (const key of toRemove) {
-        try {
-          await deleteObject(key);
-        } catch (err) {
-          console.error(`Não foi possível remover do R2 o arquivo ${key}:`, err);
-        }
-      }
-    }
+    await removeFiles(toRemove);
 
     res.status(204).send();
   })

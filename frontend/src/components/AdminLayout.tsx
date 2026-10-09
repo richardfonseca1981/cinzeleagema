@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import logo from "../assets/logo-topo.webp";
 import { clearSession, getSession } from "../lib/auth";
+import { ErrorBoundary } from "./ErrorBoundary";
 
 export function AdminLayout() {
   const navigate = useNavigate();
@@ -60,7 +61,9 @@ export function AdminLayout() {
           </div>
         </header>
         <main className="flex-1 px-6 py-6">
-          <Outlet />
+          <ErrorBoundary resetKey={location.pathname}>
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
     </div>

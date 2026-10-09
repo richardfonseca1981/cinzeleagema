@@ -95,6 +95,9 @@ export const api = {
   updateProduct: (id: string, data: Record<string, unknown>) =>
     request<Product>(`/api/products/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   deactivateProduct: (id: string) => request<Product>(`/api/products/${id}/deactivate`, { method: "PATCH" }),
+  // Exclusão DEFINITIVA (só peça inativa): uma peça por vez, com confirmação no admin.
+  deleteProduct: (id: string) =>
+    request<{ deleted: true; photosRemoved: number; filesFailed: number }>(`/api/products/${id}`, { method: "DELETE" }),
   activateProduct: (id: string) => request<Product>(`/api/products/${id}/activate`, { method: "PATCH" }),
 
   reorderImages: (productId: string, order: string[]) =>

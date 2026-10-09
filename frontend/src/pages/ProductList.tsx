@@ -15,6 +15,7 @@ import {
   type StatusFilter,
 } from "../lib/productListState";
 import { isPortrait916 } from "../lib/photoFormat";
+import { coverImage, mergeUpdatedProduct } from "../lib/productRow";
 import type { Category, Product } from "../types";
 
 // Debounce da busca por nome/SKU (ms).
@@ -35,7 +36,7 @@ interface PageData {
 }
 
 // Foto principal (capa): em 9:16, a trocar (proporção antiga ou desconhecida) ou sem foto.
-function CoverBadge({ cover }: { cover: Product["images"][number] | undefined }) {
+function CoverBadge({ cover }: { cover: ReturnType<typeof coverImage> }) {
   if (!cover) {
     return <span className="rounded-full border border-[#E2E8F0] bg-[#F8FAFC] px-2 py-0.5 text-xs font-medium text-[#64748B]">Sem foto</span>;
   }
@@ -161,7 +162,7 @@ export function ProductList() {
     try {
       const updated = product.active ? await api.deactivateProduct(product.id) : await api.activateProduct(product.id);
       if (state.status === "all") {
-        setData((prev) => (prev ? { ...prev, items: prev.items.map((p) => (p.id === updated.id ? updated : p)) } : prev));
+        setData((prev) => (prev ? { ...prev, items: mergeUpdatedProduct(prev.items, updated) } : prev));
       } else {
         // Com filtro de status a linha sai desta lista: recarrega a página
         // (e, se ela esvaziar, a carga acima volta para a anterior).
@@ -344,7 +345,7 @@ export function ProductList() {
                   {product.trackStock ? product.stockQty : "Peça única"}
                 </td>
                 <td className="px-4 py-2">
-                  <CoverBadge cover={product.images[0]} />
+                  <CoverBadge cover={coverImage(product)} />
                 </td>
                 <td className="px-4 py-2">
                   <span

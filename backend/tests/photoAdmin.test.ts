@@ -197,3 +197,108 @@ describe("indicador 9:16 do admin", () => {
     expect([undo.body.width, undo.body.height]).toEqual([1200, 900]);
   });
 });
+
+describe("ativar/desativar devolvem a peça no mesmo formato das demais (regressão da tela branca)", () => {
+  it.each(["deactivate", "activate"])("PATCH /%s inclui images (ordenadas), category e subcategory", async (action) => {
+    await img({ key: "products/b.webp", position: 1, width: 720, height: 1280 });
+    await img({ key: "products/a.webp", position: 0, width: 720, height: 1280 });
+    const res = await request(app).patch(`/api/products/${productId}/${action}`).set(auth);
+    expect(res.status).toBe(200);
+    expect(res.body.active).toBe(action === "activate");
+    expect(res.body.images.map((i: { key: string }) => i.key)).toEqual(["products/a.webp", "products/b.webp"]);
+    expect(res.body.images[0]).toMatchObject({ width: 720, height: 1280 });
+    expect(res.body.category).toMatchObject({ slug: "homedecor" });
+    expect(res.body).toHaveProperty("subcategory");
+  });
+
+  it("PATCH da peça (editar) também devolve images", async () => {
+    await img({ key: "products/a.webp" });
+    const res = await request(app).patch(`/api/products/${productId}`).set(auth).send({ price: 99 });
+    expect(res.status).toBe(200);
+    expect(res.body.images).toHaveLength(1);
+  });
+});
+
+describe("DELETE /api/products/:id — exclusão definitiva da peça", () => {
+  const del = (id: string, withAuth = true) => {
+    const r = request(app).delete(`/api/products/${id}`);
+    return withAuth ? r.set(auth) : r;
+  };
+  const deactivate = () => prisma.product.update({ where: { id: productId }, data: { active: false } });
+
+  it("peça inativa sem pedidos: apaga peça, fotos e arquivos (imagem e 'antes')", async () => {
+    await img({ key: "products/p/a.webp", previousKey: "products/p/a-antes.jpg", position: 0 });
+    await img({ key: "products/p/b.webp", position: 1 });
+    await deactivate();
+
+    const res = await del(productId);
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ deleted: true, photosRemoved: 2, filesFailed: 0 });
+    expect(await prisma.product.findUnique({ where: { id: productId } })).toBeNull();
+    expect(await prisma.productImage.count({ where: { productId } })).toBe(0);
+    expect(mockedDelete.mock.calls.map((c) => c[0]).sort()).toEqual(["products/p/a-antes.jpg", "products/p/a.webp", "products/p/b.webp"]);
+    // a outra peça não foi tocada
+    expect(await prisma.product.findUnique({ where: { id: otherProductId } })).not.toBeNull();
+  });
+
+  it("peça ativa é recusada (409) e nada é apagado", async () => {
+    await img({ key: "products/p/a.webp" });
+    const res = await del(productId);
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe("Desative a peça antes de excluir.");
+    expect(await prisma.product.findUnique({ where: { id: productId } })).not.toBeNull();
+    expect(await prisma.productImage.count()).toBe(1);
+    expect(mockedDelete).not.toHaveBeenCalled();
+  });
+
+  it("peça que aparece em pedidos (tabela com FK sem cascade) é recusada e nada é apagado", async () => {
+    await prisma.$executeRawUnsafe(`CREATE TABLE "TmpOrderItem" (id serial primary key, "productId" text not null references "Product"(id))`);
+    try {
+      await prisma.$executeRawUnsafe(`INSERT INTO "TmpOrderItem" ("productId") VALUES ('${productId}')`);
+      await img({ key: "products/p/a.webp" });
+      await deactivate();
+      const res = await del(productId);
+      expect(res.status).toBe(409);
+      expect(res.body.error).toBe("Esta peça aparece em pedidos; mantenha-a inativa.");
+      // transação desfeita: peça e fotos continuam, nenhum arquivo apagado
+      expect(await prisma.product.findUnique({ where: { id: productId } })).not.toBeNull();
+      expect(await prisma.productImage.count({ where: { productId } })).toBe(1);
+      expect(mockedDelete).not.toHaveBeenCalled();
+    } finally {
+      await prisma.$executeRawUnsafe(`DROP TABLE "TmpOrderItem"`);
+    }
+  });
+
+  it("arquivo compartilhado com outra foto NÃO é apagado", async () => {
+    await img({ key: "products/p/a.webp", previousKey: "products/p/compartilhado.jpg" });
+    await img({ productId: otherProductId, key: "products/q/x.webp", previousKey: "products/p/compartilhado.jpg" });
+    await deactivate();
+    const res = await del(productId);
+    expect(res.status).toBe(200);
+    expect(mockedDelete.mock.calls.map((c) => c[0])).toEqual(["products/p/a.webp"]);
+    expect(await prisma.productImage.count({ where: { productId: otherProductId } })).toBe(1);
+  });
+
+  it("falha do R2 não impede a exclusão do registro: vira aviso (filesFailed)", async () => {
+    await img({ key: "products/p/a.webp" });
+    await img({ key: "products/p/b.webp", position: 1 });
+    await deactivate();
+    mockedDelete.mockRejectedValueOnce(new Error("R2 fora do ar"));
+    const res = await del(productId);
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ deleted: true, photosRemoved: 2, filesFailed: 1 });
+    expect(await prisma.product.findUnique({ where: { id: productId } })).toBeNull();
+    expect(mockedDelete).toHaveBeenCalledTimes(2); // continua tentando as demais
+  });
+
+  it("exige login e peça inexistente dá 404", async () => {
+    expect((await del(productId, false)).status).toBe(401);
+    expect((await del("nao-existe")).status).toBe(404);
+  });
+
+  it("não existe rota que apague várias peças", async () => {
+    const res = await request(app).delete("/api/products").set(auth);
+    expect(res.status).toBe(404);
+    expect(await prisma.product.count()).toBe(2);
+  });
+});
