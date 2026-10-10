@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { formatPrice, formatWeightSize } from "./format";
+import { formatPrice, formatWeightSize, localizeProductName } from "./format";
+
+const t = (key: string) => (key === "productCard.unnamed" ? "Peça sem nome" : key);
 
 describe("formatPrice", () => {
   it("shows BRL for pt-BR regardless of exchange rate", () => {
@@ -40,5 +42,21 @@ describe("formatWeightSize", () => {
     expect(formatWeightSize(0, 1.1, "en")).toBe("1.1cm");
     expect(formatWeightSize(0.62, 0, "en")).toBe("0.62g");
     expect(formatWeightSize(0, 0, "en")).toBeNull();
+  });
+});
+
+describe("localizeProductName", () => {
+  it("uses the PT/EN name when there is a name (same as localizeText before)", () => {
+    expect(localizeProductName({ name: "Ametista", nameEn: "Amethyst", sku: "A-1" }, "en", t)).toBe("Amethyst");
+    expect(localizeProductName({ name: "Ametista", nameEn: "Amethyst", sku: "A-1" }, "pt-BR", t)).toBe("Ametista");
+  });
+
+  it("falls back to the SKU when there is no name", () => {
+    expect(localizeProductName({ name: null, nameEn: null, sku: " SKU-9 " }, "pt-BR", t)).toBe("SKU-9");
+  });
+
+  it("falls back to the fixed 'unnamed' text when there is neither name nor SKU", () => {
+    expect(localizeProductName({ name: null, nameEn: null, sku: null }, "pt-BR", t)).toBe("Peça sem nome");
+    expect(localizeProductName({ name: "   ", nameEn: null, sku: "  " }, "pt-BR", t)).toBe("Peça sem nome");
   });
 });

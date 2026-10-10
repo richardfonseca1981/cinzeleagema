@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useCart } from "../lib/cart";
-import { formatPrice, formatWeightSize, localizeText } from "../lib/format";
+import { formatPrice, formatWeightSize, localizeProductName } from "../lib/format";
 import { useExchangeRate } from "../lib/exchangeRate";
 import { PublicHeader } from "../components/landing/PublicHeader";
 import { WhatsAppFloatingButton } from "../components/landing/WhatsAppFloatingButton";
@@ -34,7 +34,7 @@ export function Cart() {
           <>
             <div className="mt-6 divide-y divide-[#E2E8F0] rounded-lg border border-[#E2E8F0] bg-white">
               {items.map((item) => {
-                const itemName = localizeText(item.name, item.nameEn, i18n.language);
+                const itemName = localizeProductName(item, i18n.language, t);
                 const weightSize = formatWeightSize(item.weightGrams, item.sizeCm, i18n.language);
 
                 return (

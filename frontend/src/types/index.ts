@@ -89,18 +89,24 @@ export interface Category {
 
 export interface Product {
   id: string;
-  name: string;
+  // Null = peça sem nome ainda (ver CONTEXT.md "campos opcionais"). O site
+  // público cai para SKU ou "Peça sem nome" (ver lib/format.ts); o admin
+  // mostra "(sem nome)".
+  name: string | null;
   slug: string;
   description: string | null;
   // Tradução automática (Claude) — null quando ainda não traduzido ou a
   // tradução falhou; o site público cai para name/description nesse caso.
   nameEn: string | null;
   descriptionEn: string | null;
-  categoryId: string;
+  // Null = peça sem categoria ainda — aparece só na listagem geral.
+  categoryId: string | null;
   subcategoryId: string | null;
-  category?: { id: string; name: string; slug: string };
+  category?: { id: string; name: string; slug: string } | null;
   subcategory?: { id: string; name: string; slug: string; categoryId: string } | null;
-  price: string;
+  // Null = "Consulte o valor" (nunca entra em carrinho/total). Diferente de
+  // "0", que é um preço real.
+  price: string | null;
   sku: string | null;
   weightGrams: string;
   sizeCm: string;
@@ -134,8 +140,13 @@ export interface AdminUserSummary {
 
 export interface CartItem {
   productId: string;
-  name: string;
+  // Peça sem preço nunca entra no carrinho (ver lib/format.ts
+  // canAddToCart) — então, uma vez aqui, o item sempre tem nome resolvido
+  // na hora de exibir (ver lib/format.ts localizeProductName), que cai
+  // para o SKU quando a peça não tem nome.
+  name: string | null;
   nameEn: string | null;
+  sku: string | null;
   unitPrice: number;
   imageUrl: string | null;
   weightGrams: number;

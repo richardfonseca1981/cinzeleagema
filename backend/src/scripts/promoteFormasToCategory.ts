@@ -44,9 +44,9 @@ export class PromoteError extends Error {}
 
 export interface ManifestProduct {
   id: string;
-  name: string;
+  name: string | null;
   slug: string;
-  categoryId: string;
+  categoryId: string | null;
   subcategoryId: string | null;
 }
 
@@ -347,7 +347,7 @@ export interface RevertReport {
   recreatedSubcategory: boolean;
   restoredProducts: number;
   skippedProducts: Array<{ id: string; reason: string }>;
-  newProductsKept: Array<{ id: string; name: string; slug: string }>;
+  newProductsKept: Array<{ id: string; name: string | null; slug: string }>;
   removedCategory: boolean;
   restoredPositions: boolean;
 }

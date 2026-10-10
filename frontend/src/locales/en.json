@@ -144,7 +144,13 @@
   "productCard": {
     "noPhoto": "No photo",
     "addToOrder": "Add to order",
-    "addedToast": "Added to your order"
+    "addedToast": "Added to your order",
+    "unnamed": "Unnamed piece",
+    "priceOnRequest": "Price on request",
+    "askPrice": "Ask on WhatsApp"
+  },
+  "priceInquiry": {
+    "message": "Hi! I'd like to ask about the price of: {{name}}"
   },
   "productDetail": {
     "back": "← Back to catalog",

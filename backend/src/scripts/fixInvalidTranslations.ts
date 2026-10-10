@@ -34,6 +34,11 @@ async function main() {
   let stillInvalid = 0;
 
   for (const p of suspicious) {
+    if (!p.name) {
+      stillInvalid++;
+      console.warn(`  ✗ [${p.id}] peça sem nome — nada para traduzir, pulando.`);
+      continue;
+    }
     const updated = await translateAndSaveProduct(p.id, p.name, p.description);
     const ok = updated && isValidTranslation(updated.nameEn) && (updated.descriptionEn === null || isValidTranslation(updated.descriptionEn));
 

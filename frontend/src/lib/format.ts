@@ -60,6 +60,24 @@ export function localizeText(pt: string, en: string | null | undefined, lang: st
   return lang === "en" && en ? en : pt;
 }
 
+// Nome a exibir de uma peça/item de carrinho sem nome cadastrado: cai para o
+// SKU (já é neutro entre idiomas) e, sem nenhum dos dois, para o texto fixo
+// "Peça sem nome"/"Unnamed piece" (chave i18n). Nome presente continua
+// usando localizeText (PT/EN) como antes — nada muda para peças já completas.
+export function localizeProductName(
+  item: { name: string | null; nameEn?: string | null; sku?: string | null },
+  lang: string,
+  t: (key: string) => string
+): string {
+  const pt = item.name?.trim();
+  if (pt) return localizeText(pt, item.nameEn ?? null, lang);
+
+  const sku = item.sku?.trim();
+  if (sku) return sku;
+
+  return t("productCard.unnamed");
+}
+
 // Nome de categoria/subcategoria: lista fixa e pequena, traduzida de forma
 // estática em locales/en.json (chave categoryNames.<nome em PT>) — sem IA,
 // diferente do nome/descrição de produto. `t` já resolve pelo idioma ativo;

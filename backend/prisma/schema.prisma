@@ -52,27 +52,40 @@ model Subcategory {
 }
 
 model Product {
-  id          String  @id @default(cuid())
-  name        String
+  id   String  @id @default(cuid())
+  // Null = peça sem nome cadastrado ainda (ver CONTEXT.md "campos opcionais").
+  // O site público cai para SKU ou "Peça sem nome"; o admin mostra "(sem nome)".
+  name String?
+  // Sempre gerado no backend a partir do nome (ou de um identificador quando
+  // não há nome) e NUNCA muda depois, mesmo que o nome seja preenchido/editado
+  // em seguida — por isso nunca é aceito como entrada do cliente (ver
+  // product.routes.ts). Não é usado em nenhuma URL pública, só garante
+  // unicidade interna/scripts admin.
   slug        String  @unique
   description String?
 
   // Tradução automática (Claude Haiku 4.5) disparada ao criar/editar o
   // produto — null quando ainda não traduzido ou quando a tradução falhou;
   // nesse caso o site público cai para name/description (PT) mesmo com
-  // idioma em EN. Nunca preenchidos manualmente pelo admin.
+  // idioma em EN. Nunca preenchidos manualmente pelo admin. Nunca disparada
+  // quando o produto não tem nome (nada a traduzir).
   nameEn        String?
   descriptionEn String?
 
-  categoryId String
-  category   Category @relation(fields: [categoryId], references: [id])
+  // Null = peça sem categoria ainda. Aparece só na listagem geral do site
+  // público (nunca em filtro por categoria/subcategoria).
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id])
 
-  // Null quando a categoria selecionada não tem subcategorias.
+  // Null quando a categoria selecionada não tem subcategorias (ou quando não
+  // há categoria selecionada).
   subcategoryId String?
   subcategory   Subcategory? @relation(fields: [subcategoryId], references: [id])
 
-  price Decimal @db.Decimal(10, 2)
-  sku   String? @unique
+  // Null = "Consulte o valor" no site público — nunca entra em carrinho/total.
+  // Diferente de 0, que é um preço real (promocional/simbólico).
+  price Decimal? @db.Decimal(10, 2)
+  sku   String?  @unique
 
   // Peso e tamanho se aplicam a qualquer peça, independente da categoria —
   // por isso são colunas fixas, diferente dos campos técnicos variáveis em

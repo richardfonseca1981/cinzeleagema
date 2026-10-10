@@ -21,6 +21,7 @@ vi.mock("../src/lib/r2", async (importOriginal) => {
 });
 
 import { createApp } from "../src/app";
+import { env } from "../src/lib/env";
 import { prisma } from "../src/lib/prisma";
 import { interpretPhotoInstruction } from "../src/lib/claude";
 import * as r2 from "../src/lib/r2";
@@ -29,6 +30,11 @@ import { cleanDatabase, generateTestToken } from "./helpers";
 const mockedInterpret = vi.mocked(interpretPhotoInstruction);
 const mockedGetObject = vi.mocked(r2.getObject);
 const mockedPutObject = vi.mocked(r2.putObject);
+
+// O setup padrão zera ANTHROPIC_API_KEY (nenhum teste chama a API real). Aqui a
+// interpretação é mockada, mas a rota ainda exige "IA configurada": usa uma
+// chave FALSA, que nunca sai do processo porque interpretPhotoInstruction é mock.
+env.ANTHROPIC_API_KEY = "chave-falsa-de-teste";
 
 const app = createApp();
 const token = generateTestToken();

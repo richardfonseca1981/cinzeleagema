@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { useCart } from "../lib/cart";
 import { api } from "../lib/api";
-import { formatPrice, formatWeightSize, localizeText } from "../lib/format";
+import { formatPrice, formatWeightSize, localizeProductName } from "../lib/format";
 import { useExchangeRate } from "../lib/exchangeRate";
 import { normalizePhone, sanitizePhoneInput } from "../lib/phone";
 import { PublicHeader } from "../components/landing/PublicHeader";
@@ -26,7 +26,7 @@ function buildWhatsAppMessage(
   const lines = [
     t("checkout.whatsappMessage.intro"),
     ...items.map((item) => {
-      const name = localizeText(item.name, item.nameEn, lang);
+      const name = localizeProductName(item, lang, t);
       const price = formatPrice(item.unitPrice * item.quantity, lang, exchangeRate);
       const size = formatWeightSize(item.weightGrams, item.sizeCm, lang);
       return size
@@ -63,9 +63,12 @@ export function Checkout() {
     setPhoneError(false);
     setSending(true);
 
+    // O backend exige nome não-vazio em cada item do pedido — manda o nome já
+    // resolvido (SKU ou "Peça sem nome" quando a peça não tem nome cadastrado),
+    // nunca o campo bruto, que pode ser null.
     const orderItems = items.map((item) => ({
       productId: item.productId,
-      name: item.name,
+      name: localizeProductName(item, i18n.language, t),
       quantity: item.quantity,
       unitPrice: item.unitPrice,
     }));
@@ -150,7 +153,7 @@ export function Checkout() {
           <p className="text-sm font-medium text-[#1A1A1A]">{t("checkout.summary")}</p>
           <ul className="mt-2 space-y-1 text-sm text-[#64748B]">
             {items.map((item) => {
-              const itemName = localizeText(item.name, item.nameEn, i18n.language);
+              const itemName = localizeProductName(item, i18n.language, t);
               const weightSize = formatWeightSize(item.weightGrams, item.sizeCm, i18n.language);
               return (
                 <li key={item.productId}>

@@ -3,20 +3,11 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { api, ApiError } from "../lib/api";
 import type { Category, ProductImage } from "../types";
 import { ImageManager, type ImageManagerHandle } from "../components/ImageManager";
+import { ConfirmDialog } from "../components/ConfirmDialog";
 import { useToast } from "../components/Toast";
 import { backToListPath } from "../lib/productListState";
 import { canConfirmDelete, deleteConfirmTarget } from "../lib/productDelete";
-
-const DIACRITICS_REGEX = new RegExp("[̀-ͯ]", "g");
-
-function slugify(value: string) {
-  return value
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(DIACRITICS_REGEX, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-}
+import { isMissingKeyFields } from "../lib/activationWarning";
 
 const inputClass =
   "mt-1 w-full rounded-lg border border-[#E2E8F0] px-3 py-2 outline-none transition focus:border-[#C78F50] focus:ring-2 focus:ring-[#C78F50]/20";
@@ -37,8 +28,6 @@ export function ProductForm() {
   const [categories, setCategories] = useState<Category[]>([]);
 
   const [name, setName] = useState("");
-  const [slug, setSlug] = useState("");
-  const [slugTouched, setSlugTouched] = useState(false);
   const [description, setDescription] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [subcategoryId, setSubcategoryId] = useState("");
@@ -54,10 +43,13 @@ export function ProductForm() {
   const [loading, setLoading] = useState(isEditing);
   const imageManagerRef = useRef<ImageManagerHandle>(null);
   // Dados SALVOS da peça (não o que está sendo digitado) para a exclusão definitiva.
-  const [saved, setSaved] = useState<{ name: string; sku: string | null; active: boolean } | null>(null);
+  const [saved, setSaved] = useState<{ name: string | null; sku: string | null; active: boolean } | null>(null);
   const [showDelete, setShowDelete] = useState(false);
   const [typedConfirm, setTypedConfirm] = useState("");
   const [deleting, setDeleting] = useState(false);
+  // Aviso não-bloqueante (PARTE 3): salvar/ativar uma peça ativa sem nome,
+  // preço ou foto pede confirmação explícita antes de seguir.
+  const [showActivationWarning, setShowActivationWarning] = useState(false);
 
   useEffect(() => {
     api.listCategories().then(setCategories);
@@ -68,13 +60,11 @@ export function ProductForm() {
     api
       .getProduct(id)
       .then((product) => {
-        setName(product.name);
-        setSlug(product.slug);
-        setSlugTouched(true);
+        setName(product.name ?? "");
         setDescription(product.description ?? "");
-        setCategoryId(product.categoryId);
+        setCategoryId(product.categoryId ?? "");
         setSubcategoryId(product.subcategoryId ?? "");
-        setPrice(String(product.price));
+        setPrice(product.price !== null ? String(product.price) : "");
         setSku(product.sku ?? "");
         setWeightGrams(String(product.weightGrams));
         setSizeCm(String(product.sizeCm));
@@ -87,11 +77,6 @@ export function ProductForm() {
       .finally(() => setLoading(false));
   }, [id]);
 
-  function handleNameChange(value: string) {
-    setName(value);
-    if (!slugTouched) setSlug(slugify(value));
-  }
-
   const selectedCategory = useMemo(() => categories.find((c) => c.id === categoryId), [categories, categoryId]);
 
   function handleCategoryChange(value: string) {
@@ -99,24 +84,30 @@ export function ProductForm() {
     setSubcategoryId("");
   }
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    setSavingPhase("data");
-
-    const payload = {
-      name,
-      slug,
+  // Nenhum campo é obrigatório (ver CONTEXT.md "campos opcionais"): nome,
+  // preço e categoria vazios viram null — não string vazia nem NaN. Peso e
+  // tamanho vazios viram 0, o mesmo sentinel que o site público já trata como
+  // "ausente" (ver lib/format.ts). Slug nunca é enviado: é sempre gerado e
+  // mantido pelo backend (ver product.schema.ts/product.routes.ts).
+  function buildPayload() {
+    const trimmedName = name.trim();
+    return {
+      name: trimmedName !== "" ? trimmedName : null,
       description: description || null,
-      categoryId,
+      categoryId: categoryId || null,
       subcategoryId: selectedCategory && selectedCategory.subcategories.length > 0 ? subcategoryId : null,
-      price: Number(price),
+      price: price.trim() !== "" ? Number(price) : null,
       sku: sku || null,
-      weightGrams: Number(weightGrams),
-      sizeCm: Number(sizeCm),
+      weightGrams: weightGrams.trim() !== "" ? Number(weightGrams) : 0,
+      sizeCm: sizeCm.trim() !== "" ? Number(sizeCm) : 0,
       trackStock,
       stockQty: trackStock && stockQty !== "" ? Number(stockQty) : null,
     };
+  }
+
+  async function doSave(payload: ReturnType<typeof buildPayload>) {
+    setSaving(true);
+    setSavingPhase("data");
 
     try {
       if (productId) {
@@ -143,6 +134,27 @@ export function ProductForm() {
       setSaving(false);
       setSavingPhase(null);
     }
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    const payload = buildPayload();
+
+    // Peça nova sempre entra ativa (não há campo de ativo/inativo neste
+    // formulário); editando, segue o status atual salvo. PARTE 3: avisa
+    // (não bloqueia) se a peça vai ficar ativa sem nome, preço ou foto.
+    const willBeActive = saved?.active ?? true;
+    if (willBeActive && isMissingKeyFields({ name: payload.name, price: payload.price, hasPhoto: images.length > 0 })) {
+      setShowActivationWarning(true);
+      return;
+    }
+
+    await doSave(payload);
+  }
+
+  async function handleConfirmActivationWarning() {
+    setShowActivationWarning(false);
+    await doSave(buildPayload());
   }
 
   async function handleDeleteProduct() {
@@ -193,7 +205,8 @@ export function ProductForm() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelClass}>Nome</label>
-                <input required value={name} onChange={(e) => handleNameChange(e.target.value)} className={inputClass} />
+                <input value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
+                <p className="mt-1 text-xs text-[#64748B]">Opcional. Sem nome, a peça aparece como "(sem nome)" na lista.</p>
               </div>
 
               <div>
@@ -211,14 +224,11 @@ export function ProductForm() {
               <div>
                 <label className={labelClass}>Categoria</label>
                 <select
-                  required
                   value={categoryId}
                   onChange={(e) => handleCategoryChange(e.target.value)}
                   className={inputClass}
                 >
-                  <option value="" disabled>
-                    Selecione uma categoria
-                  </option>
+                  <option value="">Sem categoria</option>
                   {categories.map((category) => (
                     <option key={category.id} value={category.id}>
                       {category.name}
@@ -253,7 +263,6 @@ export function ProductForm() {
               <div>
                 <label className={labelClass}>Peso (gramas)</label>
                 <input
-                  required
                   type="number"
                   step="0.01"
                   min="0"
@@ -266,7 +275,6 @@ export function ProductForm() {
               <div>
                 <label className={labelClass}>Tamanho (centímetros)</label>
                 <input
-                  required
                   type="number"
                   step="0.01"
                   min="0"
@@ -279,29 +287,13 @@ export function ProductForm() {
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className={labelClass}>Slug</label>
-                <input
-                  required
-                  value={slug}
-                  onChange={(e) => {
-                    setSlug(e.target.value);
-                    setSlugTouched(true);
-                  }}
-                  className={inputClass}
-                />
-              </div>
-
-              <div>
                 <label className={labelClass}>SKU</label>
                 <input value={sku} onChange={(e) => setSku(e.target.value)} className={inputClass} />
               </div>
-            </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelClass}>Preço (R$)</label>
                 <input
-                  required
                   type="number"
                   step="0.01"
                   min="0"
@@ -386,7 +378,7 @@ export function ProductForm() {
           <div role="alertdialog" aria-modal="true" aria-labelledby="delete-product-title" className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
             <h2 id="delete-product-title" className="text-base font-semibold text-[#1A1A1A]">Excluir a peça definitivamente?</h2>
             <p className="mt-3 text-sm text-[#1A1A1A]">
-              <strong>{saved.name}</strong>
+              <strong>{saved.name || "(sem nome)"}</strong>
               {saved.sku ? ` — SKU ${saved.sku}` : " — sem SKU"}
             </p>
             <p className="mt-2 text-sm text-[#1A1A1A]">
@@ -427,6 +419,15 @@ export function ProductForm() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={showActivationWarning}
+        title="Ativar peça incompleta?"
+        message='Esta peça está ativa (ou vai ficar), mas falta nome, preço ou foto — no site público ela aparece com "Consulte o valor"/placeholder onde faltar. Ativar mesmo assim?'
+        confirmLabel="Ativar mesmo assim"
+        onConfirm={handleConfirmActivationWarning}
+        onCancel={() => setShowActivationWarning(false)}
+      />
     </div>
   );
 }

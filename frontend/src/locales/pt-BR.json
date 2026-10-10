@@ -144,7 +144,13 @@
   "productCard": {
     "noPhoto": "Sem foto",
     "addToOrder": "Adicionar ao pedido",
-    "addedToast": "Adicionado ao pedido"
+    "addedToast": "Adicionado ao pedido",
+    "unnamed": "Peça sem nome",
+    "priceOnRequest": "Consulte o valor",
+    "askPrice": "Consultar pelo WhatsApp"
+  },
+  "priceInquiry": {
+    "message": "Olá! Gostaria de consultar o valor de: {{name}}"
   },
   "productDetail": {
     "back": "← Voltar ao catálogo",

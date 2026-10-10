@@ -1,16 +1,24 @@
 import { z } from "zod";
 import { operationsSchema } from "../lib/imageOperations";
 
+// Nome, preço e categoria são opcionais (ver CONTEXT.md "campos opcionais") —
+// null é um valor válido e intencional, diferente de ausente (undefined):
+// `.nullable()` sozinho (sem `.optional()`) exige a chave no payload, mas
+// aceita null nela; o frontend sempre manda a chave (nunca omite), então essa
+// é a forma mais estrita que ainda aceita null. "slug" NUNCA vem do cliente —
+// é sempre gerado no backend (ver product.routes.ts) e ignorado se enviado.
 export const createProductSchema = z.object({
-  name: z.string().min(1),
-  slug: z.string().min(1),
+  name: z.string().trim().min(1).nullable(),
   description: z.string().optional().nullable(),
-  categoryId: z.string().min(1),
+  categoryId: z.string().min(1).nullable(),
   subcategoryId: z.string().optional().nullable(),
-  price: z.coerce.number().nonnegative(),
+  price: z.coerce.number().nonnegative().nullable(),
   sku: z.string().optional().nullable(),
-  weightGrams: z.coerce.number().positive(),
-  sizeCm: z.coerce.number().positive(),
+  // nonnegative (não positive): 0 é o sentinel já usado pelo site público
+  // para "peso/tamanho ausente" (ver lib/format.ts no frontend) — o próprio
+  // default do banco. Positive rejeitava até esse 0 legítimo.
+  weightGrams: z.coerce.number().nonnegative().optional(),
+  sizeCm: z.coerce.number().nonnegative().optional(),
   trackStock: z.boolean().default(false),
   stockQty: z.coerce.number().int().nonnegative().optional().nullable(),
 });

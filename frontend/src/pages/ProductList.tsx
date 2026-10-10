@@ -16,6 +16,8 @@ import {
 } from "../lib/productListState";
 import { isPortrait916 } from "../lib/photoFormat";
 import { coverImage, mergeUpdatedProduct } from "../lib/productRow";
+import { isMissingKeyFields } from "../lib/activationWarning";
+import { ConfirmDialog } from "../components/ConfirmDialog";
 import type { Category, Product } from "../types";
 
 // Debounce da busca por nome/SKU (ms).
@@ -65,6 +67,7 @@ export function ProductList() {
   // Contador global (todas as peças, não só a página): capa já em 9:16.
   const [photoStats, setPhotoStats] = useState<{ total: number; portrait: number } | null>(null);
   const [searchInput, setSearchInput] = useState(state.q);
+  const [pendingActivation, setPendingActivation] = useState<Product | null>(null);
   const topRef = useRef<HTMLDivElement>(null);
   // Último valor de busca que ESTE componente escreveu na URL — distingue a
   // nossa própria confirmação do debounce (não mexer no campo) de uma mudança
@@ -172,6 +175,23 @@ export function ProductList() {
     } catch (err) {
       showToast("error", err instanceof ApiError ? err.message : "Não foi possível atualizar o produto");
     }
+  }
+
+  // PARTE 3 (campos opcionais): ativar uma peça sem nome, preço ou foto pede
+  // confirmação (não bloqueia) antes de seguir. Desativar nunca precisa disso.
+  function handleActivateClick(product: Product) {
+    if (!product.active && isMissingKeyFields({ name: product.name, price: product.price, hasPhoto: Boolean(coverImage(product)) })) {
+      setPendingActivation(product);
+      return;
+    }
+    handleToggleActive(product);
+  }
+
+  function confirmPendingActivation() {
+    if (!pendingActivation) return;
+    const product = pendingActivation;
+    setPendingActivation(null);
+    handleToggleActive(product);
   }
 
   const items = data?.items ?? [];
@@ -337,9 +357,11 @@ export function ProductList() {
             )}
             {items.map((product) => (
               <tr key={product.id} className={`border-t border-[#E2E8F0] ${!product.active ? "bg-[#F8FAFC]" : ""}`}>
-                <td className="px-4 py-2 text-[#1A1A1A]">{product.name}</td>
+                <td className="px-4 py-2 text-[#1A1A1A]">{product.name || "(sem nome)"}</td>
                 <td className="px-4 py-2 text-[#1A1A1A]">
-                  {Number(product.price).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                  {product.price !== null
+                    ? Number(product.price).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+                    : "Consulte o valor"}
                 </td>
                 <td className="px-4 py-2 text-[#64748B]">
                   {product.trackStock ? product.stockQty : "Peça única"}
@@ -366,7 +388,7 @@ export function ProductList() {
                   >
                     Editar
                   </Link>
-                  <button onClick={() => handleToggleActive(product)} className="text-[#64748B] hover:underline">
+                  <button onClick={() => handleActivateClick(product)} className="text-[#64748B] hover:underline">
                     {product.active ? "Desativar" : "Ativar"}
                   </button>
                 </td>
@@ -377,6 +399,15 @@ export function ProductList() {
       </div>
 
       {data && <div className="mt-3">{paginationFooter}</div>}
+
+      <ConfirmDialog
+        open={pendingActivation !== null}
+        title="Ativar peça incompleta?"
+        message='Esta peça não tem nome, preço ou foto cadastrado — no site público ela aparece com "Consulte o valor"/placeholder onde faltar. Ativar mesmo assim?'
+        confirmLabel="Ativar mesmo assim"
+        onConfirm={confirmPendingActivation}
+        onCancel={() => setPendingActivation(null)}
+      />
     </div>
   );
 }

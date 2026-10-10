@@ -9,6 +9,7 @@ import { isPortrait916 } from "../lib/photoFormat";
 import { Prisma } from "@prisma/client";
 import { filesSafeToRemove, removeFiles } from "../lib/photoFiles";
 import { translateAndSaveProduct, translateProductInBackground } from "../lib/productTranslation";
+import { generateUniqueSlug } from "../lib/productSlug";
 
 export const productRouter = Router();
 
@@ -22,7 +23,10 @@ const PRODUCT_INCLUDE = { images: { orderBy: { position: "asc" as const } }, cat
 // Valida que a categoria existe e que a subcategoria (quando informada ou
 // exigida) pertence a ela. Retorna o subcategoryId final a ser persistido
 // (null quando a categoria não tem subcategorias).
-async function resolveSubcategoryId(categoryId: string, subcategoryId: string | null | undefined) {
+async function resolveSubcategoryId(categoryId: string | null | undefined, subcategoryId: string | null | undefined) {
+  // Peça sem categoria: nunca tem subcategoria (não há o que validar contra).
+  if (!categoryId) return null;
+
   const category = await prisma.category.findUnique({
     where: { id: categoryId },
     include: { subcategories: true },
@@ -121,15 +125,20 @@ productRouter.post(
     }
     data.subcategoryId = await resolveSubcategoryId(data.categoryId, data.subcategoryId);
 
+    const slug = await generateUniqueSlug(data.name);
+
     const product = await prisma.product.create({
-      data,
+      data: { ...data, slug },
       include: { images: true, category: true, subcategory: true },
     });
     res.status(201).json(product);
 
-    // Produto novo: sempre traduz. Não bloqueia a resposta nem falha o
-    // cadastro se a tradução der errado (ver translateProductInBackground).
-    translateProductInBackground(product.id, product.name, product.description);
+    // Produto novo: sempre traduz, EXCETO sem nome (nada a traduzir). Não
+    // bloqueia a resposta nem falha o cadastro se a tradução der errado (ver
+    // translateProductInBackground).
+    if (product.name) {
+      translateProductInBackground(product.id, product.name, product.description);
+    }
   })
 );
 
@@ -147,7 +156,10 @@ productRouter.patch(
     }
 
     if (data.categoryId !== undefined || data.subcategoryId !== undefined) {
-      const categoryId = data.categoryId ?? existing.categoryId;
+      // "??" trocaria null (categoria removida de propósito) pelo valor
+      // antigo — precisa distinguir "não veio no payload" (undefined) de
+      // "veio null" (limpar), igual já era feito com subcategoryId abaixo.
+      const categoryId = data.categoryId !== undefined ? data.categoryId : existing.categoryId;
       const subcategoryId = data.subcategoryId !== undefined ? data.subcategoryId : existing.subcategoryId;
       data.subcategoryId = await resolveSubcategoryId(categoryId, subcategoryId);
     }
@@ -163,8 +175,9 @@ productRouter.patch(
     res.json(product);
 
     // Só retraduz quando nome ou descrição de fato mudaram — evita chamar a
-    // IA à toa em edições que não tocam nesses campos (ex: só preço).
-    if (nameChanged || descriptionChanged) {
+    // IA à toa em edições que não tocam nesses campos (ex: só preço). Sem
+    // nome (removido ou nunca preenchido) não há o que traduzir.
+    if ((nameChanged || descriptionChanged) && product.name) {
       translateProductInBackground(product.id, product.name, product.description);
     }
   })
@@ -176,6 +189,7 @@ productRouter.post(
   asyncHandler(async (req, res) => {
     const product = await prisma.product.findUnique({ where: { id: req.params.id } });
     if (!product) throw new HttpError(404, "Produto não encontrado");
+    if (!product.name) throw new HttpError(400, "Esta peça não tem nome cadastrado — não há o que traduzir.");
 
     const updated = await translateAndSaveProduct(product.id, product.name, product.description);
     if (!updated) throw new HttpError(502, "Não foi possível traduzir o produto agora, tente novamente");
