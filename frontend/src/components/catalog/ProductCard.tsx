@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { Product } from "../../types";
-import { formatPrice, localizeProductName } from "../../lib/format";
+import { formatPrice, formatWeightSize, localizeProductName } from "../../lib/format";
 import { buildPriceInquiryHref } from "../../lib/whatsapp";
 import { useCart } from "../../lib/cart";
 import { useExchangeRate } from "../../lib/exchangeRate";
@@ -16,6 +16,7 @@ export function ProductCard({ product, priority = false }: { product: Product; p
   const exchangeRate = useExchangeRate();
   const image = product.images[0]?.url ?? null;
   const displayName = localizeProductName(product, i18n.language, t);
+  const weightSize = formatWeightSize(product.weightGrams, product.sizeCm, i18n.language);
   // Preço null = "Consulte o valor" — nunca entra em carrinho/total, diferente
   // de preço 0 (promocional/simbólico, que segue o fluxo normal).
   const { price } = product;
@@ -54,6 +55,7 @@ export function ProductCard({ product, priority = false }: { product: Product; p
             {displayName}
           </h3>
         </Link>
+        {weightSize && <p className="mt-1 text-xs text-[#94A3B8]">{weightSize}</p>}
         <p className="mb-2 mt-1 text-base font-bold text-[#C78F50] sm:text-lg">
           {price !== null ? formatPrice(price, i18n.language, exchangeRate) : t("productCard.priceOnRequest")}
         </p>
