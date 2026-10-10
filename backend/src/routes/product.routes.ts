@@ -167,9 +167,23 @@ productRouter.patch(
     const nameChanged = data.name !== undefined && data.name !== existing.name;
     const descriptionChanged = data.description !== undefined && data.description !== existing.description;
 
+    // Campo ENVIADO como null (limpo de propósito no formulário) é diferente
+    // de campo não enviado (mantém o valor salvo) — essa distinção já vem do
+    // próprio "data" do zod (chave ausente vs. null). Nome/descrição limpos
+    // levam a tradução correspondente junto, na MESMA escrita: não dá pra
+    // depender da retradução em background (best-effort, só roda com
+    // ANTHROPIC_API_KEY configurada, e é assíncrona demais — a resposta desta
+    // requisição já teria voltado com a tradução antiga).
+    const nameCleared = data.name !== undefined && data.name === null;
+    const descriptionCleared = data.description !== undefined && data.description === null;
+
     const product = await prisma.product.update({
       where: { id: req.params.id },
-      data,
+      data: {
+        ...data,
+        ...(nameCleared ? { nameEn: null } : {}),
+        ...(descriptionCleared ? { descriptionEn: null } : {}),
+      },
       include: { images: { orderBy: { position: "asc" } }, category: true, subcategory: true },
     });
     res.json(product);
