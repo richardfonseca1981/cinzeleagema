@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import sharp from "sharp";
-import { executeOperations, type Operation } from "../src/lib/imageOperations";
+import { applyOperations, type Operation } from "../src/lib/imageOperations";
 
 // Regressão: resize/crop não podem AMPLIAR fotos pequenas (borra e pixela no
 // site). Aqui só rodam Sharp e a função de execução, sem rede nem banco.
@@ -12,7 +12,7 @@ async function photo(width: number, height: number): Promise<Buffer> {
 }
 
 async function sizeAfter(input: Buffer, ops: Operation[]): Promise<{ width?: number; height?: number }> {
-  const { buffer } = await executeOperations(input, ops);
+  const { buffer } = await applyOperations(input, ops);
   const meta = await sharp(buffer).metadata();
   return { width: meta.width, height: meta.height };
 }

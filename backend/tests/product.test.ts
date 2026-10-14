@@ -332,4 +332,336 @@ describe("Product routes", () => {
 
     expect(res.status).toBe(502);
   });
+
+  describe("campos opcionais (nome, preço, categoria)", () => {
+    it("creates a product with null name, price and category", async () => {
+      const res = await request(app)
+        .post("/api/products")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ name: null, price: null, categoryId: null });
+
+      expect(res.status).toBe(201);
+      expect(res.body.name).toBeNull();
+      expect(res.body.price).toBeNull();
+      expect(res.body.categoryId).toBeNull();
+      expect(res.body.subcategoryId).toBeNull();
+      // Slug sempre existe, mesmo sem nome.
+      expect(res.body.slug).toMatch(/^peca-[a-z0-9]{10}$/);
+    });
+
+    it("keeps price=0 distinct from price=null (0 é preço real, null é 'consulte o valor')", async () => {
+      const res = await request(app)
+        .post("/api/products")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ name: "Peça promocional", price: 0, categoryId: categoryWithoutSubId });
+
+      expect(res.status).toBe(201);
+      expect(Number(res.body.price)).toBe(0);
+      expect(res.body.price).not.toBeNull();
+    });
+
+    it("ignores a slug sent by the client — slug is always server-generated", async () => {
+      const res = await request(app)
+        .post("/api/products")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ name: "Peça com slug forjado", slug: "slug-forjado", price: 10, categoryId: categoryWithoutSubId });
+
+      expect(res.status).toBe(201);
+      expect(res.body.slug).not.toBe("slug-forjado");
+      expect(res.body.slug).toBe("peca-com-slug-forjado");
+    });
+
+    it("two products with the same name get different slugs (collision)", async () => {
+      const first = await request(app)
+        .post("/api/products")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ name: "Citrino", price: 10, categoryId: categoryWithoutSubId });
+      const second = await request(app)
+        .post("/api/products")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ name: "Citrino", price: 20, categoryId: categoryWithoutSubId });
+
+      expect(first.body.slug).toBe("citrino");
+      expect(second.body.slug).toBe("citrino-2");
+    });
+
+    it("never changes the slug on edit, even after the name is filled in later", async () => {
+      const created = await request(app)
+        .post("/api/products")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ name: null, price: null, categoryId: null });
+      const originalSlug = created.body.slug;
+
+      const updated = await request(app)
+        .patch(`/api/products/${created.body.id}`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ name: "Agora com nome", slug: "tentativa-de-mudar-o-slug" });
+
+      expect(updated.status).toBe(200);
+      expect(updated.body.name).toBe("Agora com nome");
+      expect(updated.body.slug).toBe(originalSlug);
+    });
+
+    it("clears price via PATCH (explicit null), distinct from omitting the field", async () => {
+      const product = await prisma.product.create({
+        data: { name: "Peça com preço", slug: "peca-com-preco", price: 99, categoryId: categoryWithoutSubId },
+      });
+
+      const res = await request(app)
+        .patch(`/api/products/${product.id}`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ price: null });
+
+      expect(res.status).toBe(200);
+      expect(res.body.price).toBeNull();
+    });
+
+    it("clears categoryId via PATCH (explicit null) without trying to resolve a subcategory", async () => {
+      const product = await prisma.product.create({
+        data: {
+          name: "Peça com categoria",
+          slug: "peca-com-categoria",
+          price: 10,
+          categoryId: categoryWithSubId,
+          subcategoryId,
+        },
+      });
+
+      const res = await request(app)
+        .patch(`/api/products/${product.id}`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ categoryId: null });
+
+      expect(res.status).toBe(200);
+      expect(res.body.categoryId).toBeNull();
+      expect(res.body.subcategoryId).toBeNull();
+    });
+
+    it("rejects an empty-string name instead of silently storing it", async () => {
+      const res = await request(app)
+        .post("/api/products")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ name: "   ", price: 10, categoryId: categoryWithoutSubId });
+
+      expect(res.status).toBe(400);
+    });
+
+    it("does not call the translation when creating a product without a name", async () => {
+      const res = await request(app)
+        .post("/api/products")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ name: null, price: 10, categoryId: categoryWithoutSubId });
+
+      expect(res.status).toBe(201);
+      // Sem retranslate manual nem nome, nameEn tem que continuar null — a
+      // chamada em background (se tivesse disparado por engano) teria uma
+      // janela curta, mas o teste principal é não lançar/quebrar a criação.
+      expect(res.body.nameEn).toBeNull();
+    });
+
+    it("returns 400 (not 500, not a Claude call) from retranslate when the product has no name", async () => {
+      const product = await prisma.product.create({
+        data: { name: null, slug: "peca-sem-nome-retranslate", price: 10, categoryId: categoryWithoutSubId },
+      });
+
+      const res = await request(app)
+        .post(`/api/products/${product.id}/retranslate`)
+        .set("Authorization", `Bearer ${token}`);
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/nome/i);
+    });
+
+    it("regression: a fully-filled product is returned unchanged by the API", async () => {
+      const res = await request(app)
+        .post("/api/products")
+        .set("Authorization", `Bearer ${token}`)
+        .send({
+          name: "Esmeralda Completa",
+          description: "Peça de referência com todos os campos.",
+          categoryId: categoryWithSubId,
+          subcategoryId,
+          price: 1234.56,
+          sku: "ESM-001",
+          weightGrams: 3.2,
+          sizeCm: 1.1,
+          trackStock: true,
+          stockQty: 1,
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body).toMatchObject({
+        name: "Esmeralda Completa",
+        description: "Peça de referência com todos os campos.",
+        categoryId: categoryWithSubId,
+        subcategoryId,
+        sku: "ESM-001",
+        trackStock: true,
+        stockQty: 1,
+      });
+      expect(Number(res.body.price)).toBe(1234.56);
+      expect(Number(res.body.weightGrams)).toBe(3.2);
+      expect(Number(res.body.sizeCm)).toBe(1.1);
+      expect(res.body.slug).toBe("esmeralda-completa");
+
+      const fetched = await request(app).get(`/api/products/${res.body.id}`);
+      expect(fetched.body).toMatchObject(res.body);
+    });
+  });
+
+  describe("edição: limpar campo de uma peça completa deve limpar (não manter)", () => {
+    // Peça com TODOS os campos preenchidos, incluindo nameEn/descriptionEn já
+    // traduzidos (como ficaria depois de uma tradução automática real) — para
+    // provar que limpar nome/descrição também limpa a tradução correspondente.
+    async function createFullProduct() {
+      return prisma.product.create({
+        data: {
+          name: "Esmeralda Completa",
+          nameEn: "Complete Emerald",
+          description: "Peça de referência com todos os campos.",
+          descriptionEn: "Reference piece with every field filled in.",
+          categoryId: categoryWithSubId,
+          subcategoryId,
+          price: 1234.56,
+          sku: "ESM-001",
+          weightGrams: 3.2,
+          sizeCm: 1.1,
+          slug: "esmeralda-completa-edicao",
+        },
+      });
+    }
+
+    it("campo NÃO enviado mantém o valor salvo (contrato de PATCH parcial)", async () => {
+      const product = await createFullProduct();
+
+      const res = await request(app)
+        .patch(`/api/products/${product.id}`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ sku: "ESM-002" });
+
+      expect(res.status).toBe(200);
+      expect(res.body.sku).toBe("ESM-002");
+      // Nada mais mudou — nem o que o form sempre reenviaria em condições normais.
+      expect(res.body.name).toBe("Esmeralda Completa");
+      expect(Number(res.body.price)).toBe(1234.56);
+      expect(res.body.categoryId).toBe(categoryWithSubId);
+      expect(res.body.subcategoryId).toBe(subcategoryId);
+      expect(res.body.description).toBe("Peça de referência com todos os campos.");
+      expect(Number(res.body.weightGrams)).toBe(3.2);
+      expect(Number(res.body.sizeCm)).toBe(1.1);
+    });
+
+    it("limpar o nome (null) some no admin/catálogo/detalhe (fallback SKU) e limpa nameEn", async () => {
+      const product = await createFullProduct();
+
+      const res = await request(app)
+        .patch(`/api/products/${product.id}`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ name: null });
+
+      expect(res.status).toBe(200);
+      expect(res.body.name).toBeNull();
+      expect(res.body.nameEn).toBeNull();
+      // Descrição PT/EN não foi tocada por essa chamada.
+      expect(res.body.description).toBe("Peça de referência com todos os campos.");
+      expect(res.body.descriptionEn).toBe("Reference piece with every field filled in.");
+
+      // O catálogo público (GET sem auth) e o detalhe devolvem o mesmo
+      // estado — sem erro, e com o SKU disponível para o fallback de nome.
+      const fetched = await request(app).get(`/api/products/${product.id}`);
+      expect(fetched.status).toBe(200);
+      expect(fetched.body.name).toBeNull();
+      expect(fetched.body.sku).toBe("ESM-001");
+    });
+
+    it("limpar a descrição (null) some no detalhe e limpa descriptionEn, sem afetar o nome", async () => {
+      const product = await createFullProduct();
+
+      const res = await request(app)
+        .patch(`/api/products/${product.id}`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ description: null });
+
+      expect(res.status).toBe(200);
+      expect(res.body.description).toBeNull();
+      expect(res.body.descriptionEn).toBeNull();
+      expect(res.body.name).toBe("Esmeralda Completa");
+      expect(res.body.nameEn).toBe("Complete Emerald");
+    });
+
+    it("limpar o preço (null) vira 'Consulte o valor' — nunca fica 0 por engano", async () => {
+      const product = await createFullProduct();
+
+      const res = await request(app)
+        .patch(`/api/products/${product.id}`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ price: null });
+
+      expect(res.status).toBe(200);
+      expect(res.body.price).toBeNull();
+
+      const fetched = await request(app).get(`/api/products/${product.id}`);
+      expect(fetched.body.price).toBeNull();
+    });
+
+    it("limpar a categoria (null) também limpa a subcategoria — some das listagens por categoria", async () => {
+      const product = await createFullProduct();
+
+      const res = await request(app)
+        .patch(`/api/products/${product.id}`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ categoryId: null });
+
+      expect(res.status).toBe(200);
+      expect(res.body.categoryId).toBeNull();
+      expect(res.body.subcategoryId).toBeNull();
+
+      // Some do filtro por categoria, continua na listagem geral.
+      const byCategory = await request(app).get(`/api/products?categoryId=${categoryWithSubId}`);
+      expect(byCategory.body.items.find((p: { id: string }) => p.id === product.id)).toBeUndefined();
+      const general = await request(app).get("/api/products");
+      expect(general.body.items.find((p: { id: string }) => p.id === product.id)).toBeDefined();
+    });
+
+    it("tentar limpar só a subcategoria, mantendo uma categoria que exige subcategoria, continua rejeitado (regra preexistente)", async () => {
+      const product = await createFullProduct();
+
+      const res = await request(app)
+        .patch(`/api/products/${product.id}`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ subcategoryId: null });
+
+      expect(res.status).toBe(400);
+    });
+
+    it("limpar o SKU (null) some da busca por SKU no admin", async () => {
+      const product = await createFullProduct();
+
+      const res = await request(app)
+        .patch(`/api/products/${product.id}`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ sku: null });
+
+      expect(res.status).toBe(200);
+      expect(res.body.sku).toBeNull();
+
+      const bySku = await request(app)
+        .get("/api/products?q=ESM-001")
+        .set("Authorization", `Bearer ${token}`);
+      expect(bySku.body.items.find((p: { id: string }) => p.id === product.id)).toBeUndefined();
+    });
+
+    it("limpar peso e tamanho (string vazia no form) vira 0 — sentinel já tratado como 'ausente' no site", async () => {
+      const product = await createFullProduct();
+
+      const res = await request(app)
+        .patch(`/api/products/${product.id}`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ weightGrams: 0, sizeCm: 0 });
+
+      expect(res.status).toBe(200);
+      expect(Number(res.body.weightGrams)).toBe(0);
+      expect(Number(res.body.sizeCm)).toBe(0);
+    });
+  });
 });

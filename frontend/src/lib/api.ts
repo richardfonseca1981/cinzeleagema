@@ -110,6 +110,8 @@ export const api = {
     if (params.pageSize !== undefined) query.set("pageSize", String(params.pageSize));
     return request<ProductListResponse>(`/api/products?${query.toString()}`);
   },
+  // Admin: quantas peças já têm a capa em 9:16.
+  getPhotoStats: () => request<{ total: number; portrait: number }>("/api/products/photo-stats"),
   getProduct: (id: string) => request<Product>(`/api/products/${id}`),
 
   createOrder: (data: {
@@ -123,29 +125,11 @@ export const api = {
   updateProduct: (id: string, data: Record<string, unknown>) =>
     request<Product>(`/api/products/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   deactivateProduct: (id: string) => request<Product>(`/api/products/${id}/deactivate`, { method: "PATCH" }),
+  // Exclusão DEFINITIVA (só peça inativa): uma peça por vez, com confirmação no admin.
+  deleteProduct: (id: string) =>
+    request<{ deleted: true; photosRemoved: number; filesFailed: number }>(`/api/products/${id}`, { method: "DELETE" }),
   activateProduct: (id: string) => request<Product>(`/api/products/${id}/activate`, { method: "PATCH" }),
 
-  presignImageUpload: (productId: string, fileName: string, contentType: string) =>
-    request<{ uploadUrl: string; key: string; publicUrl: string }>(`/api/products/${productId}/images/presign`, {
-      method: "POST",
-      body: JSON.stringify({ fileName, contentType }),
-    }),
-  confirmImageUpload: (
-    productId: string,
-    url: string,
-    key: string,
-    colorEnhance?: { colorEnhanced: boolean; colorEnhanceLevel: ColorEnhanceLevel | null }
-  ) =>
-    request<ProductImage>(`/api/products/${productId}/images`, {
-      method: "POST",
-      body: JSON.stringify({
-        url,
-        key,
-        ...(colorEnhance?.colorEnhanced
-          ? { colorEnhanced: true, colorEnhanceLevel: colorEnhance.colorEnhanceLevel ?? undefined }
-          : {}),
-      }),
-    }),
   reorderImages: (productId: string, order: string[]) =>
     request<ProductImage[]>(`/api/products/${productId}/images/reorder`, {
       method: "PATCH",
@@ -217,25 +201,33 @@ export async function previewPhotoTreatmentRaw(
   return res.json();
 }
 
+// Envia a foto staged ao servidor, que a coloca no formato final 9:16 em pé
+// (sem EXIF/GPS, lado maior ≤ 1920 px), grava no R2 e cria o ProductImage.
 // Recebe a NewEntry inteira (não só o File) para repassar colorEnhanced/
-// colorEnhanceLevel ao criar o ProductImage, caso a foto staged já tenha
-// passado por um tratamento de realce de cor antes do upload.
+// colorEnhanceLevel, caso a foto staged já tenha passado por realce de cor.
 export async function uploadImageToR2(productId: string, entry: NewEntry): Promise<ProductImage> {
-  const { uploadUrl, key, publicUrl } = await api.presignImageUpload(productId, entry.file.name, entry.file.type);
+  const session = getSession();
+  const formData = new FormData();
+  formData.append("file", entry.file);
+  formData.append("colorEnhanced", String(entry.colorEnhanced));
+  if (entry.colorEnhanced && entry.colorEnhanceLevel) formData.append("colorEnhanceLevel", entry.colorEnhanceLevel);
 
-  const putRes = await fetch(uploadUrl, {
-    method: "PUT",
-    headers: { "Content-Type": entry.file.type },
-    body: entry.file,
+  const res = await fetch(`${API_URL}/api/products/${productId}/images/upload`, {
+    method: "POST",
+    headers: session ? { Authorization: `Bearer ${session.token}` } : {},
+    body: formData,
   });
-  if (!putRes.ok) {
-    throw new ApiError(putRes.status, "Falha ao enviar imagem para o armazenamento");
+
+  if (res.status === 401) {
+    clearSession();
+    window.location.href = "/admin";
+    throw new ApiError(401, "Sessão expirada");
   }
-
-  return api.confirmImageUpload(productId, publicUrl, key, {
-    colorEnhanced: entry.colorEnhanced,
-    colorEnhanceLevel: entry.colorEnhanceLevel,
-  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, body.error ?? "Falha ao enviar a foto", body.details);
+  }
+  return res.json();
 }
 
 export { ApiError };

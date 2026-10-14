@@ -17,6 +17,11 @@ async function main() {
   let failed = 0;
 
   for (const product of products) {
+    if (!product.name) {
+      console.warn(`✗ Peça sem nome (id ${product.id}) — nada para traduzir, pulando.`);
+      failed++;
+      continue;
+    }
     const updated = await translateAndSaveProduct(product.id, product.name, product.description);
     if (updated) {
       translated++;

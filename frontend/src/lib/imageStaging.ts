@@ -103,6 +103,12 @@ export function moveEntry(entries: ImageEntry[], index: number, direction: -1 | 
   return reordered;
 }
 
+// "Tornar capa": leva a foto para a primeira posição (a capa é a primeira da lista).
+export function moveToFront(entries: ImageEntry[], index: number): ImageEntry[] {
+  if (index <= 0 || index >= entries.length) return entries;
+  return [entries[index], ...entries.filter((_, i) => i !== index)];
+}
+
 export function updateExistingImage(entries: ImageEntry[], updated: ProductImage): ImageEntry[] {
   return entries.map((entry): ImageEntry =>
     entry.kind === "existing" && entry.image.id === updated.id ? { kind: "existing", image: updated } : entry

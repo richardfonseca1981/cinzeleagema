@@ -25,7 +25,7 @@ export const SYSTEM_PROMPT = `Você interpreta pedidos em português sobre trata
 
 Operações permitidas:
 - resize: width e/ou height (pixels)
-- crop: aspectRatio ("1:1", "4:3" ou "16:9") OU width e height (pixels)
+- crop: aspectRatio ("1:1", "4:3" ou "9:16") OU width e height (pixels)
 - brightness: value (-100 a 100)
 - contrast: value (-100 a 100)
 - sharpen: intensity ("leve", "médio" ou "forte")
@@ -65,7 +65,7 @@ const OPERATION_INPUT_SCHEMA = {
     },
     width: { type: "integer" },
     height: { type: "integer" },
-    aspectRatio: { type: "string", enum: ["1:1", "4:3", "16:9"] },
+    aspectRatio: { type: "string", enum: ["1:1", "4:3", "9:16"] },
     value: { type: "integer" },
     intensity: { type: "string", enum: ["leve", "médio", "forte"] },
     degrees: { type: "integer", enum: [90, 180, 270] },

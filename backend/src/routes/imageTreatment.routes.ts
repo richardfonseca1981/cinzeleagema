@@ -9,7 +9,8 @@ import {
   treatmentDiscardSchema,
   treatmentPreviewSchema,
 } from "../schemas/product.schema";
-import { deleteObject, getObject, isR2Configured, putObject } from "../lib/r2";
+import { getObject, isR2Configured, putObject } from "../lib/r2";
+import { readStoredPhotoSize } from "../lib/storedPhotoSize";
 import { executeOperations } from "../lib/imageOperations";
 import { describeAutoFit } from "../lib/autoFit";
 import { resolveTreatmentOperations } from "../lib/photoTreatment";
@@ -72,9 +73,12 @@ imageTreatmentRouter.post(
 
     const { previewUrl, previewKey, colorEnhanced, colorEnhanceLevel } = treatmentConfirmSchema.parse(req.body);
 
+    const size = await readStoredPhotoSize(previewKey);
     const updated = await prisma.productImage.update({
       where: { id: image.id },
       data: {
+        width: size.width,
+        height: size.height,
         previousUrl: image.url,
         previousKey: image.key,
         previousColorEnhanced: image.colorEnhanced,
@@ -94,19 +98,16 @@ imageTreatmentRouter.post(
   })
 );
 
-// Passo 2b: admin descarta o preview — só limpa o objeto no R2, nada no
-// banco muda.
+// Passo 2b: admin descarta o preview — nada no banco muda. NÃO apaga nada no
+// R2 (a única exclusão de arquivos do sistema é a do admin, foto a foto, em
+// DELETE /images/:imageId); o preview descartado fica órfão e inofensivo.
 imageTreatmentRouter.post(
   "/treatment/discard",
   asyncHandler(async (req, res) => {
     const { productId, imageId } = req.params as { productId: string; imageId: string };
     await ensureImageExists(productId, imageId);
 
-    const { previewKey } = treatmentDiscardSchema.parse(req.body);
-
-    if (isR2Configured()) {
-      await deleteObject(previewKey);
-    }
+    treatmentDiscardSchema.parse(req.body);
 
     res.status(204).send();
   })
@@ -123,9 +124,12 @@ imageTreatmentRouter.post(
       throw new HttpError(400, "Nada para desfazer nesta imagem");
     }
 
+    const size = await readStoredPhotoSize(image.previousKey);
     const updated = await prisma.productImage.update({
       where: { id: image.id },
       data: {
+        width: size.width,
+        height: size.height,
         url: image.previousUrl,
         key: image.previousKey,
         previousUrl: null,

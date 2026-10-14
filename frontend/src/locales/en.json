@@ -144,13 +144,28 @@
   "productCard": {
     "noPhoto": "No photo",
     "addToOrder": "Add to order",
-    "addedToast": "Added to your order"
+    "addedToast": "Added to your order",
+    "unnamed": "Unnamed piece",
+    "priceOnRequest": "Price on request",
+    "askPrice": "Ask on WhatsApp"
+  },
+  "priceInquiry": {
+    "message": "Hi! I'd like to ask about the price of: {{name}}"
   },
   "productDetail": {
     "back": "← Back to catalog",
     "loading": "Loading...",
     "notFound": "Piece not found.",
     "quantity": "Quantity"
+  },
+  "gallery": {
+    "photoAlt": "{{name}}, photo {{n}} of {{total}}",
+    "counter": "{{n}}/{{total}}",
+    "previous": "Previous photo",
+    "next": "Next photo",
+    "goTo": "Go to photo {{n}} of {{total}}",
+    "thumbnail": "Show photo {{n}} of {{total}}",
+    "region": "Photos of {{name}}"
   },
   "cart": {
     "title": "Your order",

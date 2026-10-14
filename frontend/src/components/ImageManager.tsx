@@ -6,6 +6,7 @@ import {
   entriesFromImages,
   hasPendingChanges,
   moveEntry,
+  moveToFront,
   removeEntryAt,
   updateExistingImage,
   withNewEntryTreatment,
@@ -13,7 +14,16 @@ import {
   type ImageEntry,
   type NewEntry,
 } from "../lib/imageStaging";
-import { smallImageWarning } from "../lib/imageSize";
+import {
+  ACCEPTED_PHOTO_TYPES,
+  MAX_PHOTOS_PER_PRODUCT,
+  maxPhotosMessage,
+  PHOTO_ASPECT_CSS,
+  PHOTO_GUIDANCE,
+  photoFileError,
+  photoFormatWarnings,
+} from "../lib/photoFormat";
+import { ProductImage as SitePhoto } from "./ProductImage";
 import {
   classifyPreviewResult,
   colorEnhanceMeta,
@@ -86,17 +96,17 @@ function Spinner({ className = "h-5 w-5" }: { className?: string }) {
   );
 }
 
-// Mede a foto (salva ou staged) e mostra um aviso discreto, sem bloquear,
-// quando ela é pequena demais para ficar nítida no site.
-function SmallImageWarning({ url }: { url: string }) {
-  const [warning, setWarning] = useState<string | null>(null);
+// Mede a foto (salva ou staged) e mostra avisos discretos, sem bloquear o
+// envio: fora de 9:16 (tolerância de 3%) ou menor que 720×1280.
+function PhotoFormatWarnings({ url }: { url: string }) {
+  const [warnings, setWarnings] = useState<string[]>([]);
 
   useEffect(() => {
     let cancelled = false;
-    setWarning(null);
+    setWarnings([]);
     const probe = new Image();
     probe.onload = () => {
-      if (!cancelled) setWarning(smallImageWarning(probe.naturalWidth, probe.naturalHeight));
+      if (!cancelled) setWarnings(photoFormatWarnings(probe.naturalWidth, probe.naturalHeight).map((w) => w.message));
     };
     probe.src = url;
     return () => {
@@ -105,8 +115,15 @@ function SmallImageWarning({ url }: { url: string }) {
     };
   }, [url]);
 
-  if (!warning) return null;
-  return <p className="mt-1 rounded border border-[#F59E0B]/40 bg-[#FFFBEB] px-1.5 py-1 text-[11px] text-[#B45309]">{warning}</p>;
+  return (
+    <>
+      {warnings.map((message) => (
+        <p key={message} className="mt-1 rounded border border-[#F59E0B]/40 bg-[#FFFBEB] px-1.5 py-1 text-[11px] text-[#B45309]">
+          {message}
+        </p>
+      ))}
+    </>
+  );
 }
 
 function revokeNewEntryUrls(entry: NewEntry) {
@@ -121,6 +138,8 @@ export const ImageManager = forwardRef<ImageManagerHandle, ImageManagerProps>(fu
   const { showToast } = useToast();
   const [entries, setEntries] = useState<ImageEntry[]>(() => entriesFromImages(images));
   const [committing, setCommitting] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<ProductImage | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const deletedIdsRef = useRef<Set<string>>(new Set());
   const entriesRef = useRef(entries);
   entriesRef.current = entries;
@@ -170,6 +189,19 @@ export const ImageManager = forwardRef<ImageManagerHandle, ImageManagerProps>(fu
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (entriesRef.current.length >= MAX_PHOTOS_PER_PRODUCT) {
+      showToast("error", maxPhotosMessage());
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    const fileError = photoFileError(file);
+    if (fileError) {
+      showToast("error", fileError);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
     const localId = `local-${Date.now()}-${localIdCounter.current++}`;
     const previewUrl = URL.createObjectURL(file);
     setEntries((prev) => addNewEntry(prev, localId, file, previewUrl));
@@ -180,17 +212,42 @@ export const ImageManager = forwardRef<ImageManagerHandle, ImageManagerProps>(fu
     setEntries((prev) => moveEntry(prev, index, direction));
   }
 
+  // Foto nova (ainda não enviada): sai da lista na hora, nada foi gravado.
+  // Foto já salva: pede confirmação — a exclusão é definitiva e feita na hora.
   function handleRemove(index: number) {
     const entry = entries[index];
     if (!entry) return;
 
-    setEntries((prev) => removeEntryAt(prev, index));
     if (entry.kind === "new") {
+      setEntries((prev) => removeEntryAt(prev, index));
       revokeNewEntryUrls(entry);
     } else {
-      deletedIdsRef.current.add(entry.image.id);
-      showToast("success", "Foto marcada para remoção — será excluída ao salvar o produto");
+      setPendingDelete(entry.image);
     }
+  }
+
+  async function confirmDelete() {
+    const image = pendingDelete;
+    if (!image) return;
+    setDeleting(true);
+    try {
+      await api.deleteImage(productId, image.id);
+      const next = entriesRef.current.filter((e) => !(e.kind === "existing" && e.image.id === image.id));
+      setEntries(next);
+      onChange(
+        next.filter((e): e is Extract<ImageEntry, { kind: "existing" }> => e.kind === "existing").map((e) => e.image)
+      );
+      showToast("success", "Foto excluída definitivamente");
+      setPendingDelete(null);
+    } catch {
+      showToast("error", "Não foi possível excluir a foto. Nada foi apagado; tente de novo.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  function handleMakeCover(index: number) {
+    setEntries((prev) => moveToFront(prev, index));
   }
 
   function handleImageUpdated(updated: ProductImage) {
@@ -219,19 +276,21 @@ export const ImageManager = forwardRef<ImageManagerHandle, ImageManagerProps>(fu
         {entries.map((entry, index) => (
           <div
             key={entry.kind === "existing" ? entry.image.id : entry.localId}
-            className="relative w-56 rounded-lg border border-[#E2E8F0] bg-white p-2 shadow-sm"
+            className="relative w-44 rounded-lg border border-[#E2E8F0] bg-white p-2 shadow-sm"
           >
+            {index === 0 && (
+              <span className="absolute right-3 top-3 z-10 rounded bg-[#C78F50] px-1.5 py-0.5 text-[10px] font-semibold text-[#010B1A]">
+                Capa
+              </span>
+            )}
             {entry.kind === "new" && (
-              <span className="absolute left-3 top-3 rounded bg-[#1B3A6B] px-1.5 py-0.5 text-[10px] font-medium text-white">
+              <span className="absolute left-3 top-3 z-10 rounded bg-[#1B3A6B] px-1.5 py-0.5 text-[10px] font-medium text-white">
                 nova — salva ao confirmar
               </span>
             )}
-            <img
-              src={entry.kind === "existing" ? entry.image.url : entry.previewUrl}
-              alt=""
-              className="h-32 w-full rounded object-cover"
-            />
-            <SmallImageWarning url={entry.kind === "existing" ? entry.image.url : entry.previewUrl} />
+            {/* Preview 9:16: o mesmo componente do site, para ver como a foto vai aparecer. */}
+            <SitePhoto src={entry.kind === "existing" ? entry.image.url : entry.previewUrl} alt="" className="rounded" />
+            <PhotoFormatWarnings url={entry.kind === "existing" ? entry.image.url : entry.previewUrl} />
             <div className="mt-1 flex items-center justify-between text-xs text-[#64748B]">
               <button
                 type="button"
@@ -241,8 +300,16 @@ export const ImageManager = forwardRef<ImageManagerHandle, ImageManagerProps>(fu
               >
                 ↑
               </button>
+              <button
+                type="button"
+                disabled={index === 0 || committing}
+                onClick={() => handleMakeCover(index)}
+                className="underline disabled:opacity-30 disabled:no-underline"
+              >
+                tornar capa
+              </button>
               <button type="button" disabled={committing} onClick={() => handleRemove(index)} className="text-[#EF4444] disabled:opacity-30">
-                remover
+                {entry.kind === "existing" ? "excluir" : "remover"}
               </button>
               <button
                 type="button"
@@ -274,19 +341,42 @@ export const ImageManager = forwardRef<ImageManagerHandle, ImageManagerProps>(fu
         </p>
       )}
 
+      {pendingDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="presentation">
+          <div role="alertdialog" aria-modal="true" aria-labelledby="delete-photo-title" aria-describedby="delete-photo-text" className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
+            <h2 id="delete-photo-title" className="text-base font-semibold text-[#1A1A1A]">Excluir esta foto?</h2>
+            <img src={pendingDelete.url} alt="" className="mx-auto mt-3 h-40 rounded object-contain" style={{ aspectRatio: PHOTO_ASPECT_CSS }} />
+            <p id="delete-photo-text" className="mt-3 text-sm text-[#1A1A1A]">
+              A exclusão é <strong>definitiva</strong>: a foto e os arquivos dela serão apagados e não poderão ser recuperados.
+              {pendingDelete.previousUrl && ' O "Desfazer" do tratamento desta foto também deixa de funcionar.'}
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button type="button" autoFocus disabled={deleting} onClick={() => setPendingDelete(null)} className="rounded-lg border border-[#E2E8F0] px-4 py-2 text-sm text-[#1A1A1A] hover:bg-[#F8FAFC] disabled:opacity-40">
+                Cancelar
+              </button>
+              <button type="button" disabled={deleting} onClick={confirmDelete} className="rounded-lg bg-[#EF4444] px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-40">
+                {deleting ? "Excluindo..." : "Excluir definitivamente"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm text-[#1A1A1A] hover:bg-[#F8FAFC]">
         <span>Adicionar foto</span>
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept={ACCEPTED_PHOTO_TYPES}
           onChange={handleFileSelected}
           disabled={committing}
           className="hidden"
         />
       </label>
+      <p className="mt-2 text-xs font-medium text-[#1B3A6B]">{PHOTO_GUIDANCE}.</p>
       <p className="mt-1 text-xs text-[#64748B]">
-        As fotos só são enviadas e as exclusões só são aplicadas quando você clicar em "Salvar produto".
+        Até {MAX_PHOTOS_PER_PRODUCT} fotos por peça ({entries.length}/{MAX_PHOTOS_PER_PRODUCT}). A primeira é a capa. Fotos novas e a ordem só são salvas ao clicar em "Salvar produto".
+        A exclusão de uma foto já salva é imediata e definitiva.
       </p>
     </div>
   );
@@ -580,15 +670,16 @@ function ImageTreatmentPanel({ target, showToast }: ImageTreatmentPanelProps) {
               <div className="flex gap-2">
                 <div>
                   <p className="text-[#64748B]">antes</p>
-                  <img src={currentUrl} alt="" className="h-28 w-28 rounded object-contain" />
+                  <img src={currentUrl} alt="" className="h-40 rounded object-contain" style={{ aspectRatio: PHOTO_ASPECT_CSS }} />
                 </div>
                 <div>
                   <p className="text-[#64748B]">depois</p>
                   <img
                     src={preview.displayUrl}
                     alt=""
-                    className="h-28 w-28 rounded object-contain"
+                    className="h-40 rounded object-contain"
                     style={{
+                      aspectRatio: PHOTO_ASPECT_CSS,
                       backgroundImage:
                         "linear-gradient(45deg, #E2E8F0 25%, transparent 25%), linear-gradient(-45deg, #E2E8F0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #E2E8F0 75%), linear-gradient(-45deg, transparent 75%, #E2E8F0 75%)",
                       backgroundSize: "10px 10px",

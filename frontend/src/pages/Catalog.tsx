@@ -137,7 +137,7 @@ export function Catalog() {
 
             {!loading && !loadError && products.length > 0 && (
               <>
-                <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-5 xl:grid-cols-4">
                   {products.map((product, index) => (
                     <ProductCard key={product.id} product={product} priority={index < 3} />
                   ))}
