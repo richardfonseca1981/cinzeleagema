@@ -1,6 +1,6 @@
 import type { TFunction } from "i18next";
 import type { CartItem } from "../../types";
-import { formatWeightSize, localizeText } from "../format";
+import { formatWeightSize, localizeProductName } from "../format";
 import { countryName } from "./countries";
 import { deliveryRangeText, optionLabel } from "./options";
 import { formatRateForMessage } from "../exchangeRateQuality";
@@ -47,7 +47,7 @@ export function buildWhatsAppMessage(input: WhatsAppMessageInput): string {
   );
 
   const itemLines = items.map((item, index) => {
-    const name = localizeText(item.name, item.nameEn, lang);
+    const name = localizeProductName(item, lang, t);
     const price = money(totals.lineCents[index]);
     const size = formatWeightSize(item.weightGrams, item.sizeCm, lang);
     return size

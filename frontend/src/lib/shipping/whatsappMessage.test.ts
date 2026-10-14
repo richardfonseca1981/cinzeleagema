@@ -10,8 +10,8 @@ import { makeT } from "./testHelpers";
 
 const NOW = 1_800_000_000_000;
 const items: CartItem[] = [
-  { productId: "p1", name: "Esmeralda", nameEn: "Emerald", unitPrice: 100, imageUrl: null, weightGrams: 2, sizeCm: 1, quantity: 2 },
-  { productId: "p2", name: "Quartzo", nameEn: null, unitPrice: 50, imageUrl: null, weightGrams: 0, sizeCm: 0, quantity: 1 },
+  { productId: "p1", name: "Esmeralda", nameEn: "Emerald", sku: null, unitPrice: 100, imageUrl: null, weightGrams: 2, sizeCm: 1, quantity: 2 },
+  { productId: "p2", name: "Quartzo", nameEn: null, sku: null, unitPrice: 50, imageUrl: null, weightGrams: 0, sizeCm: 0, quantity: 1 },
 ]; // subtotal R$ 250,00
 
 const pac: ShippingOption = { id: "pac", carrier: "Correios", service: "PAC", priceBRL: 45, deliveryDaysMin: 5, deliveryDaysMax: 8, kind: "quoted" };
