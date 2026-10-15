@@ -171,6 +171,36 @@ export async function previewPhotoTreatmentRaw(
   return res.json();
 }
 
+// Exporta TODOS os produtos (ativos e inativos, sem paginação/filtro) em
+// .xlsx — o endpoint exige o mesmo token do admin, então não dá pra usar um
+// <a href> direto; baixa via fetch+blob e devolve o arquivo já pronto para
+// salvar (mesmo padrão de autenticação de uploadImageToR2 abaixo).
+export async function exportProductsXlsx(): Promise<{ blob: Blob; filename: string }> {
+  const session = getSession();
+
+  const res = await fetch(`${API_URL}/api/admin/products/export`, {
+    headers: session ? { Authorization: `Bearer ${session.token}` } : {},
+  });
+
+  if (res.status === 401) {
+    clearSession();
+    window.location.href = "/admin";
+    throw new ApiError(401, "Sessão expirada");
+  }
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, body.error ?? "Não foi possível exportar os produtos", body.details);
+  }
+
+  // Nome definido pelo backend (pecas-AAAA-MM-DD.xlsx, data do servidor);
+  // fallback só para o caso improvável do header não vir.
+  const disposition = res.headers.get("Content-Disposition") ?? "";
+  const match = /filename="?([^"]+)"?/.exec(disposition);
+  const filename = match?.[1] ?? `pecas-${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+  return { blob: await res.blob(), filename };
+}
+
 // Envia a foto staged ao servidor, que a coloca no formato final 9:16 em pé
 // (sem EXIF/GPS, lado maior ≤ 1920 px), grava no R2 e cria o ProductImage.
 // Recebe a NewEntry inteira (não só o File) para repassar colorEnhanced/

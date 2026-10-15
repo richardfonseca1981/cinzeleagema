@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
-import { api, ApiError } from "../lib/api";
+import { api, ApiError, exportProductsXlsx } from "../lib/api";
 import { useToast } from "../components/Toast";
 import { Pagination } from "../components/Pagination";
 import { PAGE_SIZE_OPTIONS, rangeText, totalPages } from "../lib/pagination";
@@ -17,6 +17,7 @@ import {
 import { isPortrait916 } from "../lib/photoFormat";
 import { coverImage, mergeUpdatedProduct } from "../lib/productRow";
 import { isMissingKeyFields } from "../lib/activationWarning";
+import { formatAdminPrice, formatAdminSize, formatAdminSku, formatAdminWeight } from "../lib/adminProductFormat";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import type { Category, Product } from "../types";
 
@@ -68,6 +69,7 @@ export function ProductList() {
   const [photoStats, setPhotoStats] = useState<{ total: number; portrait: number } | null>(null);
   const [searchInput, setSearchInput] = useState(state.q);
   const [pendingActivation, setPendingActivation] = useState<Product | null>(null);
+  const [exporting, setExporting] = useState(false);
   const topRef = useRef<HTMLDivElement>(null);
   // Último valor de busca que ESTE componente escreveu na URL — distingue a
   // nossa própria confirmação do debounce (não mexer no campo) de uma mudança
@@ -194,6 +196,27 @@ export function ProductList() {
     handleToggleActive(product);
   }
 
+  // Exporta TODAS as peças (ativas e inativas, sem paginação/filtro da tela)
+  // em .xlsx — ver api.exportProductsXlsx.
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const { blob, filename } = await exportProductsXlsx();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      showToast("error", err instanceof ApiError ? err.message : "Não foi possível exportar os produtos");
+    } finally {
+      setExporting(false);
+    }
+  }
+
   const items = data?.items ?? [];
   const total = data?.total ?? 0;
   const pages = totalPages(total, state.pageSize);
@@ -227,15 +250,25 @@ export function ProductList() {
 
   return (
     <div ref={topRef}>
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-lg font-semibold text-[#1A1A1A]">Produtos</h1>
-        <Link
-          to="/admin/produtos/novo"
-          state={{ from: listSearch }}
-          className="rounded-lg bg-[#C78F50] px-4 py-2 text-sm font-medium text-[#010B1A] transition hover:bg-[#B37D3F]"
-        >
-          Novo produto
-        </Link>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={handleExport}
+            disabled={exporting}
+            className="rounded-lg border border-[#C78F50] px-4 py-2 text-sm font-medium text-[#C78F50] transition hover:bg-[#FFF8F0] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {exporting ? "Exportando..." : "Exportar Excel"}
+          </button>
+          <Link
+            to="/admin/produtos/novo"
+            state={{ from: listSearch }}
+            className="rounded-lg bg-[#C78F50] px-4 py-2 text-sm font-medium text-[#010B1A] transition hover:bg-[#B37D3F]"
+          >
+            Novo produto
+          </Link>
+        </div>
       </div>
 
       {photoStats && (
@@ -316,7 +349,9 @@ export function ProductList() {
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-lg border border-[#E2E8F0] bg-white" aria-busy={loading}>
+      {/* Tela larga: tabela. Abaixo de 640px a leitura em linha fica apertada
+          demais (9 colunas) — vira cards (ver bloco sm:hidden logo abaixo). */}
+      <div className="hidden overflow-x-auto rounded-lg border border-[#E2E8F0] bg-white sm:block" aria-busy={loading}>
         {loading && data && (
           <p className="border-b border-[#E2E8F0] bg-[#F8FAFC] px-4 py-1.5 text-xs text-[#64748B]" role="status">
             Atualizando...
@@ -325,9 +360,12 @@ export function ProductList() {
         <table className={`w-full text-left text-sm transition-opacity ${loading && data ? "opacity-60" : ""}`}>
           <thead className="bg-[#F8FAFC] text-[#64748B]">
             <tr>
-              <th className="px-4 py-2">Nome</th>
-              <th className="px-4 py-2">Preço</th>
+              <th className="px-4 py-2">SKU</th>
+              <th className="px-4 py-2">Descrição</th>
+              <th className="px-4 py-2">Tamanho</th>
+              <th className="px-4 py-2">Peso</th>
               <th className="px-4 py-2">Estoque</th>
+              <th className="px-4 py-2">Preço de venda</th>
               <th className="px-4 py-2">Foto principal</th>
               <th className="px-4 py-2">Status</th>
               <th className="px-4 py-2"></th>
@@ -336,14 +374,14 @@ export function ProductList() {
           <tbody>
             {loading && !data && (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-[#64748B]">
+                <td colSpan={9} className="px-4 py-6 text-center text-[#64748B]">
                   Carregando...
                 </td>
               </tr>
             )}
             {!loading && !loadError && items.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center">
+                <td colSpan={9} className="px-4 py-10 text-center">
                   <p className="font-medium text-[#1A1A1A]">
                     {hasFilters ? "Nenhum produto encontrado" : "Nenhum produto cadastrado ainda"}
                   </p>
@@ -357,15 +395,14 @@ export function ProductList() {
             )}
             {items.map((product) => (
               <tr key={product.id} className={`border-t border-[#E2E8F0] ${!product.active ? "bg-[#F8FAFC]" : ""}`}>
+                <td className="px-4 py-2 text-[#1A1A1A]">{formatAdminSku(product.sku)}</td>
                 <td className="px-4 py-2 text-[#1A1A1A]">{product.name || "(sem nome)"}</td>
-                <td className="px-4 py-2 text-[#1A1A1A]">
-                  {product.price !== null
-                    ? Number(product.price).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
-                    : "Consulte o valor"}
-                </td>
+                <td className="px-4 py-2 text-[#64748B]">{formatAdminSize(product.sizeCm)}</td>
+                <td className="px-4 py-2 text-[#64748B]">{formatAdminWeight(product.weightGrams)}</td>
                 <td className="px-4 py-2 text-[#64748B]">
                   {product.trackStock ? product.stockQty : "Peça única"}
                 </td>
+                <td className="px-4 py-2 text-[#1A1A1A]">{formatAdminPrice(product.price)}</td>
                 <td className="px-4 py-2">
                   <CoverBadge cover={coverImage(product)} />
                 </td>
@@ -396,6 +433,78 @@ export function ProductList() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Abaixo de 640px: mesmas linhas em formato de card (sem scroll horizontal). */}
+      <div className="space-y-3 sm:hidden" aria-busy={loading}>
+        {loading && !data && <p className="px-1 py-6 text-center text-sm text-[#64748B]">Carregando...</p>}
+        {!loading && !loadError && items.length === 0 && (
+          <div className="rounded-lg border border-[#E2E8F0] bg-white px-4 py-10 text-center">
+            <p className="font-medium text-[#1A1A1A]">
+              {hasFilters ? "Nenhum produto encontrado" : "Nenhum produto cadastrado ainda"}
+            </p>
+            <p className="mt-1 text-sm text-[#64748B]">
+              {hasFilters
+                ? "Tente ajustar a busca ou os filtros."
+                : 'Clique em "Novo produto" para cadastrar a primeira peça do catálogo.'}
+            </p>
+          </div>
+        )}
+        {items.map((product) => (
+          <div
+            key={product.id}
+            className={`rounded-lg border border-[#E2E8F0] bg-white p-4 transition-opacity ${!product.active ? "bg-[#F8FAFC]" : ""} ${loading && data ? "opacity-60" : ""}`}
+          >
+            <div className="mb-2 flex items-start justify-between gap-2">
+              <p className="font-medium text-[#1A1A1A]">{product.name || "(sem nome)"}</p>
+              <span
+                className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium ${
+                  product.active
+                    ? "border-[#22C55E] bg-[#F0FDF4] text-[#15803D]"
+                    : "border-[#E2E8F0] bg-[#F8FAFC] text-[#64748B]"
+                }`}
+              >
+                {product.active ? "Ativo" : "Inativo"}
+              </span>
+            </div>
+            <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
+              <div>
+                <dt className="text-[#64748B]">SKU</dt>
+                <dd className="text-[#1A1A1A]">{formatAdminSku(product.sku)}</dd>
+              </div>
+              <div>
+                <dt className="text-[#64748B]">Preço de venda</dt>
+                <dd className="text-[#1A1A1A]">{formatAdminPrice(product.price)}</dd>
+              </div>
+              <div>
+                <dt className="text-[#64748B]">Tamanho</dt>
+                <dd className="text-[#1A1A1A]">{formatAdminSize(product.sizeCm)}</dd>
+              </div>
+              <div>
+                <dt className="text-[#64748B]">Peso</dt>
+                <dd className="text-[#1A1A1A]">{formatAdminWeight(product.weightGrams)}</dd>
+              </div>
+              <div>
+                <dt className="text-[#64748B]">Estoque</dt>
+                <dd className="text-[#1A1A1A]">{product.trackStock ? product.stockQty : "Peça única"}</dd>
+              </div>
+              <div>
+                <dt className="text-[#64748B]">Foto principal</dt>
+                <dd>
+                  <CoverBadge cover={coverImage(product)} />
+                </dd>
+              </div>
+            </dl>
+            <div className="mt-3 flex items-center gap-4 border-t border-[#E2E8F0] pt-3 text-sm">
+              <Link to={`/admin/produtos/${product.id}`} state={{ from: listSearch }} className="text-[#5F84BA] hover:underline">
+                Editar
+              </Link>
+              <button onClick={() => handleActivateClick(product)} className="text-[#64748B] hover:underline">
+                {product.active ? "Desativar" : "Ativar"}
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
 
       {data && <div className="mt-3">{paginationFooter}</div>}
