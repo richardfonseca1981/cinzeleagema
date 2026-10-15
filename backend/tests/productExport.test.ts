@@ -5,6 +5,7 @@ import "./setup";
 import { createApp } from "../src/app";
 import { prisma } from "../src/lib/prisma";
 import { cleanDatabase, generateTestToken } from "./helpers";
+import { formatSaoPauloDateTime } from "../src/routes/productExport.routes";
 
 const app = createApp();
 const token = generateTestToken();
@@ -51,6 +52,29 @@ async function loadWorkbook(buffer: Buffer) {
   return workbook.getWorksheet("Peças")!;
 }
 
+// A tabela agora vem depois do banner (logo + título + data/hora + total) —
+// localiza a linha do cabeçalho pelo conteúdo ("ID" na 1ª coluna) em vez de
+// assumir que é a linha 1.
+function findHeaderRowNumber(sheet: ExcelJS.Worksheet): number {
+  for (let r = 1; r <= sheet.rowCount; r++) {
+    if (sheet.getRow(r).getCell(1).value === "ID") return r;
+  }
+  throw new Error("linha de cabeçalho não encontrada");
+}
+
+// Varre as primeiras linhas (bloco do topo) atrás de um texto com o prefixo
+// dado, sem depender do número exato da linha.
+function findCellTextStartingWith(sheet: ExcelJS.Worksheet, prefix: string): string | undefined {
+  for (let r = 1; r <= sheet.rowCount; r++) {
+    const row = sheet.getRow(r);
+    for (let c = 1; c <= row.cellCount; c++) {
+      const value = row.getCell(c).value;
+      if (typeof value === "string" && value.startsWith(prefix)) return value;
+    }
+  }
+  return undefined;
+}
+
 afterAll(async () => {
   await cleanDatabase();
   await prisma.$disconnect();
@@ -71,16 +95,36 @@ describe("GET /api/admin/products/export", () => {
     expect(res.status).toBe(401);
   });
 
-  it("generates a file with only headers when there are no products", async () => {
+  it("generates a file with the banner and table header even with no products", async () => {
     const res = await getXlsxBuffer();
     expect(res.status).toBe(200);
     expect(res.headers["content-type"]).toContain("spreadsheetml.sheet");
     expect(res.headers["content-disposition"]).toMatch(/pecas-\d{4}-\d{2}-\d{2}\.xlsx/);
 
     const sheet = await loadWorkbook(res.body as Buffer);
-    expect(sheet.rowCount).toBe(1);
-    const headerRow = sheet.getRow(1).values as unknown[];
+    const headerRowNumber = findHeaderRowNumber(sheet);
+    expect(sheet.rowCount).toBe(headerRowNumber); // nenhuma linha de dado abaixo do cabeçalho
+
+    const headerRow = sheet.getRow(headerRowNumber).values as unknown[];
     expect(headerRow.slice(1)).toEqual(EXPECTED_HEADERS);
+
+    expect(findCellTextStartingWith(sheet, "Relatório de Peças")).toBeDefined();
+    expect(findCellTextStartingWith(sheet, "Gerado em:")).toBeDefined();
+    expect(findCellTextStartingWith(sheet, "Total de peças: 0 (ativas: 0, inativas: 0)")).toBeDefined();
+  });
+
+  it("embute o logo da marca na planilha", async () => {
+    const res = await getXlsxBuffer();
+    const sheet = await loadWorkbook(res.body as Buffer);
+    expect(sheet.getImages().length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('mostra "Gerado em:" convertido para America/Sao_Paulo (não o horário UTC do servidor)', async () => {
+    // 19:02 UTC em outubro (horário de verão não se aplica mais no Brasil
+    // desde 2019) é 16:02 em São Paulo (UTC-3) — por isso o teste falharia se
+    // o código usasse o horário cru do servidor em vez de converter o fuso.
+    const fixedNow = new Date("2026-10-15T19:02:00.000Z");
+    expect(formatSaoPauloDateTime(fixedNow)).toBe("15/10/2026 16:02");
   });
 
   it("includes active and inactive products, with all fields and relations, and protects against formula injection", async () => {
@@ -143,10 +187,13 @@ describe("GET /api/admin/products/export", () => {
     expect(res.status).toBe(200);
 
     const sheet = await loadWorkbook(res.body as Buffer);
-    expect(sheet.rowCount).toBe(4); // header + 3 produtos
+    const headerRowNumber = findHeaderRowNumber(sheet);
+    expect(sheet.rowCount).toBe(headerRowNumber + 3); // header + 3 produtos
+
+    expect(findCellTextStartingWith(sheet, "Total de peças: 3 (ativas: 2, inativas: 1)")).toBeDefined();
 
     function rowFor(id: string) {
-      for (let i = 2; i <= sheet.rowCount; i++) {
+      for (let i = headerRowNumber + 1; i <= sheet.rowCount; i++) {
         const row = sheet.getRow(i);
         if (row.getCell(1).value === id) return row;
       }
@@ -159,6 +206,7 @@ describe("GET /api/admin/products/export", () => {
     expect(completeRow.getCell(4).value).toBe("Peça lapidada"); // Descrição
     expect(completeRow.getCell(7).value).toBe("Pedras Brutas, Pedras Brutas Peça"); // Categoria
     expect(completeRow.getCell(8).value).toBe(8500); // Preço
+    expect(completeRow.getCell(8).numFmt).toBe('"R$" #,##0.00'); // formato monetário
     expect(completeRow.getCell(9).value).toBe(12.5); // Peso
     expect(completeRow.getCell(10).value).toBe(2.3); // Tamanho
     expect(completeRow.getCell(11).value).toBe("Sim"); // Controla estoque
@@ -171,7 +219,8 @@ describe("GET /api/admin/products/export", () => {
     expect(incompleteRow.getCell(3).value).toBeNull(); // Nome ausente
     expect(incompleteRow.getCell(7).value).toBeNull(); // sem categoria
     expect(incompleteRow.getCell(8).value).toBeNull(); // sem preço
-    expect(incompleteRow.getCell(9).value).toBe(0); // peso 0 (valor cru do banco)
+    expect(incompleteRow.getCell(9).value).toBeNull(); // peso 0 -> vazio (não informado)
+    expect(incompleteRow.getCell(10).value).toBeNull(); // tamanho 0 -> vazio (não informado)
     expect(incompleteRow.getCell(11).value).toBe("Não");
     expect(incompleteRow.getCell(12).value).toBeNull(); // sem controle de estoque
     expect(incompleteRow.getCell(13).value).toBe("Não"); // inativo aparece no export
@@ -180,5 +229,21 @@ describe("GET /api/admin/products/export", () => {
     expect(injectionRow.getCell(3).value).toBe("'=CMD('calc')");
     expect(injectionRow.getCell(4).value).toBe("'+SUM(A1:A2)");
     expect(injectionRow.getCell(2).value).toBe("'-1000");
+  });
+
+  it("liga autofiltro e congela painéis logo abaixo do cabeçalho da tabela", async () => {
+    await prisma.product.create({
+      data: { name: "Peça", slug: "peca-autofiltro", weightGrams: 1, sizeCm: 1, active: true },
+    });
+
+    const res = await getXlsxBuffer();
+    const sheet = await loadWorkbook(res.body as Buffer);
+    const headerRowNumber = findHeaderRowNumber(sheet);
+
+    expect(sheet.autoFilter).toBeTruthy();
+    expect(String(sheet.autoFilter)).toMatch(new RegExp(`^A${headerRowNumber}:`));
+
+    expect(sheet.views).toHaveLength(1);
+    expect(sheet.views[0]).toMatchObject({ state: "frozen", ySplit: headerRowNumber });
   });
 });

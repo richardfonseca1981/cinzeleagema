@@ -20,7 +20,8 @@
     "autofit:photos": "tsx src/scripts/autoFitExistingPhotos.ts",
     "autofit:photos:prod": "node dist/scripts/autoFitExistingPhotos.js",
     "promote-formas": "tsx src/scripts/promoteFormasToCategory.ts",
-    "promote-formas:prod": "node dist/scripts/promoteFormasToCategory.js"
+    "promote-formas:prod": "node dist/scripts/promoteFormasToCategory.js",
+    "generate:export-logo": "tsx src/scripts/generateExportLogo.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
