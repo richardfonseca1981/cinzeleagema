@@ -110,6 +110,11 @@ export interface Product {
   sku: string | null;
   weightGrams: string;
   sizeCm: string;
+  // Dimensões reais da caixa de envio — opcionais, só corrigem a estimativa
+  // automática de frete (ver backend lib/shipping/packageEstimator.ts).
+  packageLengthCm: string | null;
+  packageWidthCm: string | null;
+  packageHeightCm: string | null;
   trackStock: boolean;
   stockQty: number | null;
   images: ProductImage[];
@@ -156,4 +161,46 @@ export interface CartItem {
 
 export interface CreateOrderResult {
   delivered: boolean;
+}
+
+// GET /api/shipping/status (admin, somente leitura) — nunca traz valores de
+// variáveis, só se estão configuradas. `international` resume a tabela do
+// frete internacional (cadastro em /api/admin/shipping).
+export interface ShippingStatus {
+  domestic: {
+    melhorEnvioTokenConfigured: boolean;
+    originCepConfigured: boolean;
+    sandbox: boolean;
+    box: { lengthCm: number; widthCm: number; heightCm: number };
+    packagingWeightG: number;
+    maxItemSizeCm: number;
+    boxFillFactor: number;
+  };
+  international: { zones: number; activeZones: number; activeCountries: number };
+}
+
+// Frete internacional por tabela (admin): /api/admin/shipping.
+export interface AdminShippingRate {
+  id: string;
+  zoneId: string;
+  serviceName: string;
+  maxWeightG: number;
+  priceBRL: number;
+  deliveryDaysMin: number | null;
+  deliveryDaysMax: number | null;
+  active: boolean;
+}
+
+export interface AdminShippingZone {
+  id: string;
+  name: string;
+  countries: string[];
+  active: boolean;
+  position: number;
+  rates: AdminShippingRate[];
+}
+
+export interface AdminShippingSimulation {
+  weightGrams: number;
+  result: import("../lib/shipping/types").ShippingQuoteResult;
 }

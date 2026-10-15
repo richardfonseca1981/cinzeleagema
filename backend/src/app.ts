@@ -12,6 +12,8 @@ import { imageTreatmentRouter } from "./routes/imageTreatment.routes";
 import { imageTreatmentRawRouter } from "./routes/imageTreatmentRaw.routes";
 import { adminUserRouter } from "./routes/adminUser.routes";
 import { exchangeRateRouter } from "./routes/exchangeRate.routes";
+import { shippingRouter } from "./routes/shipping.routes";
+import { shippingAdminRouter } from "./routes/shippingAdmin.routes";
 
 export function createApp() {
   const app = express();
@@ -28,6 +30,8 @@ export function createApp() {
   // Antes de /api/products: /api/admin/products/export tem prefixo próprio,
   // não colide com as rotas públicas/admin de produto em "/api/products".
   app.use("/api/admin/products", productExportRouter);
+  app.use("/api/shipping", shippingRouter);
+  app.use("/api/admin/shipping", shippingAdminRouter);
   app.use("/api/products", productRouter);
   app.use("/api/orders", orderRouter);
   app.use("/api/products/:productId/images", imageRouter);

@@ -2,6 +2,12 @@ import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useCart } from "../lib/cart";
 import { formatPrice, formatWeightSize, localizeProductName } from "../lib/format";
+import { computeOrderTotals, formatCents } from "../lib/shipping/money";
+import { canProceedToCheckout } from "../lib/shipping/confirmFlow";
+import { shippingAmountBRL } from "../lib/shipping/summary";
+import { useShippingController } from "../lib/shipping/useShippingController";
+import { OrderSummary } from "../components/shipping/OrderSummary";
+import { ShippingCalculator } from "../components/shipping/ShippingCalculator";
 import { useExchangeRate } from "../lib/exchangeRate";
 import { PublicHeader } from "../components/landing/PublicHeader";
 import { WhatsAppFloatingButton } from "../components/landing/WhatsAppFloatingButton";
@@ -10,9 +16,19 @@ import { ProductImage } from "../components/ProductImage";
 
 export function Cart() {
   const { t, i18n } = useTranslation();
-  const { items, removeItem, updateQuantity, totalEstimate } = useCart();
+  const { items, removeItem, updateQuantity } = useCart();
   const navigate = useNavigate();
   const exchangeRate = useExchangeRate();
+  const shipping = useShippingController(items);
+  // Subtotal, frete e total somam exatamente (centavos inteiros já arredondados).
+  const totals = computeOrderTotals(
+    items.map((i) => i.unitPrice * i.quantity),
+    shippingAmountBRL(shipping.summary),
+    i18n.language,
+    exchangeRate
+  );
+
+  const canProceed = canProceedToCheckout(shipping.summary);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#1A1A1A]">
@@ -32,8 +48,8 @@ export function Cart() {
           </div>
         ) : (
           <>
-            <div className="mt-6 divide-y divide-[#E2E8F0] rounded-lg border border-[#E2E8F0] bg-white">
-              {items.map((item) => {
+            <div id="cart-items" className="mt-6 divide-y divide-[#E2E8F0] rounded-lg border border-[#E2E8F0] bg-white">
+              {items.map((item, index) => {
                 const itemName = localizeProductName(item, i18n.language, t);
                 const weightSize = formatWeightSize(item.weightGrams, item.sizeCm, i18n.language);
 
@@ -55,7 +71,7 @@ export function Cart() {
                       className="w-16 rounded-lg border border-[#E2E8F0] px-2 py-1 text-center text-sm outline-none transition focus:border-[#C78F50] focus:ring-2 focus:ring-[#C78F50]/20"
                     />
                     <p className="w-24 text-right font-semibold text-[#1A1A1A]">
-                      {formatPrice(item.unitPrice * item.quantity, i18n.language, exchangeRate)}
+                      {formatCents(totals.lineCents[index], i18n.language, exchangeRate)}
                     </p>
                     <button
                       onClick={() => removeItem(item.productId)}
@@ -68,17 +84,30 @@ export function Cart() {
               })}
             </div>
 
-            <div className="mt-6 flex items-center justify-between rounded-lg border border-[#E2E8F0] bg-white p-4">
-              <span className="font-medium">{t("cart.total")}</span>
-              <span className="text-xl font-bold text-[#C78F50]">{formatPrice(totalEstimate, i18n.language, exchangeRate)}</span>
+            <ShippingCalculator
+              controller={shipping}
+              items={items}
+              exchangeRate={exchangeRate}
+              onCloseArranged={() => navigate("/finalizar")}
+            />
+
+            <div className="mt-6">
+              <OrderSummary totals={totals} summary={shipping.summary} exchangeRate={exchangeRate} />
             </div>
 
+            {/* O pedido só avança com frete cotado ou "a combinar" permitido. */}
             <button
               onClick={() => navigate("/finalizar")}
-              className="mt-6 w-full rounded-lg bg-[#C78F50] px-4 py-3 font-semibold text-[#010B1A] transition hover:bg-[#B37D3F]"
+              disabled={!canProceed}
+              className="mt-6 w-full rounded-lg bg-[#C78F50] px-4 py-3 font-semibold text-[#010B1A] transition hover:bg-[#B37D3F] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {t("cart.checkout")}
             </button>
+            {!canProceed && (
+              <p className="mt-2 text-center text-sm text-[#64748B]" data-testid="calculate-to-continue">
+                {t("shipping.proceed.calculateFirst")}
+              </p>
+            )}
           </>
         )}
       </div>

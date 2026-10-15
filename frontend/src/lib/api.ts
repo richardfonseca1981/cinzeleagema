@@ -1,6 +1,9 @@
 import { clearSession, getSession } from "./auth";
 import type {
   AdminSession,
+  AdminShippingRate,
+  AdminShippingSimulation,
+  AdminShippingZone,
   AdminUserSummary,
   Category,
   ColorEnhanceLevel,
@@ -10,8 +13,10 @@ import type {
   Product,
   ProductImage,
   ProductListResponse,
+  ShippingStatus,
   TreatmentPreviewRequest,
 } from "../types";
+import type { PostalCodeLookup, ShippingQuoteRequest, ShippingQuoteResult } from "./shipping/types";
 import type { NewEntry } from "./imageStaging";
 import { rawFormFields } from "./treatmentRequest";
 
@@ -66,7 +71,32 @@ export const api = {
 
   listCategories: () => request<Category[]>("/api/categories"),
 
-  getExchangeRate: () => request<{ rate: number; updatedAt: string }>("/api/exchange-rate"),
+  // `source` é novo (live | stale | fallback); pode faltar num backend antigo.
+  getExchangeRate: () => request<{ rate: number; updatedAt: string; source?: string }>("/api/exchange-rate"),
+
+  getShippingStatus: () => request<ShippingStatus>("/api/shipping/status"),
+  // Frete do comprador (rotas públicas). O endpoint de cotação tem limite de
+  // 20 requisições/min por IP: 429 é tratado na interface.
+  getShippingQuote: (body: ShippingQuoteRequest, signal?: AbortSignal) =>
+    request<ShippingQuoteResult>("/api/shipping/quote", { method: "POST", body: JSON.stringify(body), signal }),
+  lookupPostalCode: (code: string, signal?: AbortSignal) =>
+    request<PostalCodeLookup>(`/api/shipping/postal-code/${code}`, { signal }),
+
+  // Frete internacional por tabela (admin)
+  listShippingZones: () => request<AdminShippingZone[]>("/api/admin/shipping/zones"),
+  createShippingZone: (data: { name: string; countries: string[]; active: boolean }) =>
+    request<AdminShippingZone>("/api/admin/shipping/zones", { method: "POST", body: JSON.stringify(data) }),
+  updateShippingZone: (id: string, data: { name?: string; countries?: string[]; active?: boolean }) =>
+    request<AdminShippingZone>(`/api/admin/shipping/zones/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deleteShippingZone: (id: string) => request<void>(`/api/admin/shipping/zones/${id}`, { method: "DELETE" }),
+  createShippingRate: (zoneId: string, data: Record<string, unknown>) =>
+    request<AdminShippingRate>(`/api/admin/shipping/zones/${zoneId}/rates`, { method: "POST", body: JSON.stringify(data) }),
+  updateShippingRate: (zoneId: string, rateId: string, data: Record<string, unknown>) =>
+    request<AdminShippingRate>(`/api/admin/shipping/zones/${zoneId}/rates/${rateId}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deleteShippingRate: (zoneId: string, rateId: string) =>
+    request<void>(`/api/admin/shipping/zones/${zoneId}/rates/${rateId}`, { method: "DELETE" }),
+  simulateShipping: (data: { country: string; weightGrams: number }) =>
+    request<AdminShippingSimulation>("/api/admin/shipping/simulate", { method: "POST", body: JSON.stringify(data) }),
 
   listProducts: (
     params: { active?: boolean; categoryId?: string; subcategoryId?: string; q?: string; page?: number; pageSize?: number } = {}

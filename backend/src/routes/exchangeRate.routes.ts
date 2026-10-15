@@ -7,7 +7,8 @@ export const exchangeRateRouter = Router();
 exchangeRateRouter.get(
   "/",
   asyncHandler(async (_req, res) => {
-    const { rate, updatedAt } = await getExchangeRate();
-    res.json({ rate, updatedAt: updatedAt.toISOString() });
+    const { rate, updatedAt, source } = await getExchangeRate();
+    // `source` é aditivo: "live" | "stale" | "fallback" (ver lib/exchangeRate.ts)
+    res.json({ rate, updatedAt: updatedAt.toISOString(), source });
   })
 );

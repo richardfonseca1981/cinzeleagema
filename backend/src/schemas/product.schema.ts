@@ -21,6 +21,11 @@ export const createProductSchema = z.object({
   sizeCm: z.coerce.number().nonnegative().optional(),
   trackStock: z.boolean().default(false),
   stockQty: z.coerce.number().int().nonnegative().optional().nullable(),
+  // OBSOLETO: o frete usa sempre a caixa fixa (lib/shipping/shipment.ts).
+  // Continuam aceitos só para não quebrar clientes antigos; são ignorados.
+  packageLengthCm: z.coerce.number().positive().optional().nullable(),
+  packageWidthCm: z.coerce.number().positive().optional().nullable(),
+  packageHeightCm: z.coerce.number().positive().optional().nullable(),
 });
 
 export const updateProductSchema = createProductSchema.partial();

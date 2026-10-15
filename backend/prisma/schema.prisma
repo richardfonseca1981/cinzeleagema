@@ -101,6 +101,12 @@ model Product {
   trackStock Boolean @default(false)
   stockQty   Int? // null quando trackStock = false
 
+  // OBSOLETOS (sem uso): o frete cota sempre uma caixa fixa única
+  // (lib/shipping/shipment.ts). Colunas mantidas para não exigir migration.
+  packageLengthCm Decimal? @db.Decimal(10, 2)
+  packageWidthCm  Decimal? @db.Decimal(10, 2)
+  packageHeightCm Decimal? @db.Decimal(10, 2)
+
   images ProductImage[]
 
   active    Boolean  @default(true)
@@ -143,4 +149,39 @@ model ProductImage {
   createdAt DateTime @default(now())
 
   @@index([productId])
+}
+
+// Frete internacional por tabela cadastrada pelo cliente (Parte 1B). Uma zona
+// agrupa países (ISO 3166-1 alpha-2 maiúsculos, nunca "BR": o Brasil é cotado
+// pela Melhor Envio) e tem faixas de peso por serviço. O mesmo país não pode
+// estar em duas zonas ATIVAS (validado nas rotas admin). Sem dados no seed.
+model ShippingZone {
+  id        String   @id @default(cuid())
+  name      String
+  countries String[]
+  active    Boolean  @default(true)
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  rates ShippingRate[]
+}
+
+// Faixa de peso de um serviço dentro da zona: vale para pedidos de até
+// maxWeightG gramas (peso total, embalagem incluída). O provedor escolhe, por
+// serviço, a MENOR faixa ativa que comporta o peso.
+model ShippingRate {
+  id              String  @id @default(cuid())
+  zoneId          String
+  serviceName     String
+  maxWeightG      Int
+  priceBRL        Decimal @db.Decimal(10, 2)
+  deliveryDaysMin Int?
+  deliveryDaysMax Int?
+  active          Boolean @default(true)
+
+  zone ShippingZone @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+
+  @@unique([zoneId, serviceName, maxWeightG])
+  @@index([zoneId])
 }
