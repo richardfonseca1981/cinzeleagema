@@ -159,8 +159,8 @@ describe("GET /api/products sem q — comportamento anterior intacto (catálogo 
     expect(Object.keys(res.body).sort()).toEqual(["items", "page", "pageSize", "total"]);
     expect(res.body).toMatchObject({ total: 25, page: 2, pageSize: 10 });
 
-    // Ordem: createdAt desc, id desc
-    const all = await prisma.product.findMany({ orderBy: [{ createdAt: "desc" }, { id: "desc" }] });
+    // Ordem: sortOrder asc, id asc
+    const all = await prisma.product.findMany({ orderBy: [{ sortOrder: "asc" }, { id: "asc" }] });
     expect(res.body.items.map((p: { id: string }) => p.id)).toEqual(all.slice(10, 20).map((p) => p.id));
   });
 

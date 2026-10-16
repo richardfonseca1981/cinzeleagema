@@ -262,6 +262,12 @@ export function ProductList() {
             {exporting ? "Exportando..." : "Exportar Excel"}
           </button>
           <Link
+            to="/admin/produtos/ordem"
+            className="rounded-lg border border-[#C78F50] px-4 py-2 text-sm font-medium text-[#C78F50] transition hover:bg-[#FFF8F0]"
+          >
+            Reordenar peças
+          </Link>
+          <Link
             to="/admin/produtos/novo"
             state={{ from: listSearch }}
             className="rounded-lg bg-[#C78F50] px-4 py-2 text-sm font-medium text-[#010B1A] transition hover:bg-[#B37D3F]"

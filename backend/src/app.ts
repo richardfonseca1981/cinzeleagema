@@ -6,6 +6,7 @@ import { authRouter } from "./routes/auth.routes";
 import { categoryRouter } from "./routes/category.routes";
 import { orderRouter } from "./routes/order.routes";
 import { productRouter } from "./routes/product.routes";
+import { productOrderRouter } from "./routes/productOrder.routes";
 import { productExportRouter } from "./routes/productExport.routes";
 import { imageRouter } from "./routes/upload.routes";
 import { imageTreatmentRouter } from "./routes/imageTreatment.routes";
@@ -30,6 +31,7 @@ export function createApp() {
   // Antes de /api/products: /api/admin/products/export tem prefixo próprio,
   // não colide com as rotas públicas/admin de produto em "/api/products".
   app.use("/api/admin/products", productExportRouter);
+  app.use("/api/admin/products", productOrderRouter);
   app.use("/api/shipping", shippingRouter);
   app.use("/api/admin/shipping", shippingAdminRouter);
   app.use("/api/products", productRouter);

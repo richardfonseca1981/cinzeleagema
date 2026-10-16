@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Landing } from "./pages/Landing";
 import { Login } from "./pages/Login";
 import { ProductList } from "./pages/ProductList";
+import { ProductOrder } from "./pages/ProductOrder";
 import { ProductForm } from "./pages/ProductForm";
 import { AdminUsers } from "./pages/AdminUsers";
 import { Shipping } from "./pages/Shipping";
@@ -35,6 +36,7 @@ export default function App() {
               <Route element={<ProtectedRoute />}>
                 <Route element={<AdminLayout />}>
                   <Route path="/admin/produtos" element={<ProductList />} />
+                  <Route path="/admin/produtos/ordem" element={<ProductOrder />} />
                   <Route path="/admin/produtos/novo" element={<ProductForm />} />
                   <Route path="/admin/produtos/:id" element={<ProductForm />} />
                   <Route path="/admin/frete" element={<Shipping />} />

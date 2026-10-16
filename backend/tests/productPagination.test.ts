@@ -19,7 +19,7 @@ beforeEach(async () => {
   const category = await prisma.category.create({ data: { name: "Pedras", slug: "pedras" } });
   categoryId = category.id;
 
-  // Mesmo createdAt em todos — força o backend a depender do desempate por
+  // Mesmo sortOrder (default 0) em todos — força o backend a depender do desempate por
   // "id" para ter ordem determinística (sem desempate, a ordem entre
   // produtos com createdAt igual não é garantida e pode variar entre as
   // duas consultas de uma mesma paginação, pulando ou repetindo peças).
@@ -86,11 +86,11 @@ describe("GET /api/products — paginação com mais itens que o tamanho da pág
     expect(firstIds).toEqual(secondIds);
   });
 
-  it("usa id (desc) como desempate quando createdAt é igual", async () => {
+  it("usa id (asc) como desempate quando sortOrder é igual", async () => {
     const res = await request(app).get(`/api/products?pageSize=${TOTAL_PRODUCTS}&page=1`);
     const returnedIds = res.body.items.map((p: { id: string }) => p.id);
 
-    const expectedOrder = [...insertedIds].sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
+    const expectedOrder = [...insertedIds].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
     expect(returnedIds).toEqual(expectedOrder);
   });
 });

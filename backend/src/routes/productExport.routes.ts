@@ -129,7 +129,7 @@ productExportRouter.get(
   asyncHandler(async (_req, res) => {
     const products = await prisma.product.findMany({
       include: { images: { orderBy: { position: "asc" } }, category: true, subcategory: true },
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     });
 
     const now = new Date();

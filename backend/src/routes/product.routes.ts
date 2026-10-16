@@ -74,7 +74,7 @@ productRouter.get(
         // seed em lote) teriam ordem indefinida entre si só com createdAt,
         // o que pode pular ou repetir peças ao paginar (uma mesma posição
         // "na borda" entre duas páginas ora aparece numa, ora na outra).
-        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
@@ -127,9 +127,14 @@ productRouter.post(
 
     const slug = await generateUniqueSlug(data.name);
 
-    const product = await prisma.product.create({
-      data: { ...data, slug },
-      include: { images: true, category: true, subcategory: true },
+    // Peça nova entra no topo da ordem definida pelo admin (min - 1).
+    const product = await prisma.$transaction(async (tx) => {
+      const { _min } = await tx.product.aggregate({ _min: { sortOrder: true } });
+      const sortOrder = (_min.sortOrder ?? 1) - 1;
+      return tx.product.create({
+        data: { ...data, slug, sortOrder },
+        include: { images: true, category: true, subcategory: true },
+      });
     });
     res.status(201).json(product);
 

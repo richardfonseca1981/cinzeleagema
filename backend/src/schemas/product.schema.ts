@@ -49,6 +49,11 @@ export const listProductsQuerySchema = z.object({
   pageSize: z.coerce.number().int().positive().max(100).default(20),
 });
 
+// Lista COMPLETA de ids na nova ordem (sem repetidos).
+export const reorderProductsSchema = z
+  .object({ order: z.array(z.string().min(1)).min(1) })
+  .refine((v) => new Set(v.order).size === v.order.length, { message: "Ids repetidos na ordem", path: ["order"] });
+
 export const reorderImagesSchema = z.object({
   order: z.array(z.string().min(1)).min(1),
 });

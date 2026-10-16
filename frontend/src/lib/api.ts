@@ -205,6 +205,26 @@ export async function previewPhotoTreatmentRaw(
 // .xlsx — o endpoint exige o mesmo token do admin, então não dá pra usar um
 // <a href> direto; baixa via fetch+blob e devolve o arquivo já pronto para
 // salvar (mesmo padrão de autenticação de uploadImageToR2 abaixo).
+export interface OrderItem {
+  id: string;
+  name: string | null;
+  sku: string | null;
+  active: boolean;
+  categoryId: string | null;
+  images: { url: string }[];
+}
+
+export function listProductOrder() {
+  return request<{ items: OrderItem[]; total: number }>("/api/admin/products/order");
+}
+
+export function saveProductOrder(order: string[]) {
+  return request<{ items: OrderItem[]; total: number }>("/api/admin/products/order", {
+    method: "PUT",
+    body: JSON.stringify({ order }),
+  });
+}
+
 export async function exportProductsXlsx(): Promise<{ blob: Blob; filename: string }> {
   const session = getSession();
 
