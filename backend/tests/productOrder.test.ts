@@ -94,7 +94,7 @@ describe("ordem das peças", () => {
     const list = await request(app).get(ORDER_PATH).set(auth);
     expect(list.body.total).toBe(5);
     expect(list.body.items[0]).toMatchObject({ id: ids[2], active: false });
-    expect(await publicIds()).not.toContain(ids[2]);
+    expect(await publicIds("&active=true")).not.toContain(ids[2]);
   });
 
   it("peça nova criada via POST entra no topo", async () => {
