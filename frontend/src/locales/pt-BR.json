@@ -139,7 +139,18 @@
     "loadMore": "Carregar mais",
     "loadingMore": "Carregando...",
     "loadMoreError": "Não foi possível carregar mais peças.",
-    "retry": "Tentar novamente"
+    "retry": "Tentar novamente",
+    "sortLabel": "Ordenar por",
+    "sort": {
+      "default": "Destaques",
+      "newest": "Mais recentes",
+      "price_asc": "Menor preço",
+      "price_desc": "Maior preço",
+      "size_desc": "Maior tamanho",
+      "size_asc": "Menor tamanho",
+      "weight_desc": "Maior peso",
+      "weight_asc": "Menor peso"
+    }
   },
   "productCard": {
     "noPhoto": "Sem foto",

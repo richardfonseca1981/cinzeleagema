@@ -9,6 +9,7 @@ import { CategoryNav } from "../components/catalog/CategoryNav";
 import { ProductCard } from "../components/catalog/ProductCard";
 import { WHATSAPP_HREF } from "../lib/whatsapp";
 import { hasMorePages, mergeProductPages } from "../lib/catalogPagination";
+import { CATALOG_SORTS, parseCatalogSort, type CatalogSort } from "../lib/catalogSort";
 
 export function Catalog() {
   const { t } = useTranslation();
@@ -30,6 +31,19 @@ export function Catalog() {
 
   const categoryId = searchParams.get("categoria") ?? "";
   const subcategoryId = searchParams.get("subcategoria") ?? "";
+  const sort = parseCatalogSort(searchParams.get("ordem"));
+
+  // Único ponto que escreve na URL: monta os três filtros do zero a cada
+  // chamada (nunca faz merge com o searchParams atual), então trocar um
+  // filtro sempre preserva os outros dois automaticamente. "ordem" só entra
+  // na URL quando != "default" (mesma regra do backend).
+  function setFilters(next: { categoryId?: string; subcategoryId?: string; sort?: CatalogSort }) {
+    const params: Record<string, string> = {};
+    if (next.categoryId) params.categoria = next.categoryId;
+    if (next.subcategoryId) params.subcategoria = next.subcategoryId;
+    if (next.sort && next.sort !== "default") params.ordem = next.sort;
+    setSearchParams(params);
+  }
 
   useEffect(() => {
     api.listCategories().then(setCategories);
@@ -41,7 +55,13 @@ export function Catalog() {
     setLoadError(false);
 
     api
-      .listProducts({ active: true, categoryId: categoryId || undefined, subcategoryId: subcategoryId || undefined, page: 1 })
+      .listProducts({
+        active: true,
+        categoryId: categoryId || undefined,
+        subcategoryId: subcategoryId || undefined,
+        page: 1,
+        sort,
+      })
       .then((res) => {
         if (generationRef.current !== generation) return;
         setProducts(res.items);
@@ -58,11 +78,11 @@ export function Catalog() {
       });
   }
 
-  // Troca de categoria/subcategoria reinicia a lista (nova geração, página 1).
+  // Troca de categoria/subcategoria/ordenação reinicia a lista (nova geração, página 1).
   useEffect(() => {
     loadFirstPage();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categoryId, subcategoryId]);
+  }, [categoryId, subcategoryId, sort]);
 
   async function handleLoadMore() {
     const generation = generationRef.current;
@@ -76,6 +96,7 @@ export function Catalog() {
         categoryId: categoryId || undefined,
         subcategoryId: subcategoryId || undefined,
         page: nextPage,
+        sort,
       });
       if (generationRef.current !== generation) return; // categoria trocou enquanto carregava
 
@@ -91,15 +112,19 @@ export function Catalog() {
   }
 
   function handleSelectCategory(id: string) {
-    setSearchParams(id ? { categoria: id } : {});
+    setFilters({ categoryId: id, sort });
   }
 
   function handleSelectSubcategory(catId: string, subId: string) {
     if (catId === categoryId && subId === subcategoryId) {
-      setSearchParams({ categoria: catId });
+      setFilters({ categoryId: catId, sort });
     } else {
-      setSearchParams({ categoria: catId, subcategoria: subId });
+      setFilters({ categoryId: catId, subcategoryId: subId, sort });
     }
+  }
+
+  function handleSortChange(next: CatalogSort) {
+    setFilters({ categoryId, subcategoryId, sort: next });
   }
 
   return (
@@ -120,6 +145,24 @@ export function Catalog() {
           />
 
           <div>
+            <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
+              <label htmlFor="catalog-sort" className="text-sm font-medium text-[#64748B]">
+                {t("catalog.sortLabel")}
+              </label>
+              <select
+                id="catalog-sort"
+                value={sort}
+                onChange={(e) => handleSortChange(e.target.value as CatalogSort)}
+                className="max-w-full rounded-lg border border-[#E2E8F0] bg-white px-3 py-2 text-sm text-[#1A1A1A] focus:border-[#C78F50] focus:outline-none"
+              >
+                {CATALOG_SORTS.map((value) => (
+                  <option key={value} value={value}>
+                    {t(`catalog.sort.${value}`)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {loading && <p className="text-[#64748B]">{t("catalog.loading")}</p>}
 
             {!loading && loadError && (

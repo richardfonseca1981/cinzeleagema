@@ -99,7 +99,15 @@ export const api = {
     request<AdminShippingSimulation>("/api/admin/shipping/simulate", { method: "POST", body: JSON.stringify(data) }),
 
   listProducts: (
-    params: { active?: boolean; categoryId?: string; subcategoryId?: string; q?: string; page?: number; pageSize?: number } = {}
+    params: {
+      active?: boolean;
+      categoryId?: string;
+      subcategoryId?: string;
+      q?: string;
+      page?: number;
+      pageSize?: number;
+      sort?: string;
+    } = {}
   ) => {
     const query = new URLSearchParams();
     if (params.q) query.set("q", params.q);
@@ -108,6 +116,8 @@ export const api = {
     if (params.subcategoryId) query.set("subcategoryId", params.subcategoryId);
     if (params.page !== undefined) query.set("page", String(params.page));
     if (params.pageSize !== undefined) query.set("pageSize", String(params.pageSize));
+    // "default" é o valor padrão do backend — não precisa ir na querystring.
+    if (params.sort && params.sort !== "default") query.set("sort", params.sort);
     return request<ProductListResponse>(`/api/products?${query.toString()}`);
   },
   // Admin: quantas peças já têm a capa em 9:16.

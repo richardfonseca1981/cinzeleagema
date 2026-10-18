@@ -10,6 +10,7 @@ import { Prisma } from "@prisma/client";
 import { filesSafeToRemove, removeFiles } from "../lib/photoFiles";
 import { translateAndSaveProduct, translateProductInBackground } from "../lib/productTranslation";
 import { generateUniqueSlug } from "../lib/productSlug";
+import { buildOrderBy, DEFAULT_ORDER_BY, isSplitSort, splitField, splitOrderBy, splitWindow } from "../lib/productSort";
 
 export const productRouter = Router();
 
@@ -49,7 +50,7 @@ async function resolveSubcategoryId(categoryId: string | null | undefined, subca
 productRouter.get(
   "/",
   asyncHandler(async (req, res) => {
-    const { active, categoryId, subcategoryId, q, page, pageSize } = listProductsQuerySchema.parse(req.query);
+    const { active, categoryId, subcategoryId, q, page, pageSize, sort } = listProductsQuerySchema.parse(req.query);
 
     const where = {
       ...(active === undefined ? {} : { active }),
@@ -66,20 +67,64 @@ productRouter.get(
         : {}),
     };
 
-    const [items, total] = await Promise.all([
-      prisma.product.findMany({
-        where,
-        include: { images: { orderBy: { position: "asc" } }, category: true, subcategory: true },
-        // "id" como desempate: dois produtos com o mesmo createdAt (ex:
-        // seed em lote) teriam ordem indefinida entre si só com createdAt,
-        // o que pode pular ou repetir peças ao paginar (uma mesma posição
-        // "na borda" entre duas páginas ora aparece numa, ora na outra).
-        orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-      }),
-      prisma.product.count({ where }),
-    ]);
+    const include = { images: { orderBy: { position: "asc" as const } }, category: true, subcategory: true };
+    const skip = (page - 1) * pageSize;
+
+    let items;
+    let total;
+
+    if (isSplitSort(sort)) {
+      // size_asc/weight_asc: sizeCm/weightGrams = 0 é "não informado" e
+      // precisa ficar no fim mesmo no crescente — diferente de "price", que é
+      // Decimal nullable e aceita `nulls: "last"` nativo do Prisma. Paginamos
+      // dois conjuntos em sequência (informadas asc, depois não informadas na
+      // ordem padrão) com splitWindow calculando a janela de cada um sem
+      // pular nem repetir peças na fronteira entre eles.
+      const field = splitField(sort);
+      const informedWhere = { ...where, [field]: { gt: 0 } };
+      const uninformedWhere = { ...where, [field]: { lte: 0 } };
+
+      const [firstCount, totalCount] = await Promise.all([
+        prisma.product.count({ where: informedWhere }),
+        prisma.product.count({ where }),
+      ]);
+      const { firstSkip, firstTake, secondSkip, secondTake } = splitWindow(skip, pageSize, firstCount);
+
+      const [firstItems, secondItems] = await Promise.all([
+        firstTake > 0
+          ? prisma.product.findMany({
+              where: informedWhere,
+              include,
+              orderBy: splitOrderBy(field),
+              skip: firstSkip,
+              take: firstTake,
+            })
+          : [],
+        secondTake > 0
+          ? prisma.product.findMany({
+              where: uninformedWhere,
+              include,
+              orderBy: DEFAULT_ORDER_BY,
+              skip: secondSkip,
+              take: secondTake,
+            })
+          : [],
+      ]);
+
+      items = [...firstItems, ...secondItems];
+      total = totalCount;
+    } else {
+      [items, total] = await Promise.all([
+        prisma.product.findMany({
+          where,
+          include,
+          orderBy: buildOrderBy(sort),
+          skip,
+          take: pageSize,
+        }),
+        prisma.product.count({ where }),
+      ]);
+    }
 
     res.json({ items, total, page, pageSize });
   })

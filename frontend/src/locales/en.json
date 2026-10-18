@@ -139,7 +139,18 @@
     "loadMore": "Load more",
     "loadingMore": "Loading...",
     "loadMoreError": "Couldn't load more pieces.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "sortLabel": "Sort by",
+    "sort": {
+      "default": "Featured",
+      "newest": "Newest",
+      "price_asc": "Price: low to high",
+      "price_desc": "Price: high to low",
+      "size_desc": "Size: largest first",
+      "size_asc": "Size: smallest first",
+      "weight_desc": "Weight: heaviest first",
+      "weight_asc": "Weight: lightest first"
+    }
   },
   "productCard": {
     "noPhoto": "No photo",

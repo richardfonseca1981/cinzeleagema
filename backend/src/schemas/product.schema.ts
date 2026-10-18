@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { operationsSchema } from "../lib/imageOperations";
+import { SORT_VALUES } from "../lib/productSort";
 
 // Nome, preço e categoria são opcionais (ver CONTEXT.md "campos opcionais") —
 // null é um valor válido e intencional, diferente de ausente (undefined):
@@ -47,6 +48,9 @@ export const listProductsQuerySchema = z.object({
     .transform((v) => (v ? v : undefined)),
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().positive().max(100).default(20),
+  // Ordenação do catálogo público (ver lib/productSort.ts); valor fora da
+  // lista é 400 (ZodError, tratado em errorHandler.ts).
+  sort: z.enum(SORT_VALUES).default("default"),
 });
 
 // Lista COMPLETA de ids na nova ordem (sem repetidos).
