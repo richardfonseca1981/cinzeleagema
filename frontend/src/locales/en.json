@@ -185,7 +185,16 @@
     "next": "Next photo",
     "goTo": "Go to photo {{n}} of {{total}}",
     "thumbnail": "Show photo {{n}} of {{total}}",
-    "region": "Photos of {{name}}"
+    "region": "Photos of {{name}}",
+    "zoomIn": "Zoom in photo"
+  },
+  "imageViewer": {
+    "dialogLabel": "Full-screen photo of {{name}}",
+    "close": "Close",
+    "counterLabel": "Photo {{n}} of {{total}}",
+    "zoomInButton": "Zoom in",
+    "zoomOutButton": "Zoom out",
+    "zoomReset": "Reset zoom"
   },
   "cart": {
     "title": "Your order",
