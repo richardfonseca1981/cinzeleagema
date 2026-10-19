@@ -4,8 +4,8 @@ import { requireAuth } from "../middleware/auth";
 import { asyncHandler } from "../utils/asyncHandler";
 import { HttpError } from "../middleware/errorHandler";
 import { createProductSchema, listProductsQuerySchema, updateProductSchema } from "../schemas/product.schema";
-import { escapeLikePattern } from "../utils/escapeLike";
 import { isPortrait916 } from "../lib/photoFormat";
+import { filterProductIdsBySearch } from "../lib/productSearch";
 import { Prisma } from "@prisma/client";
 import { filesSafeToRemove, removeFiles } from "../lib/photoFiles";
 import { translateAndSaveProduct, translateProductInBackground } from "../lib/productTranslation";
@@ -52,20 +52,26 @@ productRouter.get(
   asyncHandler(async (req, res) => {
     const { active, categoryId, subcategoryId, q, page, pageSize, sort } = listProductsQuerySchema.parse(req.query);
 
-    const where = {
+    const baseWhere = {
       ...(active === undefined ? {} : { active }),
       ...(categoryId ? { categoryId } : {}),
       ...(subcategoryId ? { subcategoryId } : {}),
-      // O total (count) usa o mesmo "where": páginas e total refletem a busca.
-      ...(q
-        ? {
-            OR: [
-              { name: { contains: escapeLikePattern(q), mode: "insensitive" as const } },
-              { sku: { contains: escapeLikePattern(q), mode: "insensitive" as const } },
-            ],
-          }
-        : {}),
     };
+
+    // Busca por nome/nome em inglês/SKU em memória (ver lib/productSearch.ts):
+    // sem extensão `unaccent` do Postgres, buscamos só os campos de texto das
+    // peças que já passam nos demais filtros e filtramos por palavra (acento,
+    // hífen e maiúsculas normalizados). O "where" da consulta principal usa o
+    // conjunto de ids encontrado — total (count), paginação e ordenação
+    // continuam exatamente como sem "q".
+    let where: typeof baseWhere & { id?: { in: string[] } } = baseWhere;
+    if (q) {
+      const candidates = await prisma.product.findMany({
+        where: baseWhere,
+        select: { id: true, name: true, nameEn: true, sku: true },
+      });
+      where = { ...baseWhere, id: { in: filterProductIdsBySearch(candidates, q) } };
+    }
 
     const include = { images: { orderBy: { position: "asc" as const } }, category: true, subcategory: true };
     const skip = (page - 1) * pageSize;

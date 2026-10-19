@@ -4,6 +4,7 @@ import "./setup";
 import { createApp } from "../src/app";
 import { prisma } from "../src/lib/prisma";
 import { escapeLikePattern } from "../src/utils/escapeLike";
+import { filterProductIdsBySearch, productMatchesSearch, splitSearchWords } from "../src/lib/productSearch";
 import { cleanDatabase } from "./helpers";
 
 const app = createApp();
@@ -14,13 +15,18 @@ const FIXED_CREATED_AT = new Date("2026-01-01T12:00:00.000Z");
 let categoryA: string;
 let categoryB: string;
 
-async function makeProduct(name: string, slug: string, extra: { sku?: string; categoryId?: string; active?: boolean } = {}) {
+async function makeProduct(
+  name: string,
+  slug: string,
+  extra: { sku?: string; nameEn?: string; price?: number; categoryId?: string; active?: boolean } = {}
+) {
   return prisma.product.create({
     data: {
       name,
       slug,
-      price: 100,
+      price: extra.price ?? 100,
       sku: extra.sku,
+      nameEn: extra.nameEn,
       active: extra.active ?? true,
       categoryId: extra.categoryId ?? categoryA,
       createdAt: FIXED_CREATED_AT,
@@ -145,6 +151,97 @@ describe("GET /api/products?q= — busca por texto no servidor", () => {
   it("q maior que 100 caracteres é rejeitado (validação Zod)", async () => {
     const res = await request(app).get(`/api/products?q=${"a".repeat(101)}`);
     expect(res.status).toBe(400);
+  });
+
+  it("várias palavras em qualquer ordem, com acento, sem acento e com hífen", async () => {
+    await makeProduct("Água-marinha Grande", "agua-marinha-grande", { sku: "AGM-01" });
+    await makeProduct("Topázio Imperial", "topazio-imperial");
+    await makeProduct("Outra peça qualquer", "outra-generica");
+
+    for (const q of ["agua marinha", "marinha agua", "água-marinha", "AGUA-MARINHA grande", "grande agua"]) {
+      const res = await request(app).get(`/api/products?q=${encodeURIComponent(q)}`);
+      expect(res.body.items.map((p: { slug: string }) => p.slug)).toEqual(["agua-marinha-grande"]);
+    }
+
+    for (const q of ["topazio", "TOPÁZIO", "topázio imperial"]) {
+      const res = await request(app).get(`/api/products?q=${encodeURIComponent(q)}`);
+      expect(res.body.items.map((p: { slug: string }) => p.slug)).toEqual(["topazio-imperial"]);
+    }
+  });
+
+  it("também encontra pelo nome em inglês (nameEn)", async () => {
+    await makeProduct("Pedra sem tradução legível", "pedra-en", { nameEn: "Blue Aquamarine Stone" });
+    await makeProduct("Outra peça", "outra-en");
+
+    const res = await request(app).get(`/api/products?q=${encodeURIComponent("aquamarine")}`);
+    expect(res.body.items.map((p: { slug: string }) => p.slug)).toEqual(["pedra-en"]);
+
+    // Uma palavra no nome em português, outra só no nome em inglês — ainda
+    // precisa casar (não precisa ser o MESMO campo para todas as palavras).
+    const mixed = await request(app).get(`/api/products?q=${encodeURIComponent("pedra aquamarine")}`);
+    expect(mixed.body.items.map((p: { slug: string }) => p.slug)).toEqual(["pedra-en"]);
+  });
+
+  it("combina busca com categoria, active e ordenação por preço", async () => {
+    await makeProduct("Quartzo Rosa", "quartzo-rosa", { categoryId: categoryA, price: 300 });
+    await makeProduct("Quartzo Fumê", "quartzo-fume", { categoryId: categoryA, price: 100 });
+    await makeProduct("Quartzo Inativo", "quartzo-inativo", { categoryId: categoryA, active: false, price: 50 });
+    await makeProduct("Quartzo Outra Categoria", "quartzo-b", { categoryId: categoryB, price: 10 });
+
+    const res = await request(app).get(
+      `/api/products?q=quartzo&categoryId=${categoryA}&active=true&sort=price_asc`
+    );
+    expect(res.body.total).toBe(2);
+    expect(res.body.items.map((p: { slug: string }) => p.slug)).toEqual(["quartzo-fume", "quartzo-rosa"]);
+  });
+
+  it("paginação com busca acentuada: sem pular nem repetir peças e total correto", async () => {
+    for (let i = 0; i < 17; i++) await makeProduct(`Ágata ${i}`, `agata-${i}`);
+    for (let i = 0; i < 5; i++) await makeProduct(`Outra peça ${i}`, `outra-pec-${i}`);
+
+    const seen: string[] = [];
+    for (let page = 1; page <= 2; page++) {
+      const res = await request(app).get(`/api/products?q=agata&pageSize=10&page=${page}`);
+      expect(res.body.total).toBe(17);
+      seen.push(...res.body.items.map((p: { id: string }) => p.id));
+    }
+    expect(seen).toHaveLength(17);
+    expect(new Set(seen).size).toBe(17);
+  });
+});
+
+describe("productSearch (funções puras)", () => {
+  it("splitSearchWords normaliza acento, hífen, maiúsculas e espaços extras", () => {
+    expect(splitSearchWords("Água-Marinha")).toEqual(["agua", "marinha"]);
+    expect(splitSearchWords("  Topázio   Imperial ")).toEqual(["topazio", "imperial"]);
+    expect(splitSearchWords("")).toEqual([]);
+    expect(splitSearchWords("   ")).toEqual([]);
+  });
+
+  it("productMatchesSearch exige todas as palavras, em qualquer um dos campos", () => {
+    const product = { name: "Água-marinha Grande", nameEn: "Blue Aquamarine", sku: "AGM-01" };
+    expect(productMatchesSearch(product, ["agua", "marinha"])).toBe(true);
+    expect(productMatchesSearch(product, ["marinha", "agua"])).toBe(true);
+    // "aquamarine" só existe no nameEn, "agua" só no name — precisa achar as
+    // duas, cada uma em um campo diferente.
+    expect(productMatchesSearch(product, ["aquamarine", "agua"])).toBe(true);
+    expect(productMatchesSearch(product, ["zzzz"])).toBe(false);
+    expect(productMatchesSearch(product, [])).toBe(true);
+  });
+
+  it("productMatchesSearch trata %, _ e \\ como texto literal", () => {
+    expect(productMatchesSearch({ name: "Peça 100% pura" }, ["100%"])).toBe(true);
+    expect(productMatchesSearch({ name: "Peça_com_underline" }, ["_"])).toBe(true);
+    expect(productMatchesSearch({ name: "a\\b" }, ["a\\b"])).toBe(true);
+  });
+
+  it("filterProductIdsBySearch devolve só os ids que casam, e todos quando q é vazio", () => {
+    const products = [
+      { id: "1", name: "Água-marinha", nameEn: null, sku: null },
+      { id: "2", name: "Topázio", nameEn: null, sku: null },
+    ];
+    expect(filterProductIdsBySearch(products, "agua")).toEqual(["1"]);
+    expect(filterProductIdsBySearch(products, "")).toEqual(["1", "2"]);
   });
 });
 

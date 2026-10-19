@@ -13,7 +13,8 @@
       "blog": "Blog",
       "faq": "FAQ",
       "contact": "Contato"
-    }
+    },
+    "searchAriaLabel": "Pesquisar peças"
   },
   "hero": {
     "eyebrow": "Curadoria de pedras preciosas",
@@ -140,6 +141,14 @@
     "loadingMore": "Carregando...",
     "loadMoreError": "Não foi possível carregar mais peças.",
     "retry": "Tentar novamente",
+    "searchLabel": "Pesquisar peças",
+    "searchPlaceholder": "Buscar peças por nome...",
+    "searchButton": "Pesquisar",
+    "clearSearch": "Limpar busca",
+    "viewAll": "Ver todas as peças",
+    "searchResultsCount_one": "{{count}} resultado para “{{term}}”",
+    "searchResultsCount_other": "{{count}} resultados para “{{term}}”",
+    "searchEmpty": "Nenhum resultado para “{{term}}”.",
     "sortLabel": "Ordenar por",
     "sort": {
       "default": "Destaques",

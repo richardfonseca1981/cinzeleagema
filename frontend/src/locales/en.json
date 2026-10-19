@@ -13,7 +13,8 @@
       "blog": "Blog",
       "faq": "FAQ",
       "contact": "Contact"
-    }
+    },
+    "searchAriaLabel": "Search pieces"
   },
   "hero": {
     "eyebrow": "Curated fine gemstones",
@@ -140,6 +141,14 @@
     "loadingMore": "Loading...",
     "loadMoreError": "Couldn't load more pieces.",
     "retry": "Try again",
+    "searchLabel": "Search pieces",
+    "searchPlaceholder": "Search pieces by name...",
+    "searchButton": "Search",
+    "clearSearch": "Clear search",
+    "viewAll": "View all pieces",
+    "searchResultsCount_one": "{{count}} result for “{{term}}”",
+    "searchResultsCount_other": "{{count}} results for “{{term}}”",
+    "searchEmpty": "No results for “{{term}}”.",
     "sortLabel": "Sort by",
     "sort": {
       "default": "Featured",

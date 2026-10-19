@@ -3,9 +3,22 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import logo from "../../assets/logo-topo.webp";
 import { NAV_LINKS } from "./data";
-import { CloseIcon, MenuIcon } from "./icons";
+import { CloseIcon, MenuIcon, SearchIcon } from "./icons";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { CartIcon } from "./CartIcon";
+
+// Acesso à busca do catálogo visível em todo o site público. Só o ícone (sem
+// campo de texto) para não competir por espaço com logo/menu/carrinho a
+// 390px — o campo de busca de fato mora no topo do catálogo (ver
+// pages/Catalog.tsx), que recebe o foco ao chegar por aqui.
+function SearchLink({ className }: { className: string }) {
+  const { t } = useTranslation();
+  return (
+    <Link to="/catalogo" state={{ focusSearch: true }} aria-label={t("header.searchAriaLabel")} className={className}>
+      <SearchIcon className="h-5 w-5" />
+    </Link>
+  );
+}
 
 function NavItem({
   link,
@@ -72,6 +85,7 @@ export function Header({ onOpenContact }: { onOpenContact: () => void }) {
             />
           ))}
           <div className="ml-2 flex items-center gap-6 border-l border-white/20 pl-4">
+            <SearchLink className="text-[#E5E5E5] transition hover:text-[#C78F50]" />
             <LanguageSwitcher />
             <CartIcon />
           </div>
@@ -79,6 +93,7 @@ export function Header({ onOpenContact }: { onOpenContact: () => void }) {
 
         <div className="flex items-center gap-3 lg:hidden">
           <div className="flex items-center gap-5">
+            <SearchLink className="text-[#E5E5E5] transition hover:text-[#C78F50]" />
             <LanguageSwitcher />
             <CartIcon />
           </div>
