@@ -90,3 +90,30 @@ export const treatmentConfirmSchema = z.object({
 export const treatmentDiscardSchema = z.object({
   previewKey: z.string().min(1),
 });
+
+// Identificação de catálogo por IA (PARTE identificação) — listas fechadas,
+// a mesma validação serve tanto para a resposta da IA (lib/productIdentification.ts)
+// quanto para o corpo do PUT salvo pelo admin.
+export const identificationConfidenceSchema = z.enum(["ALTA", "MEDIA", "BAIXA"]);
+export const identificationTreatmentSchema = z.enum(["NATURAL", "TINGIDA", "POSSIVEL_TINGIMENTO", "SEM_INDICIO"]);
+
+// Resposta bruta da IA, validada de novo aqui antes de devolver o preview ao
+// admin — nunca confiamos no JSON da ferramenta sem checar a lista fechada.
+export const identificationProposalSchema = z.object({
+  identificationPt: z.string().trim().min(1).max(60),
+  identificationEn: z.string().trim().min(1).max(60),
+  confidence: identificationConfidenceSchema,
+  treatment: identificationTreatmentSchema,
+  note: z.string().trim().max(500).optional().nullable(),
+});
+
+// PUT /api/admin/products/:id/identification — o admin manda sempre o estado
+// completo da seção (nullable, não optional: aceita limpar qualquer campo,
+// mesmo padrão de createProductSchema para campos opcionais do produto).
+export const identificationSaveSchema = z.object({
+  identificationPt: z.string().trim().min(1).max(60).nullable(),
+  identificationEn: z.string().trim().min(1).max(60).nullable(),
+  confidence: identificationConfidenceSchema.nullable(),
+  treatment: identificationTreatmentSchema.nullable(),
+  note: z.string().trim().max(500).nullable(),
+});

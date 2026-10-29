@@ -29,6 +29,11 @@ const EXPECTED_HEADERS = [
   "Fotos (URLs)",
   "Criado em",
   "Atualizado em",
+  "Identificação (PT)",
+  "Identificação (EN)",
+  "Confiança",
+  "Tratamento",
+  "Ressalva (interna)",
 ];
 
 // supertest não tem um parser nativo para xlsx — captura o corpo bruto como
@@ -229,6 +234,59 @@ describe("GET /api/admin/products/export", () => {
     expect(injectionRow.getCell(3).value).toBe("'=CMD('calc')");
     expect(injectionRow.getCell(4).value).toBe("'+SUM(A1:A2)");
     expect(injectionRow.getCell(2).value).toBe("'-1000");
+  });
+
+  it("inclui as colunas de identificação por IA no fim, com selo de confiança colorido", async () => {
+    const withIdentification = await prisma.product.create({
+      data: {
+        name: "Ágata Azul",
+        slug: "agata-azul",
+        weightGrams: 10,
+        sizeCm: 2,
+        active: true,
+        identificationPt: "Ágata Azul (Tingida)",
+        identificationEn: "Dyed Blue Agate",
+        identificationConfidence: "ALTA",
+        identificationTreatment: "TINGIDA",
+        identificationNote: "Confirmado por cor atípica à espécie",
+      },
+    });
+    const withoutIdentification = await prisma.product.create({
+      data: { name: "Sem identificação", slug: "sem-identificacao", weightGrams: 1, sizeCm: 1, active: true },
+    });
+
+    const res = await getXlsxBuffer();
+    const sheet = await loadWorkbook(res.body as Buffer);
+    const headerRowNumber = findHeaderRowNumber(sheet);
+
+    const headerRow = sheet.getRow(headerRowNumber).values as unknown[];
+    expect(headerRow.slice(-5)).toEqual([
+      "Identificação (PT)",
+      "Identificação (EN)",
+      "Confiança",
+      "Tratamento",
+      "Ressalva (interna)",
+    ]);
+
+    function rowFor(id: string) {
+      for (let i = headerRowNumber + 1; i <= sheet.rowCount; i++) {
+        const row = sheet.getRow(i);
+        if (row.getCell(1).value === id) return row;
+      }
+      throw new Error(`row not found for ${id}`);
+    }
+
+    const row = rowFor(withIdentification.id);
+    expect(row.getCell(17).value).toBe("Ágata Azul (Tingida)");
+    expect(row.getCell(18).value).toBe("Dyed Blue Agate");
+    expect(row.getCell(19).value).toBe("Alta");
+    expect(row.getCell(20).value).toBe("Tingida");
+    expect(row.getCell(21).value).toBe("Confirmado por cor atípica à espécie");
+    expect(String((row.getCell(19).fill as ExcelJS.Fill & { fgColor: { argb: string } }).fgColor.argb)).toBe("FFDCFCE7");
+
+    const emptyRow = rowFor(withoutIdentification.id);
+    expect(emptyRow.getCell(17).value).toBeNull();
+    expect(emptyRow.getCell(19).value).toBeNull();
   });
 
   it("liga autofiltro e congela painéis logo abaixo do cabeçalho da tabela", async () => {

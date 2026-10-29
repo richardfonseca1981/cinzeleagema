@@ -22,6 +22,21 @@ const THIN_GRAY_BORDER = {
   right: { style: "thin" as const, color: { argb: BORDER_GRAY } },
 };
 
+// Mesmas cores do selo de confiança no painel do admin (ver frontend
+// lib/identification.ts) — verde/amarelo/vermelho para ALTA/MEDIA/BAIXA.
+const CONFIDENCE_STYLE: Record<string, { fill: string; font: string }> = {
+  ALTA: { fill: "FFDCFCE7", font: "FF15803D" },
+  MEDIA: { fill: "FFFEF3C7", font: "FFB45309" },
+  BAIXA: { fill: "FFFEE2E2", font: "FFB91C1C" },
+};
+const CONFIDENCE_LABEL: Record<string, string> = { ALTA: "Alta", MEDIA: "Média", BAIXA: "Baixa" };
+const TREATMENT_LABEL: Record<string, string> = {
+  NATURAL: "Natural",
+  TINGIDA: "Tingida",
+  POSSIVEL_TINGIMENTO: "Possível tingimento",
+  SEM_INDICIO: "Sem indício",
+};
+
 // Qualquer app de planilha (Excel, Google Sheets, LibreOffice) pode interpretar
 // um valor começado em =, +, - ou @ como fórmula. Os campos de texto aqui são
 // digitados por humanos (nome, descrição, SKU) e podem começar com esses
@@ -107,6 +122,13 @@ const COLUMNS: ColumnDef[] = [
   { key: "photoUrls", header: "Fotos (URLs)", width: 55, wrap: true, align: "left" },
   { key: "createdAt", header: "Criado em", width: 20, align: "center" },
   { key: "updatedAt", header: "Atualizado em", width: 20, align: "center" },
+  // Identificação de catálogo por IA — sempre no fim, sem alterar a ordem
+  // das colunas existentes (ver CONTEXT.md/instrução desta entrega).
+  { key: "identificationPt", header: "Identificação (PT)", width: 28, wrap: true, align: "left" },
+  { key: "identificationEn", header: "Identificação (EN)", width: 28, wrap: true, align: "left" },
+  { key: "identificationConfidence", header: "Confiança", width: 14, align: "center" },
+  { key: "identificationTreatment", header: "Tratamento", width: 20, align: "center" },
+  { key: "identificationNote", header: "Ressalva (interna)", width: 36, wrap: true, align: "left" },
 ];
 
 // Bloco do topo: 4 linhas de texto (título/subtítulo/gerado em/total) + 1
@@ -224,6 +246,15 @@ productExportRouter.get(
         photoUrls: photoUrls ? sanitizeCell(photoUrls) : null,
         createdAt: formatSaoPauloDateTime(product.createdAt),
         updatedAt: formatSaoPauloDateTime(product.updatedAt),
+        identificationPt: sanitizeNullableCell(product.identificationPt),
+        identificationEn: sanitizeNullableCell(product.identificationEn),
+        identificationConfidence: product.identificationConfidence
+          ? CONFIDENCE_LABEL[product.identificationConfidence] ?? product.identificationConfidence
+          : null,
+        identificationTreatment: product.identificationTreatment
+          ? TREATMENT_LABEL[product.identificationTreatment] ?? product.identificationTreatment
+          : null,
+        identificationNote: sanitizeNullableCell(product.identificationNote),
       });
 
       const zebraColor = idx % 2 === 1 ? ZEBRA_LIGHT : WHITE;
@@ -234,6 +265,14 @@ productExportRouter.get(
         cell.alignment = { vertical: "middle", horizontal: colDef.align, wrapText: Boolean(colDef.wrap) };
         if (colDef.numFmt) cell.numFmt = colDef.numFmt;
       });
+
+      // Selo de confiança colorido (verde/amarelo/vermelho), por cima da zebra.
+      const confidenceStyle = product.identificationConfidence ? CONFIDENCE_STYLE[product.identificationConfidence] : undefined;
+      if (confidenceStyle) {
+        const cell = row.getCell("identificationConfidence");
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: confidenceStyle.fill } };
+        cell.font = { color: { argb: confidenceStyle.font }, bold: true };
+      }
     });
 
     const lastRow = products.length > 0 ? FIRST_DATA_ROW + products.length - 1 : HEADER_ROW;

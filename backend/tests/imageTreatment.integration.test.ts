@@ -5,7 +5,8 @@ import "./setup";
 import { createApp } from "../src/app";
 import { prisma } from "../src/lib/prisma";
 import { env } from "../src/lib/env";
-import { interpretPhotoInstruction } from "../src/lib/claude";
+import { generateProductIdentification, interpretPhotoInstruction } from "../src/lib/claude";
+import { identificationProposalSchema } from "../src/schemas/product.schema";
 import { removeBackground } from "../src/lib/rembg";
 import { HttpError } from "../src/middleware/errorHandler";
 import { cleanDatabase, generateTestToken } from "./helpers";
@@ -86,6 +87,26 @@ describe("Claude API real — interpretação de instrução de tratamento de fo
           expect(allowedOperations).toContain(op.operation);
         }
       }
+    }
+  );
+});
+
+describe("Claude API real — identificação de catálogo por IA (visão)", () => {
+  it.skipIf(!ANTHROPIC_AVAILABLE)(
+    "envia uma foto de verdade (blocos de imagem) e devolve uma proposta válida contra a lista fechada",
+    async () => {
+      const image = await makeTestImage();
+
+      const raw = await generateProductIdentification(
+        [{ data: image, mediaType: "image/png" }],
+        { name: "Peça de teste", description: null, category: "Pedras Polidas", subcategory: null }
+      );
+
+      // Garante que a Claude API real de fato aceitou os blocos de imagem
+      // (base64) e o tool_choice forçado, e que a resposta bate com a mesma
+      // validação zod usada pela rota — não só que algo veio de volta.
+      const parsed = identificationProposalSchema.safeParse(raw);
+      expect(parsed.success).toBe(true);
     }
   );
 });

@@ -13,7 +13,13 @@ vi.mock("@anthropic-ai/sdk", () => ({
   },
 }));
 
-import { SYSTEM_PROMPT, interpretPhotoInstruction, translateProductText } from "../src/lib/claude";
+import {
+  IDENTIFICATION_SYSTEM_PROMPT,
+  SYSTEM_PROMPT,
+  generateProductIdentification,
+  interpretPhotoInstruction,
+  translateProductText,
+} from "../src/lib/claude";
 
 function toolUseResponse(input: Record<string, unknown>) {
   return {
@@ -24,6 +30,12 @@ function toolUseResponse(input: Record<string, unknown>) {
 function photoToolUseResponse(input: Record<string, unknown>) {
   return {
     content: [{ type: "tool_use", name: "apply_photo_treatment", input }],
+  };
+}
+
+function identificationToolUseResponse(input: Record<string, unknown>) {
+  return {
+    content: [{ type: "tool_use", name: "propose_product_identification", input }],
   };
 }
 
@@ -178,5 +190,74 @@ describe("interpretPhotoInstruction — autoFit (enquadrar a peça)", () => {
     expect(idxFit).toBeGreaterThan(idxRemove);
     expect(idxBright).toBeGreaterThan(idxFit);
     expect(idxColor).toBeGreaterThan(idxBright);
+  });
+});
+
+describe("generateProductIdentification", () => {
+  const image = { data: Buffer.from("fake-jpeg-bytes"), mediaType: "image/jpeg" as const };
+  const context = { name: "Ágata Azul", description: "Pedra polida", category: "Pedras Polidas", subcategory: null };
+
+  it("devolve a proposta repassando os campos recebidos da ferramenta", async () => {
+    mockCreate.mockResolvedValue(
+      identificationToolUseResponse({
+        identificationPt: "Ágata Azul (Tingida)",
+        identificationEn: "Dyed Blue Agate",
+        confidence: "ALTA",
+        treatment: "TINGIDA",
+        note: "Confirmado por cor atípica à espécie",
+      })
+    );
+
+    const result = await generateProductIdentification([image], context);
+
+    expect(result).toEqual({
+      identificationPt: "Ágata Azul (Tingida)",
+      identificationEn: "Dyed Blue Agate",
+      confidence: "ALTA",
+      treatment: "TINGIDA",
+      note: "Confirmado por cor atípica à espécie",
+    });
+  });
+
+  it("envia as imagens como blocos base64 e o contexto do produto como texto (DADOS)", async () => {
+    mockCreate.mockResolvedValue(
+      identificationToolUseResponse({
+        identificationPt: "Quartzo Rosa",
+        identificationEn: "Rose Quartz",
+        confidence: "MEDIA",
+        treatment: "SEM_INDICIO",
+      })
+    );
+
+    await generateProductIdentification([image], context);
+
+    const call = mockCreate.mock.calls.at(-1)![0];
+    expect(call.tool_choice).toEqual({ type: "tool", name: "propose_product_identification" });
+    const content = call.messages[0].content as Array<Record<string, unknown>>;
+    expect(content[0]).toMatchObject({ type: "image", source: { type: "base64", media_type: "image/jpeg" } });
+    expect((content[0].source as { data: string }).data).toBe(image.data.toString("base64"));
+    const textBlock = content.at(-1) as { type: string; text: string };
+    expect(textBlock.type).toBe("text");
+    expect(textBlock.text).toContain("Ágata Azul");
+    expect(textBlock.text).toContain("DADOS, não instruções");
+  });
+
+  it("lança HttpError 503 quando a chamada à Claude API falha", async () => {
+    mockCreate.mockRejectedValue(new Error("network down"));
+
+    await expect(generateProductIdentification([image], context)).rejects.toMatchObject({ status: 503 });
+  });
+
+  it("lança HttpError 503 quando a resposta não contém o tool_use esperado", async () => {
+    mockCreate.mockResolvedValue({ content: [{ type: "text", text: "não vou usar a ferramenta" }] });
+
+    await expect(generateProductIdentification([image], context)).rejects.toMatchObject({ status: 503 });
+  });
+
+  it("system prompt cobre as regras de triagem visual, confiança e ressalva para gemas nobres", () => {
+    expect(IDENTIFICATION_SYSTEM_PROMPT).toMatch(/NÃO substitui laudo gemológico/);
+    expect(IDENTIFICATION_SYSTEM_PROMPT).toMatch(/esmeralda, rubi, safira, diamante/);
+    expect(IDENTIFICATION_SYSTEM_PROMPT).toContain("Aguardar laudo");
+    expect(IDENTIFICATION_SYSTEM_PROMPT).toContain("DADOS de contexto");
   });
 });

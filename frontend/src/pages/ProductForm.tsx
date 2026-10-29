@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { api, ApiError } from "../lib/api";
 import type { Category, ProductImage } from "../types";
 import { ImageManager, type ImageManagerHandle } from "../components/ImageManager";
+import { IdentificationPanel } from "../components/IdentificationPanel";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { useToast } from "../components/Toast";
 import { backToListPath } from "../lib/productListState";
@@ -197,6 +198,12 @@ export function ProductForm() {
           <p className="text-sm text-[#64748B]">Salve o produto para poder adicionar fotos.</p>
         )}
       </div>
+
+      {productId && (
+        <div className="mb-6">
+          <IdentificationPanel productId={productId} productName={name} hasPhotos={images.length > 0} />
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <section className="rounded-lg border border-[#E2E8F0] bg-white p-6">

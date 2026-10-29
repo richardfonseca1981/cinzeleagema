@@ -21,6 +21,25 @@ const PRODUCT_INCLUDE = { images: { orderBy: { position: "asc" as const } }, cat
 // GET fica público: alimenta o catálogo do site (navegação/filtro por
 // categoria e página de detalhe). Só as rotas que alteram dados exigem login.
 
+// Campos de identificação de catálogo por IA (triagem visual, nunca um laudo)
+// nunca saem nas rotas públicas — mesmo o GET /:id, usado pelo formulário do
+// admin para carregar a peça, é público (sem requireAuth). O admin lê o
+// estado salvo da identificação por uma rota autenticada separada (ver
+// productIdentification.routes.ts).
+const IDENTIFICATION_FIELDS = [
+  "identificationPt",
+  "identificationEn",
+  "identificationConfidence",
+  "identificationTreatment",
+  "identificationNote",
+] as const;
+
+function omitIdentification<T extends Record<string, unknown>>(product: T): Omit<T, (typeof IDENTIFICATION_FIELDS)[number]> {
+  const clone = { ...product };
+  for (const field of IDENTIFICATION_FIELDS) delete clone[field];
+  return clone;
+}
+
 // Valida que a categoria existe e que a subcategoria (quando informada ou
 // exigida) pertence a ela. Retorna o subcategoryId final a ser persistido
 // (null quando a categoria não tem subcategorias).
@@ -132,7 +151,7 @@ productRouter.get(
       ]);
     }
 
-    res.json({ items, total, page, pageSize });
+    res.json({ items: items.map(omitIdentification), total, page, pageSize });
   })
 );
 
@@ -161,7 +180,7 @@ productRouter.get(
       include: { images: { orderBy: { position: "asc" } }, category: true, subcategory: true },
     });
     if (!product) throw new HttpError(404, "Produto não encontrado");
-    res.json(product);
+    res.json(omitIdentification(product));
   })
 );
 

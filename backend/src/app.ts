@@ -8,6 +8,7 @@ import { orderRouter } from "./routes/order.routes";
 import { productRouter } from "./routes/product.routes";
 import { productOrderRouter } from "./routes/productOrder.routes";
 import { productExportRouter } from "./routes/productExport.routes";
+import { productIdentificationRouter } from "./routes/productIdentification.routes";
 import { imageRouter } from "./routes/upload.routes";
 import { imageTreatmentRouter } from "./routes/imageTreatment.routes";
 import { imageTreatmentRawRouter } from "./routes/imageTreatmentRaw.routes";
@@ -32,6 +33,7 @@ export function createApp() {
   // não colide com as rotas públicas/admin de produto em "/api/products".
   app.use("/api/admin/products", productExportRouter);
   app.use("/api/admin/products", productOrderRouter);
+  app.use("/api/admin/products", productIdentificationRouter);
   app.use("/api/shipping", shippingRouter);
   app.use("/api/admin/shipping", shippingAdminRouter);
   app.use("/api/products", productRouter);

@@ -118,6 +118,17 @@ model Product {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Identificação de catálogo gerada por IA (Claude Haiku 4.5) a partir das
+  // fotos — triagem visual, NUNCA um laudo gemológico. Tudo nullable e nunca
+  // preenchido por script/migration: só o admin, confirmando uma proposta no
+  // painel de edição da peça (ver productIdentification.ts). Nunca exposto
+  // nas rotas públicas (ver product.routes.ts).
+  identificationPt         String? // Título curto de catálogo em português, ex.: "Ágata Azul (Tingida)".
+  identificationEn         String? // Mesmo título em inglês, ex.: "Dyed Blue Agate".
+  identificationConfidence String? // 'ALTA' | 'MEDIA' | 'BAIXA'
+  identificationTreatment  String? // 'NATURAL' | 'TINGIDA' | 'POSSIVEL_TINGIMENTO' | 'SEM_INDICIO'
+  identificationNote       String? // Ressalva interna para o admin (não pública), ex.: "Aguardar laudo".
+
   @@index([categoryId])
   @@index([subcategoryId])
   @@index([sortOrder])

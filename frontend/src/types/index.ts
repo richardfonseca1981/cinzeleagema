@@ -123,6 +123,30 @@ export interface Product {
   updatedAt: string;
 }
 
+// Identificação de catálogo por IA (triagem visual a partir das fotos, nunca
+// um laudo gemológico) — listas fechadas, mesmas do backend (ver
+// backend/src/schemas/product.schema.ts). Nunca vem no Product público (ver
+// product.routes.ts); o admin lê/grava por rotas autenticadas separadas.
+export type IdentificationConfidence = "ALTA" | "MEDIA" | "BAIXA";
+export type IdentificationTreatment = "NATURAL" | "TINGIDA" | "POSSIVEL_TINGIMENTO" | "SEM_INDICIO";
+
+export interface ProductIdentification {
+  identificationPt: string | null;
+  identificationEn: string | null;
+  confidence: IdentificationConfidence | null;
+  treatment: IdentificationTreatment | null;
+  note: string | null;
+}
+
+// Proposta devolvida por POST /identification/generate — ainda não gravada.
+export interface IdentificationProposal {
+  identificationPt: string;
+  identificationEn: string;
+  confidence: IdentificationConfidence;
+  treatment: IdentificationTreatment;
+  note?: string | null;
+}
+
 export interface ProductListResponse {
   items: Product[];
   total: number;

@@ -504,8 +504,14 @@ describe("Product routes", () => {
       expect(Number(res.body.sizeCm)).toBe(1.1);
       expect(res.body.slug).toBe("esmeralda-completa");
 
+      // GET é a rota pública: nunca traz os campos de identificação por IA
+      // (ver describe "Identificação de catálogo por IA" mais abaixo), por
+      // isso comparamos sem eles em vez de bater o objeto inteiro.
+      const { identificationPt, identificationEn, identificationConfidence, identificationTreatment, identificationNote, ...publicFields } =
+        res.body;
+
       const fetched = await request(app).get(`/api/products/${res.body.id}`);
-      expect(fetched.body).toMatchObject(res.body);
+      expect(fetched.body).toMatchObject(publicFields);
     });
   });
 
@@ -663,5 +669,48 @@ describe("Product routes", () => {
       expect(Number(res.body.weightGrams)).toBe(0);
       expect(Number(res.body.sizeCm)).toBe(0);
     });
+  });
+});
+
+describe("Identificação de catálogo por IA — nunca exposta nas rotas públicas", () => {
+  it("GET /api/products e GET /api/products/:id (públicas) nunca trazem os campos de identificação, mesmo com dados salvos", async () => {
+    const product = await prisma.product.create({
+      data: {
+        name: "Ágata Azul",
+        slug: "agata-azul-leak-test",
+        weightGrams: 1,
+        sizeCm: 1,
+        identificationPt: "Ágata Azul (Tingida)",
+        identificationEn: "Dyed Blue Agate",
+        identificationConfidence: "ALTA",
+        identificationTreatment: "TINGIDA",
+        identificationNote: "Nota interna sensível",
+      },
+    });
+
+    const list = await request(app).get("/api/products");
+    const fromList = list.body.items.find((p: { id: string }) => p.id === product.id);
+    expect(fromList).toBeDefined();
+    for (const field of [
+      "identificationPt",
+      "identificationEn",
+      "identificationConfidence",
+      "identificationTreatment",
+      "identificationNote",
+    ]) {
+      expect(fromList).not.toHaveProperty(field);
+    }
+
+    const detail = await request(app).get(`/api/products/${product.id}`);
+    expect(detail.status).toBe(200);
+    for (const field of [
+      "identificationPt",
+      "identificationEn",
+      "identificationConfidence",
+      "identificationTreatment",
+      "identificationNote",
+    ]) {
+      expect(detail.body).not.toHaveProperty(field);
+    }
   });
 });

@@ -8,9 +8,11 @@ import type {
   Category,
   ColorEnhanceLevel,
   CreateOrderResult,
+  IdentificationProposal,
   PhotoTreatmentPreviewResult,
   PhotoTreatmentRawPreviewResult,
   Product,
+  ProductIdentification,
   ProductImage,
   ProductListResponse,
   ShippingStatus,
@@ -177,6 +179,18 @@ export const api = {
     }),
   undoPhotoTreatment: (productId: string, imageId: string) =>
     request<ProductImage>(`/api/products/${productId}/images/${imageId}/undo`, { method: "POST" }),
+
+  // Identificação de catálogo por IA (triagem visual, não é laudo) — rotas
+  // autenticadas separadas das públicas (ver product.routes.ts).
+  getProductIdentification: (productId: string) =>
+    request<ProductIdentification>(`/api/admin/products/${productId}/identification`),
+  generateProductIdentification: (productId: string) =>
+    request<IdentificationProposal>(`/api/admin/products/${productId}/identification/generate`, { method: "POST" }),
+  saveProductIdentification: (productId: string, data: ProductIdentification) =>
+    request<ProductIdentification>(`/api/admin/products/${productId}/identification`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
 };
 
 // Versão stateless do tratamento por IA, para fotos staged (sem productId/
