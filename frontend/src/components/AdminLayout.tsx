@@ -19,6 +19,7 @@ export function AdminLayout() {
   }
 
   const isProductsSection = location.pathname.startsWith("/admin/produtos");
+  const isCatalogSection = location.pathname.startsWith("/admin/catalogo");
   const isShippingSection = location.pathname.startsWith("/admin/frete");
   const isUsersSection = location.pathname.startsWith("/admin/usuarios");
 
@@ -37,6 +38,14 @@ export function AdminLayout() {
             }`}
           >
             Produtos
+          </Link>
+          <Link
+            to="/admin/catalogo"
+            className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+              isCatalogSection ? "bg-white/15 text-white" : "text-white/80 hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            Catálogo PDF
           </Link>
           <Link
             to="/admin/frete"

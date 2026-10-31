@@ -15,6 +15,12 @@ build/
 backend/prisma/dev.db
 backend/prisma/dev.db-journal
 
+# PDFs de amostra do catálogo (gerados localmente, nunca versionados)
+backend/tmp/
+
+# Dumps de banco (dados reais) — nunca versionados
+/backups/
+
 # Logs
 npm-debug.log*
 *.log

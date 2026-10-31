@@ -228,3 +228,53 @@ export interface AdminShippingSimulation {
   weightGrams: number;
   result: import("../lib/shipping/types").ShippingQuoteResult;
 }
+
+// Catálogo em PDF (Etapa B) — geração assíncrona em segundo plano (ver
+// backend/src/lib/catalog/catalogJobs.ts); o admin consulta o status por
+// polling até "done"/"error".
+export type CatalogLanguage = "pt" | "en";
+export type CatalogQuality = "standard" | "light";
+export type CatalogJobStatusKind = "queued" | "running" | "done" | "error";
+
+export interface CatalogJobRequest {
+  productIds?: string[];
+  language: CatalogLanguage;
+  showPrice: boolean;
+  showRef: boolean;
+  includeCategoryDividers?: boolean;
+  includeContactPage: boolean;
+  quality: CatalogQuality;
+}
+
+export interface CatalogSkippedItem {
+  id: string;
+  reason: string;
+}
+
+export interface CatalogWarningItem {
+  id: string;
+  ref: string | null;
+  title: string;
+  reason: string;
+}
+
+export interface CatalogJobStatusResponse {
+  id: string;
+  status: CatalogJobStatusKind;
+  progress: { done: number; total: number };
+  pageCount: number | null;
+  sizeBytes: number | null;
+  skipped: CatalogSkippedItem[];
+  warnings: CatalogWarningItem[];
+  rate: number | null;
+  // Mesma origem/qualidade da cotação do site público (ver lib/exchangeRateQuality.ts).
+  rateSource: import("../lib/exchangeRateQuality").RateSource | null;
+  rateUpdatedAt: string | null;
+  error: string | null;
+}
+
+export interface CatalogOptionsCategory {
+  id: string;
+  name: string;
+  count: number;
+}

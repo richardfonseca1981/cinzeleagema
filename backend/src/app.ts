@@ -16,6 +16,7 @@ import { adminUserRouter } from "./routes/adminUser.routes";
 import { exchangeRateRouter } from "./routes/exchangeRate.routes";
 import { shippingRouter } from "./routes/shipping.routes";
 import { shippingAdminRouter } from "./routes/shippingAdmin.routes";
+import { catalogJobRouter } from "./routes/catalogJob.routes";
 
 export function createApp() {
   const app = express();
@@ -36,6 +37,7 @@ export function createApp() {
   app.use("/api/admin/products", productIdentificationRouter);
   app.use("/api/shipping", shippingRouter);
   app.use("/api/admin/shipping", shippingAdminRouter);
+  app.use("/api/admin/catalog", catalogJobRouter);
   app.use("/api/products", productRouter);
   app.use("/api/orders", orderRouter);
   app.use("/api/products/:productId/images", imageRouter);

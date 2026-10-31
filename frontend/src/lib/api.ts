@@ -6,6 +6,9 @@ import type {
   AdminShippingZone,
   AdminUserSummary,
   Category,
+  CatalogJobRequest,
+  CatalogJobStatusResponse,
+  CatalogOptionsCategory,
   ColorEnhanceLevel,
   CreateOrderResult,
   IdentificationProposal,
@@ -191,6 +194,13 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(data),
     }),
+
+  // Catálogo em PDF (Etapa B) — geração em segundo plano, consultada por
+  // polling (ver pages/CatalogGenerator.tsx).
+  getCatalogOptions: () => request<{ categories: CatalogOptionsCategory[] }>("/api/admin/catalog/options"),
+  createCatalogJob: (data: CatalogJobRequest) =>
+    request<{ id: string }>("/api/admin/catalog/jobs", { method: "POST", body: JSON.stringify(data) }),
+  getCatalogJob: (id: string) => request<CatalogJobStatusResponse>(`/api/admin/catalog/jobs/${id}`),
 };
 
 // Versão stateless do tratamento por IA, para fotos staged (sem productId/
@@ -247,6 +257,33 @@ export function saveProductOrder(order: string[]) {
     method: "PUT",
     body: JSON.stringify({ order }),
   });
+}
+
+// Baixa o PDF de um catálogo já pronto (status "done") — mesmo padrão
+// autenticado de exportProductsXlsx (fetch+blob, já que o endpoint exige o
+// token do admin e por isso não dá pra usar um <a href> direto).
+export async function downloadCatalogJob(id: string): Promise<{ blob: Blob; filename: string }> {
+  const session = getSession();
+
+  const res = await fetch(`${API_URL}/api/admin/catalog/jobs/${id}/download`, {
+    headers: session ? { Authorization: `Bearer ${session.token}` } : {},
+  });
+
+  if (res.status === 401) {
+    clearSession();
+    window.location.href = "/admin";
+    throw new ApiError(401, "Sessão expirada");
+  }
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, body.error ?? "Não foi possível baixar o catálogo", body.details);
+  }
+
+  const disposition = res.headers.get("Content-Disposition") ?? "";
+  const match = /filename="?([^"]+)"?/.exec(disposition);
+  const filename = match?.[1] ?? `catalogo-cinzel-${new Date().toISOString().slice(0, 10)}.pdf`;
+
+  return { blob: await res.blob(), filename };
 }
 
 export async function exportProductsXlsx(): Promise<{ blob: Blob; filename: string }> {

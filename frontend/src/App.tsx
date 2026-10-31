@@ -4,6 +4,7 @@ import { Login } from "./pages/Login";
 import { ProductList } from "./pages/ProductList";
 import { ProductOrder } from "./pages/ProductOrder";
 import { ProductForm } from "./pages/ProductForm";
+import { CatalogGenerator } from "./pages/CatalogGenerator";
 import { AdminUsers } from "./pages/AdminUsers";
 import { Shipping } from "./pages/Shipping";
 import { Catalog } from "./pages/Catalog";
@@ -39,6 +40,7 @@ export default function App() {
                   <Route path="/admin/produtos/ordem" element={<ProductOrder />} />
                   <Route path="/admin/produtos/novo" element={<ProductForm />} />
                   <Route path="/admin/produtos/:id" element={<ProductForm />} />
+                  <Route path="/admin/catalogo" element={<CatalogGenerator />} />
                   <Route path="/admin/frete" element={<Shipping />} />
                   <Route path="/admin/usuarios" element={<AdminUsers />} />
                 </Route>
