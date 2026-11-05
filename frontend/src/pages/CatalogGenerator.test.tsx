@@ -70,6 +70,7 @@ function doneStatus(overrides: Partial<CatalogJobStatusResponse> = {}): CatalogJ
     sizeBytes: 2 * 1024 * 1024,
     skipped: [],
     warnings: [],
+    missingData: [],
     rate: null,
     rateSource: null,
     rateUpdatedAt: null,
@@ -167,6 +168,51 @@ describe("CatalogGenerator", () => {
     await screen.findByText(/Avisos \(título ou preço provisório\) \(2\)/);
     expect(screen.getByText(/Pedra 4875 - Peso \(Ref: 110\)/)).toBeInTheDocument();
     expect(screen.getByText(/Nome provisório/)).toBeInTheDocument();
+  });
+
+  it("exibe peças com dados faltando (descrição/peso/tamanho) com contagem por tipo", async () => {
+    vi.mocked(api.createCatalogJob).mockResolvedValue({ id: "job-1" });
+    vi.mocked(api.getCatalogJob).mockResolvedValue(
+      doneStatus({
+        missingData: [
+          { id: "m1", ref: "110", title: "Ágata Azul", missingDescription: true, missingWeight: false, missingSize: false },
+          { id: "m2", ref: "108", title: "Ametista", missingDescription: false, missingWeight: true, missingSize: true },
+        ],
+      })
+    );
+
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "Gerar catálogo" }));
+
+    await screen.findByText(/Peças com dados faltando \(2\)/);
+    expect(screen.getByText(/Sem descrição: 1 · Sem peso: 1 · Sem tamanho: 1/)).toBeInTheDocument();
+    expect(screen.getByText(/Ágata Azul \(Ref: 110\)/)).toBeInTheDocument();
+  });
+
+  it("foto: default trim; permite trocar para contain e para cover", async () => {
+    vi.mocked(api.createCatalogJob).mockResolvedValue({ id: "job-1" });
+    vi.mocked(api.getCatalogJob).mockResolvedValue(doneStatus());
+
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "Gerar catálogo" }));
+    await waitFor(() => expect(api.createCatalogJob).toHaveBeenCalledTimes(1));
+    expect(api.createCatalogJob).toHaveBeenCalledWith(expect.objectContaining({ photoFit: "trim" }));
+
+    await screen.findByText(/Catálogo pronto/);
+    vi.mocked(api.createCatalogJob).mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "Gerar outro catálogo" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Inteira (pode ter faixas laterais)" }));
+    fireEvent.click(screen.getByRole("button", { name: "Gerar catálogo" }));
+    await waitFor(() => expect(api.createCatalogJob).toHaveBeenCalledTimes(1));
+    expect(api.createCatalogJob).toHaveBeenCalledWith(expect.objectContaining({ photoFit: "contain" }));
+
+    await screen.findByText(/Catálogo pronto/);
+    vi.mocked(api.createCatalogJob).mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "Gerar outro catálogo" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Preencher a página (pode cortar a peça)" }));
+    fireEvent.click(screen.getByRole("button", { name: "Gerar catálogo" }));
+    await waitFor(() => expect(api.createCatalogJob).toHaveBeenCalledTimes(1));
+    expect(api.createCatalogJob).toHaveBeenCalledWith(expect.objectContaining({ photoFit: "cover" }));
   });
 
   it("avisa cotação desatualizada quando rateSource não é 'live'", async () => {

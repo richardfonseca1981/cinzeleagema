@@ -11,6 +11,7 @@ function baseState(overrides: Partial<CatalogFormState> = {}): CatalogFormState 
     dividers: "auto",
     includeContactPage: true,
     quality: "standard",
+    photoFit: "trim",
     ...overrides,
   };
 }
@@ -36,11 +37,18 @@ describe("buildCatalogJobRequest", () => {
     expect(buildCatalogJobRequest(baseState({ dividers: "no" })).includeCategoryDividers).toBe(false);
   });
 
-  it("repassa idioma, preço, ref, contato e qualidade como estão", () => {
+  it("repassa idioma, preço, ref, contato, qualidade e foto como estão", () => {
     const body = buildCatalogJobRequest(
-      baseState({ language: "en", showPrice: false, showRef: false, includeContactPage: false, quality: "light" })
+      baseState({ language: "en", showPrice: false, showRef: false, includeContactPage: false, quality: "light", photoFit: "cover" })
     );
-    expect(body).toMatchObject({ language: "en", showPrice: false, showRef: false, includeContactPage: false, quality: "light" });
+    expect(body).toMatchObject({
+      language: "en",
+      showPrice: false,
+      showRef: false,
+      includeContactPage: false,
+      quality: "light",
+      photoFit: "cover",
+    });
   });
 });
 

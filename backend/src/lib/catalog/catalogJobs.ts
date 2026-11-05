@@ -3,10 +3,18 @@ import fs from "fs/promises";
 import os from "os";
 import path from "path";
 import { HttpError } from "../../middleware/errorHandler";
-import { generateCatalogPdf, type CatalogWarning, type SkippedProduct } from "./generateCatalogPdf";
-import type { CatalogPhotoQuality } from "./photoLayer";
+import { generateCatalogPdf, type CatalogMissingDataEntry, type CatalogWarning, type SkippedProduct } from "./generateCatalogPdf";
+import { buildMissingDataCsv } from "./missingDataCsv";
+import type { CatalogPhotoFit, CatalogPhotoQuality } from "./photoLayer";
 import type { CatalogLanguage } from "./content";
 import type { ExchangeRateSource } from "../exchangeRate";
+
+// Mesma pasta backend/tmp/ (fora do git) usada pelos scripts locais de
+// amostra — ver scripts/generateSampleCatalog.ts. Escrita best-effort: falha
+// ao gravar o CSV (ex.: filesystem somente leitura num ambiente de deploy)
+// nunca derruba a geração do catálogo, só deixa de salvar o arquivo local
+// (o admin ainda vê as contagens na tela, ver CatalogJobStatusView).
+const MISSING_DATA_CSV_PATH = path.resolve(__dirname, "../../../tmp/catalogo-faltando-dados.csv");
 
 // Geração de catálogo em segundo plano (Etapa B): o catálogo completo leva
 // ~1 min, mais do que o limite de requisição do Railway/Vercel — o POST
@@ -26,6 +34,7 @@ export interface CatalogJobInput {
   includeCategoryDividers?: boolean;
   includeContactPage: boolean;
   quality: CatalogPhotoQuality;
+  photoFit: CatalogPhotoFit;
 }
 
 interface CatalogJobRecord {
@@ -36,6 +45,7 @@ interface CatalogJobRecord {
   sizeBytes: number | null;
   skipped: SkippedProduct[];
   warnings: CatalogWarning[];
+  missingData: CatalogMissingDataEntry[];
   rate: number | null;
   rateSource: ExchangeRateSource | null;
   rateUpdatedAt: string | null;
@@ -53,6 +63,7 @@ export interface CatalogJobStatusView {
   sizeBytes: number | null;
   skipped: SkippedProduct[];
   warnings: CatalogWarning[];
+  missingData: CatalogMissingDataEntry[];
   rate: number | null;
   rateSource: ExchangeRateSource | null;
   rateUpdatedAt: string | null;
@@ -103,6 +114,7 @@ export function startCatalogJob(input: CatalogJobInput): { id: string } {
     sizeBytes: null,
     skipped: [],
     warnings: [],
+    missingData: [],
     rate: null,
     rateSource: null,
     rateUpdatedAt: null,
@@ -129,6 +141,7 @@ async function runCatalogJob(record: CatalogJobRecord, input: CatalogJobInput): 
       includeCategoryDividers: input.includeCategoryDividers,
       includeContactPage: input.includeContactPage,
       quality: input.quality,
+      photoFit: input.photoFit,
       onProgress: (done, total) => {
         record.progress = { done, total };
       },
@@ -141,11 +154,15 @@ async function runCatalogJob(record: CatalogJobRecord, input: CatalogJobInput): 
     record.sizeBytes = result.buffer.length;
     record.skipped = result.skipped;
     record.warnings = result.warnings;
+    record.missingData = result.missingData;
     record.rate = result.rate;
     record.rateSource = result.rateSource;
     record.rateUpdatedAt = result.rateUpdatedAt ? result.rateUpdatedAt.toISOString() : null;
     record.filePath = filePath;
     record.status = "done";
+
+    await fs.mkdir(path.dirname(MISSING_DATA_CSV_PATH), { recursive: true });
+    await fs.writeFile(MISSING_DATA_CSV_PATH, buildMissingDataCsv(result.missingData), "utf-8").catch(() => {});
   } catch (err) {
     record.status = "error";
     record.error = err instanceof Error ? err.message : "Falha desconhecida ao gerar o catálogo";
@@ -165,6 +182,7 @@ export function getCatalogJobStatus(id: string): CatalogJobStatusView | null {
     sizeBytes: job.sizeBytes,
     skipped: job.skipped,
     warnings: job.warnings,
+    missingData: job.missingData,
     rate: job.rate,
     rateSource: job.rateSource,
     rateUpdatedAt: job.rateUpdatedAt,

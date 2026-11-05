@@ -3,7 +3,7 @@ import { api, ApiError, downloadCatalogJob } from "../lib/api";
 import { useToast } from "../components/Toast";
 import { ProductPicker } from "../components/catalog/ProductPicker";
 import { buildCatalogJobRequest, formatCatalogBytes, staleRateWarning, type CatalogDividerChoice, type CatalogFormState } from "../lib/catalogGenerator";
-import type { CatalogJobStatusResponse, CatalogLanguage, CatalogQuality } from "../types";
+import type { CatalogJobStatusResponse, CatalogLanguage, CatalogMissingDataItem, CatalogPhotoFit, CatalogQuality } from "../types";
 
 const POLL_INTERVAL_MS = 1500;
 
@@ -30,6 +30,46 @@ function SkippedOrWarningsList({ title, rows }: { title: string; rows: { label: 
   );
 }
 
+// Peças sem descrição/peso/tamanho (ver AJUSTES A4/CATÁLOGO item 4) — mesma
+// lista que vira backend/tmp/catalogo-faltando-dados.csv no servidor que
+// gerou o catálogo; aqui mostra as contagens por tipo (pedidas
+// explicitamente) mais a lista detalhada, no mesmo padrão visual dos outros
+// avisos.
+function MissingDataList({ items }: { items: CatalogMissingDataItem[] }) {
+  if (items.length === 0) return null;
+
+  const missingDescriptionCount = items.filter((item) => item.missingDescription).length;
+  const missingWeightCount = items.filter((item) => item.missingWeight).length;
+  const missingSizeCount = items.filter((item) => item.missingSize).length;
+
+  function reasonFor(item: CatalogMissingDataItem): string {
+    const parts: string[] = [];
+    if (item.missingDescription) parts.push("sem descrição");
+    if (item.missingWeight) parts.push("sem peso");
+    if (item.missingSize) parts.push("sem tamanho");
+    return parts.join(", ");
+  }
+
+  return (
+    <div className="rounded-lg border border-[#F59E0B] bg-[#FFFBEB] p-4">
+      <p className="mb-2 text-sm font-semibold text-[#B45309]">Peças com dados faltando ({items.length})</p>
+      <p className="mb-2 text-xs text-[#92400E]">
+        Sem descrição: {missingDescriptionCount} · Sem peso: {missingWeightCount} · Sem tamanho: {missingSizeCount}
+      </p>
+      <ul className="max-h-48 space-y-1 overflow-y-auto text-sm text-[#92400E]">
+        {items.map((item) => (
+          <li key={item.id}>
+            <strong>
+              {item.title} (Ref: {item.ref ?? "—"})
+            </strong>{" "}
+            — {reasonFor(item)}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function CatalogGenerator() {
   const { showToast } = useToast();
 
@@ -41,6 +81,7 @@ export function CatalogGenerator() {
   const [dividers, setDividers] = useState<CatalogDividerChoice>("auto");
   const [includeContactPage, setIncludeContactPage] = useState(true);
   const [quality, setQuality] = useState<CatalogQuality>("standard");
+  const [photoFit, setPhotoFit] = useState<CatalogPhotoFit>("trim");
 
   const [jobId, setJobId] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState<CatalogJobStatusResponse | null>(null);
@@ -73,7 +114,7 @@ export function CatalogGenerator() {
     setSubmitError(null);
     setSubmitting(true);
     try {
-      const state: CatalogFormState = { scope, selectedIds, language, showPrice, showRef, dividers, includeContactPage, quality };
+      const state: CatalogFormState = { scope, selectedIds, language, showPrice, showRef, dividers, includeContactPage, quality, photoFit };
       const { id } = await api.createCatalogJob(buildCatalogJobRequest(state));
       setJobId(id);
       setJobStatus(null);
@@ -191,6 +232,50 @@ export function CatalogGenerator() {
         </section>
 
         <section>
+          <h2 className="mb-2 text-sm font-semibold text-[#1A1A1A]">Foto</h2>
+          <div className="flex flex-col gap-2">
+            <label className={radioLabel}>
+              <input
+                type="radio"
+                name="photoFit"
+                checked={photoFit === "contain"}
+                onChange={() => setPhotoFit("contain")}
+                className="accent-[#C78F50]"
+              />
+              Inteira (pode ter faixas laterais)
+            </label>
+            <label className={radioLabel}>
+              <input
+                type="radio"
+                name="photoFit"
+                checked={photoFit === "trim"}
+                onChange={() => setPhotoFit("trim")}
+                className="accent-[#C78F50]"
+              />
+              Recortar fundo vazio (recomendado)
+            </label>
+            <label className={radioLabel}>
+              <input
+                type="radio"
+                name="photoFit"
+                checked={photoFit === "cover"}
+                onChange={() => setPhotoFit("cover")}
+                className="accent-[#C78F50]"
+              />
+              Preencher a página (pode cortar a peça)
+            </label>
+          </div>
+          <p className="mt-1 text-xs text-[#64748B]">
+            {photoFit === "contain" &&
+              "A peça aparece inteira, sem cortes — quando a foto não bate exatamente com o formato da página, sobra uma faixa escura desfocada nas bordas."}
+            {photoFit === "trim" &&
+              "Recorta só o fundo vazio do topo/base da própria foto antes de encaixar a peça inteira — reduz as faixas sem nunca cortar a peça. Se a foto não tiver uma faixa de fundo clara, não corta nada (igual a 'Inteira')."}
+            {photoFit === "cover" &&
+              "A foto preenche toda a área, sem faixas — em compensação, as bordas da foto (e possivelmente parte da peça) podem ficar cortadas."}
+          </p>
+        </section>
+
+        <section>
           <h2 className="mb-2 text-sm font-semibold text-[#1A1A1A]">Qualidade</h2>
           <div className="flex gap-4">
             <label className={radioLabel}>
@@ -284,6 +369,7 @@ export function CatalogGenerator() {
             title="Avisos (título ou preço provisório)"
             rows={jobStatus.warnings.map((w) => ({ label: `${w.title} (Ref: ${w.ref ?? "—"})`, reason: w.reason }))}
           />
+          <MissingDataList items={jobStatus.missingData} />
           <SkippedOrWarningsList title="Peças puladas" rows={jobStatus.skipped.map((s) => ({ label: s.id, reason: s.reason }))} />
         </div>
       )}

@@ -234,6 +234,11 @@ export interface AdminShippingSimulation {
 // polling até "done"/"error".
 export type CatalogLanguage = "pt" | "en";
 export type CatalogQuality = "standard" | "light";
+// "contain": foto inteira visível, pode deixar faixas laterais ou no
+// topo/base. "cover": preenche a área toda, cortando o excedente da foto.
+// "trim" (default): recorta o fundo vazio do topo/base antes de aplicar
+// "contain" — reduz as faixas sem nunca cortar a peça.
+export type CatalogPhotoFit = "contain" | "cover" | "trim";
 export type CatalogJobStatusKind = "queued" | "running" | "done" | "error";
 
 export interface CatalogJobRequest {
@@ -244,6 +249,7 @@ export interface CatalogJobRequest {
   includeCategoryDividers?: boolean;
   includeContactPage: boolean;
   quality: CatalogQuality;
+  photoFit: CatalogPhotoFit;
 }
 
 export interface CatalogSkippedItem {
@@ -258,6 +264,19 @@ export interface CatalogWarningItem {
   reason: string;
 }
 
+// Peça sem descrição e/ou peso e/ou tamanho (ver backend
+// generateCatalogPdf.ts CatalogMissingDataEntry) — para o admin completar o
+// cadastro; mesmos dados também viram backend/tmp/catalogo-faltando-dados.csv
+// no servidor que gerou o catálogo.
+export interface CatalogMissingDataItem {
+  id: string;
+  ref: string | null;
+  title: string;
+  missingDescription: boolean;
+  missingWeight: boolean;
+  missingSize: boolean;
+}
+
 export interface CatalogJobStatusResponse {
   id: string;
   status: CatalogJobStatusKind;
@@ -266,6 +285,7 @@ export interface CatalogJobStatusResponse {
   sizeBytes: number | null;
   skipped: CatalogSkippedItem[];
   warnings: CatalogWarningItem[];
+  missingData: CatalogMissingDataItem[];
   rate: number | null;
   // Mesma origem/qualidade da cotação do site público (ver lib/exchangeRateQuality.ts).
   rateSource: import("../lib/exchangeRateQuality").RateSource | null;

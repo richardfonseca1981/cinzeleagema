@@ -1,5 +1,5 @@
 import { isRateApproximate, type RateSource } from "./exchangeRateQuality";
-import type { CatalogJobRequest, CatalogLanguage, CatalogQuality } from "../types";
+import type { CatalogJobRequest, CatalogLanguage, CatalogPhotoFit, CatalogQuality } from "../types";
 
 export function formatCatalogBytes(bytes: number): string {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -17,6 +17,7 @@ export interface CatalogFormState {
   dividers: CatalogDividerChoice;
   includeContactPage: boolean;
   quality: CatalogQuality;
+  photoFit: CatalogPhotoFit;
 }
 
 // Monta o corpo de POST /api/admin/catalog/jobs a partir do estado do
@@ -31,6 +32,7 @@ export function buildCatalogJobRequest(state: CatalogFormState): CatalogJobReque
     includeCategoryDividers: state.dividers === "auto" ? undefined : state.dividers === "yes",
     includeContactPage: state.includeContactPage,
     quality: state.quality,
+    photoFit: state.photoFit,
   };
 }
 

@@ -23,6 +23,7 @@ const createJobSchema = z.object({
   includeCategoryDividers: z.boolean().optional(),
   includeContactPage: z.boolean(),
   quality: z.enum(["standard", "light"]),
+  photoFit: z.enum(["contain", "cover", "trim"]).default("trim"),
 });
 
 // POST /jobs — dispara a geração em segundo plano e devolve o id na hora
@@ -41,6 +42,7 @@ catalogJobRouter.post(
       includeCategoryDividers: data.includeCategoryDividers,
       includeContactPage: data.includeContactPage,
       quality: data.quality,
+      photoFit: data.photoFit,
     });
     res.status(202).json({ id });
   })

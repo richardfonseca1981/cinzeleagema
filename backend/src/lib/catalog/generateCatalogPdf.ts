@@ -4,8 +4,16 @@ import { getObject } from "../r2";
 import { getExchangeRate, type ExchangeRateSource } from "../exchangeRate";
 import { DEFAULT_ORDER_BY } from "../productSort";
 import { PAGE_HEIGHT, PAGE_WIDTH } from "./layout";
-import { registerCatalogFonts, drawCoverPage, drawProductPage, drawContactPage, drawCategoryDividerPage } from "./pdfPages";
-import { processCatalogPhoto, type CatalogPhotoQuality } from "./photoLayer";
+import {
+  registerCatalogFonts,
+  drawCoverPage,
+  drawProductPage,
+  drawContactPage,
+  drawCategoryDividerPage,
+  computeProductPanelLayout,
+  type ProductPanelLayout,
+} from "./pdfPages";
+import { processCatalogPhoto, type CatalogPhotoFit, type CatalogPhotoQuality } from "./photoLayer";
 import { isPlaceholderTitle, resolveBodyText, resolveTitle, type CatalogLanguage } from "./content";
 import { mapWithConcurrency } from "./concurrencyPool";
 import { groupProductsByCategory, localizeCategoryName } from "./categories";
@@ -57,11 +65,28 @@ export interface GenerateCatalogPdfOptions {
   // final bem mais leve (~8-10 MB mesmo com 100+ peças), para WhatsApp/
   // e-mail. Default "standard" (qualidade atual).
   quality?: CatalogPhotoQuality;
+  // "contain": foto inteira visível, pode deixar faixas laterais/topo-base
+  // desfocadas. "cover": preenche a área toda, cortando o excedente da
+  // foto. "trim" (default — ver 3ª rodada de revisão visual): recorta só o
+  // fundo vazio real do topo/base ANTES de aplicar "contain", reduzindo as
+  // faixas sem nunca cortar a peça — ver photoLayer.ts CatalogPhotoFit e
+  // analyzeBackgroundTrim.
+  photoFit?: CatalogPhotoFit;
   // Chamado depois de CADA peça processada (desenhada OU pulada por falha no
   // R2) — nunca para peças sem foto (essas não entram no total, já são
   // conhecidas antes de começar). Usado pela Etapa B para a barra de
   // progresso ("Gerando 37/107…"); opcional, sem custo quando omitido.
   onProgress?: (done: number, total: number) => void;
+  // USO INTERNO/SCRIPTS — nunca exposto pela rota HTTP (ver
+  // routes/catalogJob.routes.ts, que não aceita este campo): sobrepõe em
+  // memória identificationPt/En de peças específicas (por id), sem gravar
+  // nada no banco. Criado para scripts/generateRealCatalogSamples.ts
+  // conseguir demonstrar o caso "identificação por IA" com uma proposta
+  // REAL (gerada pela mesma rota do admin) sem chamar saveIdentification —
+  // reaproveitando o pipeline real (preço/avisos/dados ausentes) em vez de
+  // reimplementar a montagem da página numa cópia paralela (reimplementação
+  // que já causou uma regressão real: ver AJUSTES revisão final item 1).
+  productIdentificationOverrides?: Record<string, { identificationPt: string | null; identificationEn: string | null }>;
 }
 
 export interface SkippedProduct {
@@ -81,11 +106,27 @@ export interface CatalogWarning {
   reason: string;
 }
 
+// Peça que entrou no catálogo mas ficou sem descrição e/ou peso e/ou
+// tamanho (ver AJUSTES A4/CATÁLOGO item 4) — nunca inventados/mostrados como
+// "–" na página, só omitidos; esta lista é o que vira
+// backend/tmp/catalogo-faltando-dados.csv para o admin completar os dados no
+// cadastro da peça. Só entra aqui quem está faltando PELO MENOS UM dos três
+// (peça com os três preenchidos não aparece).
+export interface CatalogMissingDataEntry {
+  id: string;
+  ref: string | null;
+  title: string;
+  missingDescription: boolean;
+  missingWeight: boolean;
+  missingSize: boolean;
+}
+
 export interface GenerateCatalogPdfResult {
   buffer: Buffer;
   pageCount: number;
   skipped: SkippedProduct[];
   warnings: CatalogWarning[];
+  missingData: CatalogMissingDataEntry[];
   categoryDividersIncluded: boolean;
   // Valor/origem/data da cotação usada (só quando EN + showPrice buscou uma
   // — ver getExchangeRate) — a Etapa B avisa o admin quando a cotação não é
@@ -106,6 +147,7 @@ const CATALOG_PRODUCT_SELECT = {
   identificationEn: true,
   price: true,
   sizeCm: true,
+  weightGrams: true,
   category: { select: { name: true } },
   images: { orderBy: { position: "asc" as const }, take: 1, select: { key: true } },
 };
@@ -119,13 +161,15 @@ export async function generateCatalogPdf(options: GenerateCatalogPdfOptions): Pr
     includeInactive = false,
     includeContactPage = true,
     quality = "standard",
+    photoFit = "trim",
     onProgress,
+    productIdentificationOverrides,
   } = options;
 
   // Mesma ordem das peças do admin (ver lib/productSort.ts DEFAULT_ORDER_BY)
   // mesmo quando só um subconjunto é pedido — o catálogo sempre reflete a
   // ordem definida no admin, não a ordem em que os ids vieram no parâmetro.
-  const products = await prisma.product.findMany({
+  const productsFromDb = await prisma.product.findMany({
     where: {
       ...(includeInactive ? {} : { active: true }),
       ...(productIds && productIds.length > 0 ? { id: { in: productIds } } : {}),
@@ -133,6 +177,15 @@ export async function generateCatalogPdf(options: GenerateCatalogPdfOptions): Pr
     orderBy: DEFAULT_ORDER_BY,
     select: CATALOG_PRODUCT_SELECT,
   });
+
+  // Sobreposição em memória (ver productIdentificationOverrides) — nunca
+  // escreve no banco, só troca o que ESTE catálogo vê para a peça.
+  const products = productIdentificationOverrides
+    ? productsFromDb.map((product) => {
+        const override = productIdentificationOverrides[product.id];
+        return override ? { ...product, identificationPt: override.identificationPt, identificationEn: override.identificationEn } : product;
+      })
+    : productsFromDb;
 
   const skipped: SkippedProduct[] = [];
   const withPhoto = products
@@ -199,19 +252,67 @@ export async function generateCatalogPdf(options: GenerateCatalogPdfOptions): Pr
   pageCount++;
   drawCoverPage(doc, { language, generatedAt });
 
-  // Busca/redimensiona até PHOTO_CONCURRENCY fotos em paralelo, mas escreve
-  // (e descarta) uma página por vez, na ordem final (com divisores, se
-  // houver) — ver concurrencyPool.ts.
+  // Passo 1: resolve título/descrição/avisos/dados-faltando e calcula o
+  // layout do painel (ver pdfPages.ts computeProductPanelLayout) para TODAS
+  // as peças de uma vez — pura medição de texto, sem I/O, então não precisa
+  // de concorrência. Decidido ANTES de buscar qualquer foto porque a altura
+  // da área de foto (photoAreaHeight) varia por peça (ver AJUSTES revisão
+  // visual item 3: painel compacto) e processCatalogPhoto precisa saber essa
+  // altura para redimensionar a foto no tamanho certo.
   const warnings: CatalogWarning[] = [];
-  const totalToProcess = orderedWithPhoto.length;
+  const missingData: CatalogMissingDataEntry[] = [];
+  const prepared = orderedWithPhoto.map((product) => {
+    const title = resolveTitle(product, language);
+    if (isPlaceholderTitle(title)) {
+      warnings.push({ id: product.id, ref: product.sku, title, reason: "Nome provisório (padrão de importação em lote)" });
+    }
+
+    const rawPrice = product.price === null ? null : Number(product.price);
+    const isPlaceholderPrice = rawPrice !== null && rawPrice <= PLACEHOLDER_PRICE_MAX;
+    if (isPlaceholderPrice) {
+      warnings.push({ id: product.id, ref: product.sku, title, reason: "Preço provisório (≤ R$ 1,00)" });
+    }
+
+    const body = resolveBodyText(product, language, title);
+    const sizeCm = Number(product.sizeCm);
+    const weightGrams = Number(product.weightGrams);
+
+    // Dado ausente (ver AJUSTES A4/CATÁLOGO item 4): nunca inventado/mostrado
+    // como "–" na página (drawProductPage já omite a linha) — aqui só
+    // registra, para o admin completar no cadastro (CSV + tela "Gerar
+    // catálogo", ver catalogJobs.ts/routes).
+    const missingDescription = body === null;
+    const missingWeight = weightGrams <= 0;
+    const missingSize = sizeCm <= 0;
+    if (missingDescription || missingWeight || missingSize) {
+      missingData.push({ id: product.id, ref: product.sku, title, missingDescription, missingWeight, missingSize });
+    }
+
+    const price = isPlaceholderPrice ? null : rawPrice;
+    const layout = computeProductPanelLayout(doc, { language, title, sku: product.sku, showRef, body, sizeCm, weightGrams, showPrice });
+    if (layout.title.truncated) {
+      warnings.push({ id: product.id, ref: product.sku, title, reason: "Nome truncado (não coube nem reduzindo a fonte)" });
+    }
+    if (layout.description?.truncated) {
+      warnings.push({ id: product.id, ref: product.sku, title, reason: "Descrição truncada (não coube nem reduzindo a fonte)" });
+    }
+
+    return { product, layout, price };
+  });
+
+  // Passo 2: busca/redimensiona até PHOTO_CONCURRENCY fotos em paralelo
+  // (cada uma já no tamanho definido pelo layout calculado acima), mas
+  // escreve (e descarta) uma página por vez, na ordem final (com divisores,
+  // se houver) — ver concurrencyPool.ts.
+  const totalToProcess = prepared.length;
   let index = 0;
-  for await (const prepared of mapWithConcurrency(orderedWithPhoto, PHOTO_CONCURRENCY, async (product) => {
+  for await (const result of mapWithConcurrency(prepared, PHOTO_CONCURRENCY, async (item) => {
     try {
-      const raw = await getObject(product.images[0].key);
-      const photo = await processCatalogPhoto(raw, quality);
-      return { product, photo, errorMessage: null as string | null };
+      const raw = await getObject(item.product.images[0].key);
+      const photo = await processCatalogPhoto(raw, { quality, photoFit, photoAreaHeight: item.layout.photoAreaHeight });
+      return { ...item, photo, errorMessage: null as string | null };
     } catch (err) {
-      return { product, photo: null, errorMessage: err instanceof Error ? err.message : "Falha ao buscar a foto" };
+      return { ...item, photo: null, errorMessage: err instanceof Error ? err.message : "Falha ao buscar a foto" };
     }
   })) {
     const divider = dividerBeforeIndex.get(index);
@@ -227,20 +328,9 @@ export async function generateCatalogPdf(options: GenerateCatalogPdfOptions): Pr
       doc.outline.addItem(label);
     }
 
-    if (!prepared.photo) {
-      skipped.push({ id: prepared.product.id, reason: `Falha ao buscar a foto no R2 (${prepared.errorMessage})` });
+    if (!result.photo) {
+      skipped.push({ id: result.product.id, reason: `Falha ao buscar a foto no R2 (${result.errorMessage})` });
       continue;
-    }
-
-    const title = resolveTitle(prepared.product, language);
-    if (isPlaceholderTitle(title)) {
-      warnings.push({ id: prepared.product.id, ref: prepared.product.sku, title, reason: "Nome provisório (padrão de importação em lote)" });
-    }
-
-    const rawPrice = prepared.product.price === null ? null : Number(prepared.product.price);
-    const isPlaceholderPrice = rawPrice !== null && rawPrice <= PLACEHOLDER_PRICE_MAX;
-    if (isPlaceholderPrice) {
-      warnings.push({ id: prepared.product.id, ref: prepared.product.sku, title, reason: "Preço provisório (≤ R$ 1,00)" });
     }
 
     doc.addPage();
@@ -248,15 +338,11 @@ export async function generateCatalogPdf(options: GenerateCatalogPdfOptions): Pr
     drawProductPage(doc, {
       language,
       showPrice,
-      showRef,
       exchangeRate,
-      photo: prepared.photo,
-      title,
-      body: resolveBodyText(prepared.product, language),
-      sku: prepared.product.sku,
-      sizeCm: Number(prepared.product.sizeCm),
-      price: isPlaceholderPrice ? null : rawPrice,
-      seed: prepared.product.id,
+      photo: result.photo,
+      price: result.price,
+      seed: result.product.id,
+      layout: result.layout as ProductPanelLayout,
     });
   }
 
@@ -268,5 +354,5 @@ export async function generateCatalogPdf(options: GenerateCatalogPdfOptions): Pr
 
   doc.end();
   const buffer = await finished;
-  return { buffer, pageCount, skipped, warnings, categoryDividersIncluded, rate: exchangeRate, rateSource, rateUpdatedAt };
+  return { buffer, pageCount, skipped, warnings, missingData, categoryDividersIncluded, rate: exchangeRate, rateSource, rateUpdatedAt };
 }

@@ -30,6 +30,9 @@ async function createProduct(data: {
   description?: string;
   descriptionEn?: string;
   sizeCm?: number;
+  weightGrams?: number;
+  identificationPt?: string;
+  identificationEn?: string;
   active?: boolean;
   withPhoto?: boolean;
   categoryId?: string;
@@ -43,6 +46,9 @@ async function createProduct(data: {
       description: data.description ?? null,
       descriptionEn: data.descriptionEn ?? null,
       sizeCm: data.sizeCm ?? 0,
+      weightGrams: data.weightGrams ?? 0,
+      identificationPt: data.identificationPt ?? null,
+      identificationEn: data.identificationEn ?? null,
       active: data.active ?? true,
       categoryId: data.categoryId ?? null,
     },
@@ -192,6 +198,30 @@ describe("generateCatalogPdf", () => {
     expect(light.pageCount).toBe(standard.pageCount);
   });
 
+  it("photoFit 'cover' gera PDF válido (mesmo número de páginas que 'contain')", async () => {
+    await createProduct({ name: "Peça Cover", sku: "PF-1", price: 10 });
+
+    const contain = await generateCatalogPdf({ language: "pt", photoFit: "contain" });
+    const cover = await generateCatalogPdf({ language: "pt", photoFit: "cover" });
+
+    expect(cover.buffer.subarray(0, 5).toString("latin1")).toBe("%PDF-");
+    expect(cover.pageCount).toBe(contain.pageCount);
+    expect(cover.skipped).toEqual([]);
+  });
+
+  it("photoFit 'trim' (default) gera PDF válido (mesmo número de páginas que 'contain')", async () => {
+    await createProduct({ name: "Peça Trim", sku: "PF-2", price: 10 });
+
+    const contain = await generateCatalogPdf({ language: "pt", photoFit: "contain" });
+    const trim = await generateCatalogPdf({ language: "pt", photoFit: "trim" });
+    const trimDefault = await generateCatalogPdf({ language: "pt" });
+
+    expect(trim.buffer.subarray(0, 5).toString("latin1")).toBe("%PDF-");
+    expect(trim.pageCount).toBe(contain.pageCount);
+    expect(trim.skipped).toEqual([]);
+    expect(trimDefault.pageCount).toBe(trim.pageCount);
+  });
+
   describe("warnings (nome/preço provisório)", () => {
     it("detecta nome placeholder de importação em lote e sinaliza em warnings sem bloquear a geração", async () => {
       const placeholder = await createProduct({ name: "Pedra 4875 - Peso", sku: "P-1", price: 100 });
@@ -239,6 +269,184 @@ describe("generateCatalogPdf", () => {
 
     it("peça sem nenhum problema não aparece em warnings", async () => {
       await createProduct({ name: "Esmeralda Colombiana", sku: "OK-1", price: 250 });
+      const result = await generateCatalogPdf({ language: "pt" });
+      expect(result.warnings).toEqual([]);
+    });
+
+    // REVISÃO FINAL item 1: a peça real Ref 110 apareceu com "R$ 1,00" em
+    // vez de "Consulte o valor" numa amostra gerada por um SCRIPT separado
+    // (generateRealCatalogSamples.ts) que reimplementava a montagem da
+    // página e esqueceu de aplicar esta regra — o pipeline real
+    // (generateCatalogPdf, testado aqui com um round-trip de Decimal real
+    // via Postgres) já estava correto; o script foi corrigido para usar
+    // este MESMO pipeline em vez de reimplementá-lo (ver
+    // GenerateCatalogPdfOptions.productIdentificationOverrides). Estes
+    // testes cobrem os valores pedidos explicitamente, em PT e EN.
+    describe.each(["pt", "en"] as const)("preço provisório (price <= R$ 1,00) em %s", (language) => {
+      it("price = 1.00 (Decimal) é provisório", async () => {
+        const p = await createProduct({ name: "Peça 1.00", sku: `PR-100-${language}`, price: 1.0 });
+        const result = await generateCatalogPdf({ language });
+        expect(result.warnings).toContainEqual({ id: p.id, ref: p.sku, title: "Peça 1.00", reason: "Preço provisório (≤ R$ 1,00)" });
+      });
+
+      it("price = 0.5 é provisório", async () => {
+        const p = await createProduct({ name: "Peça 0.5", sku: `PR-05-${language}`, price: 0.5 });
+        const result = await generateCatalogPdf({ language });
+        expect(result.warnings).toContainEqual({ id: p.id, ref: p.sku, title: "Peça 0.5", reason: "Preço provisório (≤ R$ 1,00)" });
+      });
+
+      it("price = 0 é provisório (regra literal <= 1, inclui zero)", async () => {
+        const p = await createProduct({ name: "Peça Zero", sku: `PR-0-${language}`, price: 0 });
+        const result = await generateCatalogPdf({ language });
+        expect(result.warnings).toContainEqual({ id: p.id, ref: p.sku, title: "Peça Zero", reason: "Preço provisório (≤ R$ 1,00)" });
+      });
+
+      it("price = 1.01 NÃO é provisório (preço real, sem warning)", async () => {
+        const p = await createProduct({ name: "Peça 1.01", sku: `PR-101-${language}`, price: 1.01 });
+        const result = await generateCatalogPdf({ language });
+        expect(result.warnings.find((w) => w.id === p.id)).toBeUndefined();
+      });
+
+      it("price = null NÃO é provisório ('Consulte o valor' sem warning — não é importação em lote)", async () => {
+        const p = await createProduct({ name: "Peça Sem Preço X", sku: `PR-NULL-${language}`, price: null });
+        const result = await generateCatalogPdf({ language });
+        expect(result.warnings.find((w) => w.id === p.id)).toBeUndefined();
+      });
+    });
+  });
+
+  describe("dados ausentes (descrição/peso/tamanho) — AJUSTES A4/CATÁLOGO item 4", () => {
+    it("peça sem descrição, peso e tamanho entra em missingData com os três marcados", async () => {
+      const bare = await createProduct({ name: "Pedra Sem Dados", sku: "MD-1", price: 10 });
+
+      const result = await generateCatalogPdf({ language: "pt" });
+      expect(result.missingData).toEqual([
+        { id: bare.id, ref: "MD-1", title: "Pedra Sem Dados", missingDescription: true, missingWeight: true, missingSize: true },
+      ]);
+    });
+
+    it("peça com description, peso e tamanho não entra em missingData", async () => {
+      await createProduct({ name: "Pedra Completa", sku: "MD-2", price: 10, description: "Peça lapidada.", sizeCm: 2.3, weightGrams: 850 });
+
+      const result = await generateCatalogPdf({ language: "pt" });
+      expect(result.missingData).toEqual([]);
+    });
+
+    it("peça com só peso e tamanho faltando (tem descrição) marca só esses dois", async () => {
+      const partial = await createProduct({ name: "Pedra Parcial", sku: "MD-3", price: 10, description: "Peça lapidada à mão." });
+
+      const result = await generateCatalogPdf({ language: "pt" });
+      expect(result.missingData).toEqual([
+        { id: partial.id, ref: "MD-3", title: "Pedra Parcial", missingDescription: false, missingWeight: true, missingSize: true },
+      ]);
+    });
+
+    it("description só com o aviso legal genérico conta como 'sem descrição própria' em missingData", async () => {
+      const generic = await createProduct({
+        name: "Pedra Aviso Genérico",
+        sku: "MD-4",
+        price: 10,
+        sizeCm: 2,
+        weightGrams: 100,
+        description:
+          "Por se tratar de um produto natural, cada pedra é única e pode apresentar variações de tamanho, peso, formato, tonalidade, textura e características minerais.",
+      });
+
+      const result = await generateCatalogPdf({ language: "pt" });
+      expect(result.missingData).toEqual([
+        { id: generic.id, ref: "MD-4", title: "Pedra Aviso Genérico", missingDescription: true, missingWeight: false, missingSize: false },
+      ]);
+    });
+  });
+
+  describe("nome duplicado com IA — AJUSTES A4/CATÁLOGO item 5 (revisão final item 2: título é sempre o nome)", () => {
+    it("identificação idêntica ao nome não duplica no corpo: pipeline completo não quebra (corpo some)", async () => {
+      // Título vem do NOME ("Pedra Base" — ver revisão final item 2); a
+      // identificação idêntica ao nome cadastrado NÃO é esse caso (nomes
+      // diferentes aqui) — este teste garante que o pipeline todo (preço,
+      // avisos, identificação como corpo) roda sem quebrar quando a peça
+      // tem identificação E description reais. A verificação fina de
+      // anti-duplicação (corpo que começa com o NOME) já é feita em
+      // content.test.ts (resolveBodyText).
+      await createProduct({
+        name: "Pedra Base",
+        sku: "DUP-1",
+        price: 10,
+        identificationPt: "Ágata Azul (Tingida)",
+        description: "Descrição própria da peça, bem detalhada.",
+      });
+
+      const result = await generateCatalogPdf({ language: "pt" });
+      expect(result.buffer.subarray(0, 5).toString("latin1")).toBe("%PDF-");
+      expect(result.warnings).toEqual([]);
+    });
+
+    it("identificação IGUAL ao nome cadastrado: corpo some (não repete o nome) sem quebrar a geração", async () => {
+      await createProduct({ name: "Esfera de Ágata com Geodo", sku: "DUP-2", price: 10, identificationPt: "Esfera de Ágata com Geodo" });
+
+      const result = await generateCatalogPdf({ language: "pt" });
+      expect(result.buffer.subarray(0, 5).toString("latin1")).toBe("%PDF-");
+      // Sem description própria para cair de volta, a peça fica sem
+      // descrição própria — mas isso é esperado (ver content.test.ts),
+      // então entra em missingData (não é um warning).
+      expect(result.missingData.find((m) => m.ref === "DUP-2")?.missingDescription).toBe(true);
+    });
+
+    it("nome vindo duplicado no cadastro ('X X') é limpo no título sem quebrar a geração", async () => {
+      await createProduct({ name: "Ágata Azul Ágata Azul", sku: "DUP-3", price: 10 });
+
+      const result = await generateCatalogPdf({ language: "pt" });
+      expect(result.buffer.subarray(0, 5).toString("latin1")).toBe("%PDF-");
+      expect(result.warnings).toEqual([]);
+    });
+  });
+
+  describe("nome truncado (AJUSTES A4/CATÁLOGO item 1 — revisão visual item 5)", () => {
+    // REGRESSÃO: este nome de ~192 caracteres truncava incorretamente (bug
+    // de orçamento de altura em fitTitleText/pdfPages.ts — ver BUG CORRIGIDO
+    // em textFit.ts e pdfPages.ts) mesmo cabendo perfeitamente em 3 linhas
+    // reduzindo a fonte. Confirma que a fonte É reduzida (de 22 para algo
+    // menor) e o título NÃO é truncado nem gera warning.
+    it("nome de ~190 caracteres cabe em 3 linhas reduzindo a fonte, sem truncar", async () => {
+      const name =
+        "Pedra Extraordinária Rara de Origem Totalmente Desconhecida com Nome Comercial Muito Longo e Detalhado Demais Para Caber em Três Linhas Mesmo no Tamanho Mínimo de Fonte Permitido Pelo Catálogo";
+      expect(name.length).toBeGreaterThanOrEqual(190);
+      await createProduct({ name, sku: "LN-1", price: 10 });
+
+      const result = await generateCatalogPdf({ language: "pt" });
+      expect(result.buffer.subarray(0, 5).toString("latin1")).toBe("%PDF-");
+      expect(result.warnings).toEqual([]);
+    });
+
+    it("nome de ~120 caracteres cabe sem precisar truncar", async () => {
+      const name = "Topázio Imperial de Ouro Preto com Lapidação Oval Impecável e Laudo Gemológico Completo Emitido por Laboratório Reconhecido";
+      expect(name.length).toBeGreaterThanOrEqual(120);
+      expect(name.length).toBeLessThan(130);
+      await createProduct({ name, sku: "LN-2", price: 10 });
+
+      const result = await generateCatalogPdf({ language: "pt" });
+      expect(result.warnings).toEqual([]);
+    });
+
+    it("nome extremamente longo (~300 caracteres) trunca e vira warning 'nome truncado'", async () => {
+      const name =
+        "Pedra Absolutamente Extraordinária e Rara de Origem Geológica Totalmente Desconhecida, Encontrada em Expedição Remota, com Nome Comercial Extremamente Longo e Detalhado Demais Para Caber Inteiro em Três Linhas do Catálogo Mesmo Reduzindo a Fonte até o Tamanho Mínimo Permitido pelas Regras de Layout Definidas";
+      expect(name.length).toBeGreaterThanOrEqual(300);
+      const product = await createProduct({ name, sku: "LN-3", price: 10 });
+
+      const result = await generateCatalogPdf({ language: "pt" });
+      expect(result.buffer.subarray(0, 5).toString("latin1")).toBe("%PDF-");
+      expect(result.warnings).toContainEqual({
+        id: product.id,
+        ref: "LN-3",
+        title: name,
+        reason: "Nome truncado (não coube nem reduzindo a fonte)",
+      });
+    });
+
+    it("título curto não gera warning de nome truncado", async () => {
+      await createProduct({ name: "Esmeralda Colombiana", sku: "LN-4", price: 10 });
+
       const result = await generateCatalogPdf({ language: "pt" });
       expect(result.warnings).toEqual([]);
     });

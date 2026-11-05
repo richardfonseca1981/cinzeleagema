@@ -23,7 +23,8 @@
     "promote-formas:prod": "node dist/scripts/promoteFormasToCategory.js",
     "generate:export-logo": "tsx src/scripts/generateExportLogo.ts",
     "generate:catalog-logo": "tsx src/scripts/generateCatalogLogo.ts",
-    "catalog:sample": "tsx src/scripts/generateSampleCatalog.ts"
+    "catalog:sample": "tsx src/scripts/generateSampleCatalog.ts",
+    "catalog:investigate-name-dup": "tsx src/scripts/investigateNameDuplication.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
