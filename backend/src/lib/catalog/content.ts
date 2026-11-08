@@ -28,14 +28,28 @@ function localize(pt: string | null, en: string | null, language: CatalogLanguag
 
 // Título = SEMPRE o nome cadastrado da peça (ver REVISÃO FINAL item 2 —
 // mudança deliberada: a identificação por IA deixou de ser fonte de
-// título). -> SKU -> texto fixo "Peça sem nome"/"Unnamed piece".
+// título), COM UMA EXCEÇÃO: nome ainda placeholder de importação em lote
+// (ver isPlaceholderTitle) + identificação title-like (ver
+// isTitleLikeIdentification) disponível — nesse caso específico a peça
+// ainda não tem nome de catálogo de verdade, então a identificação (um nome
+// sugerido, não uma descrição) é um título melhor que "Pedra 1234 - Peso".
+// Com nome placeholder mas SEM identificação title-like, cai para o nome
+// placeholder mesmo (continua sinalizado em `warnings`, ver
+// generateCatalogPdf). -> SKU -> texto fixo "Peça sem nome"/"Unnamed piece".
 //
 // dedupeRepeatedName (ver AJUSTES A4/CATÁLOGO item 5) é aplicado ao
 // resultado final — limpeza defensiva contra o nome vindo duplicado do
 // cadastro (ex.: "Ágata Azul Ágata Azul", "Ágata Azul - Ágata Azul").
 export function resolveTitle(product: CatalogProductContent, language: CatalogLanguage): string {
   const name = localize(product.name, product.nameEn, language);
-  if (name) return dedupeRepeatedName(name);
+  if (name) {
+    const resolvedName = dedupeRepeatedName(name);
+    if (isPlaceholderTitle(resolvedName)) {
+      const identification = localize(product.identificationPt, product.identificationEn, language);
+      if (identification && isTitleLikeIdentification(identification)) return identification.trim();
+    }
+    return resolvedName;
+  }
 
   if (product.sku?.trim()) return product.sku.trim();
 
@@ -205,20 +219,46 @@ export function isGenericLegalNotice(text: string): boolean {
   );
 }
 
+// A IA de identificação continua sendo GERADORA DE NOMES (confirmado pelo
+// Felipe) — identificationPt/En é tipicamente uma correção/variação curta
+// do nome (ex.: "Cianita Azul em Matriz" -> "Cianita em Matriz"), nunca um
+// corpo descritivo de verdade, mesmo quando diverge bastante do nome
+// cadastrado (o nome é sempre a versão corrigida pelo admin, logo é a
+// verdade). Mostrar essa variação como "corpo" da peça duplica visualmente
+// o nome — título e corpo dizem quase a mesma coisa com palavras diferentes
+// — que é o bug relatado. Por isso identificação "parecida com título" (ver
+// isTitleLikeIdentification) NUNCA é usada como corpo, independente de
+// quão parecida ou diferente ela seja do nome.
+const TITLE_LIKE_MAX_WORDS = 10;
+
+// Curta (até 10 palavras), sem ponto final (frase completa) e sem quebra de
+// linha — ou seja, tem o formato de um título/nome alternativo, não de uma
+// descrição corrida. Uma identificação descritiva de verdade (texto corrido
+// com frase(s) completa(s)) continua podendo virar corpo normalmente.
+export function isTitleLikeIdentification(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+  if (trimmed.includes("\n")) return false;
+  if (trimmed.includes(".")) return false;
+  return wordsOf(trimmed).length <= TITLE_LIKE_MAX_WORDS;
+}
+
 // Corpo de texto da página da peça (ver REVISÃO FINAL item 2 — ordem
 // trocada em relação à rodada anterior, agora que o TÍTULO é sempre o nome,
-// não mais a identificação): identificação por IA (confirmada pelo admin)
-// -> description própria da peça (só se não for o aviso legal genérico — o
-// aviso completo mora só na página de contato) -> nada.
+// não mais a identificação): identificação por IA, só quando NÃO for
+// title-like (ver isTitleLikeIdentification) -> description própria da
+// peça (só se não for o aviso legal genérico — o aviso completo mora só na
+// página de contato) -> nada.
 //
-// Em QUALQUER fonte, se o texto começar repetindo o nome (já o título, ver
-// resolveTitle), esse começo é removido (ver stripLeadingNameRepeat) — e se
-// não sobrar nada depois (corpo que era só o nome), a peça fica sem corpo
-// (não mostra o nome de novo). `title` já vem resolvido por resolveTitle.
-// Texto vindo do banco é DADO puro — nenhuma interpretação de markup aqui.
+// Em QUALQUER fonte usada como corpo, se o texto começar repetindo o nome
+// (já o título, ver resolveTitle), esse começo é removido (ver
+// stripLeadingNameRepeat) — e se não sobrar nada depois (corpo que era só o
+// nome), a peça fica sem corpo (não mostra o nome de novo). `title` já vem
+// resolvido por resolveTitle. Texto vindo do banco é DADO puro — nenhuma
+// interpretação de markup aqui.
 export function resolveBodyText(product: CatalogProductContent, language: CatalogLanguage, title: string): CatalogBodyText | null {
   const identification = localize(product.identificationPt, product.identificationEn, language);
-  if (identification) {
+  if (identification && !isTitleLikeIdentification(identification)) {
     const stripped = stripLeadingNameRepeat(identification, title);
     // Identificação sobrou vazia (era só o nome, já mostrado no título) —
     // cai para a description, em vez de deixar a peça sem corpo algum
@@ -235,10 +275,14 @@ export function resolveBodyText(product: CatalogProductContent, language: Catalo
 }
 
 // Nome provisório de importação em lote ("Pedra 1234 - Peso" / "Stone 1234 -
-// Weight") — a peça ainda não recebeu um nome de catálogo de verdade. O
-// título continua sendo exibido normalmente (ver resolveTitle); isto só
-// sinaliza a peça em `warnings` (ver generateCatalogPdf) para o admin saber
-// que precisa revisar, sem bloquear a geração do catálogo.
+// Weight") — a peça ainda não recebeu um nome de catálogo de verdade. Sem
+// identificação title-like disponível, o título continua sendo exibido
+// normalmente (ver resolveTitle) e isto sinaliza a peça em `warnings` (ver
+// generateCatalogPdf) para o admin saber que precisa revisar, sem bloquear
+// a geração do catálogo. Com identificação title-like disponível,
+// resolveTitle já troca o título por ela ANTES desta checagem rodar em
+// generateCatalogPdf — então o aviso não dispara (o título deixa de ser
+// placeholder).
 const PLACEHOLDER_TITLE_PATTERN = /^(pedra|stone)\s+\d+\s*-\s*(peso|weight)$/i;
 
 export function isPlaceholderTitle(title: string): boolean {

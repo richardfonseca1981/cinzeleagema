@@ -237,6 +237,13 @@ describe("generateCatalogPdf", () => {
       });
     });
 
+    it("nome placeholder + identificação title-like: título vira a identificação e o aviso de nome provisório NÃO dispara", async () => {
+      const p = await createProduct({ name: "Pedra 4864 - Peso", sku: "P-3", price: 100, identificationPt: "Quartzo Rosa Bruto" });
+
+      const result = await generateCatalogPdf({ language: "pt" });
+      expect(result.warnings.find((w) => w.id === p.id)).toBeUndefined();
+    });
+
     it("detecta padrão EN (Stone N - Weight) no catálogo em inglês", async () => {
       const placeholder = await createProduct({ name: "Stone 42 - Weight", sku: "P-2", price: 100 });
 
