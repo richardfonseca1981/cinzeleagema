@@ -3,11 +3,13 @@ import {
   dedupeRepeatedName,
   isGenericLegalNotice,
   isPlaceholderTitle,
+  isTitleLikeIdentification,
   resolveBodyText,
   resolveTitle,
   type CatalogProductContent,
 } from "../src/lib/catalog/content";
 import { REAL_EN_NOTICE_VARIANTS, REAL_PT_NOTICE_VARIANTS } from "./fixtures/realNoticeVariants";
+import { REAL_IDENTIFICATION_NAME_CASES, REAL_NAME_IDENTIFICATION_CLASS_D } from "./fixtures/realIdentificationNameCases";
 
 function product(overrides: Partial<CatalogProductContent> = {}): CatalogProductContent {
   return {
@@ -51,6 +53,34 @@ describe("resolveTitle", () => {
     expect(resolveTitle(product({ name: "Ágata Azul Ágata Azul" }), "pt")).toBe("Ágata Azul");
     expect(resolveTitle(product({ name: "Esmeralda Colombiana - esmeralda colombiana" }), "pt")).toBe("Esmeralda Colombiana");
   });
+
+  // Nome placeholder de importação em lote (ver isPlaceholderTitle) + identificação
+  // title-like disponível: a peça ainda não tem nome de catálogo de verdade, então a
+  // identificação (um nome sugerido) é um título melhor que "Pedra 4864 - Peso".
+  it("nome placeholder + identificação title-like: título = identificação (PT e EN)", () => {
+    expect(
+      resolveTitle(product({ name: "Pedra 4864 - Peso", nameEn: "Stone 4864 - Weight", identificationPt: "Quartzo Rosa Bruto" }), "pt")
+    ).toBe("Quartzo Rosa Bruto");
+    expect(
+      resolveTitle(
+        product({ name: "Pedra 4864 - Peso", nameEn: "Stone 4864 - Weight", identificationEn: "Raw Rose Quartz" }),
+        "en"
+      )
+    ).toBe("Raw Rose Quartz");
+  });
+
+  it("nome REAL (não placeholder) + identificação: título continua sendo o Nome, mesmo com identificação title-like", () => {
+    expect(resolveTitle(product({ name: "Drusa de Ametista", identificationPt: "Geodo de Ametista" }), "pt")).toBe("Drusa de Ametista");
+  });
+
+  it("nome placeholder SEM identificação: título continua sendo o nome placeholder (warnings continua sinalizando, ver generateCatalogPdf.test.ts)", () => {
+    expect(resolveTitle(product({ name: "Pedra 4875 - Peso" }), "pt")).toBe("Pedra 4875 - Peso");
+  });
+
+  it("nome placeholder + identificação que NÃO é title-like (descritiva/longa): título continua sendo o nome placeholder", () => {
+    const longIdentification = "Peça extraída em Minas Gerais, com lapidação artesanal e brilho vítreo acentuado.";
+    expect(resolveTitle(product({ name: "Pedra 4875 - Peso", identificationPt: longIdentification }), "pt")).toBe("Pedra 4875 - Peso");
+  });
 });
 
 // REVISÃO FINAL item 2: corpo = identificação por IA (confirmada pelo
@@ -58,18 +88,25 @@ describe("resolveTitle", () => {
 // Qualquer corpo que comece repetindo o nome (já o título) tem esse começo
 // removido; se ficar vazio, cai para a próxima fonte (ou nada).
 describe("resolveBodyText", () => {
-  it("usa identificação (source: identification) quando existe e é diferente do nome", () => {
+  it("identificação curta (title-like) NUNCA é usada como corpo, mesmo diferente do nome — cai para a description própria", () => {
     const result = resolveBodyText(
       product({ name: "Pedra 1", identificationPt: "Ágata Azul (Tingida)", description: "Quartzo com inclusões douradas." }),
       "pt",
       "Pedra 1"
     );
-    expect(result).toEqual({ text: "Ágata Azul (Tingida)", source: "identification" });
+    expect(result).toEqual({ text: "Quartzo com inclusões douradas.", source: "description" });
   });
 
-  it("identificação em EN quando existe", () => {
+  it("identificação curta (title-like) em EN, sem description própria: fica sem corpo (não mostra o nome de novo)", () => {
     const result = resolveBodyText(product({ name: "Pedra 1", identificationPt: "Ágata Azul", identificationEn: "Blue Agate" }), "en", "Stone 1");
-    expect(result).toEqual({ text: "Blue Agate", source: "identification" });
+    expect(result).toBeNull();
+  });
+
+  it("identificação descritiva longa (com ponto final, não é title-like) continua virando corpo", () => {
+    const longIdentification =
+      "Peça extraída em Minas Gerais, com lapidação artesanal e brilho vítreo acentuado, raramente encontrada nessa tonalidade.";
+    const result = resolveBodyText(product({ name: "Pedra 1", identificationPt: longIdentification }), "pt", "Pedra 1");
+    expect(result).toEqual({ text: longIdentification, source: "identification" });
   });
 
   it("corpo começando com o nome: o começo é removido (anti-duplicação)", () => {
@@ -239,6 +276,69 @@ describe("isGenericLegalNotice", () => {
       expect(isGenericLegalNotice(text)).toBe(true);
     },
   );
+});
+
+describe("isTitleLikeIdentification", () => {
+  it("texto curto sem ponto nem quebra de linha é title-like", () => {
+    expect(isTitleLikeIdentification("Cianita em Matriz")).toBe(true);
+    expect(isTitleLikeIdentification("Ágata Azul (Tingida)")).toBe(true);
+  });
+
+  it("texto com ponto final não é title-like (frase completa)", () => {
+    expect(isTitleLikeIdentification("Cianita em matriz, peça rara.")).toBe(false);
+  });
+
+  it("texto com quebra de linha não é title-like", () => {
+    expect(isTitleLikeIdentification("Cianita em Matriz\nPeça rara")).toBe(false);
+  });
+
+  it("texto com mais de 10 palavras não é title-like, mesmo sem ponto", () => {
+    expect(isTitleLikeIdentification("Uma peça de cianita azul em matriz com brilho intenso e lapidação natural rara")).toBe(false);
+  });
+
+  it("texto vazio não é title-like", () => {
+    expect(isTitleLikeIdentification("   ")).toBe(false);
+  });
+});
+
+// Regressão do bug relatado pelo Felipe: peça onde ele corrige o Nome
+// depois de usar a IA como base, fazendo identificationPt/En divergir do
+// Nome — sem essa correção, o catálogo mostrava o Nome no título e, de
+// novo, a sugestão da IA (diferente) como corpo. Fixtures de
+// tests/fixtures/realIdentificationNameCases.ts (9 peças reais da
+// produção, classes a/b/c, + 1 classe "d" sintética — ver comentário no
+// fixture). Nenhuma delas tem `description` própria nestes dados, então o
+// resultado esperado é SEMPRE null: o Nome aparece uma única vez (no
+// título), nunca repetido/divergente no corpo.
+describe("resolveBodyText — anti-duplicação do nome (identificação vs. Nome editado pelo admin)", () => {
+  it.each(REAL_IDENTIFICATION_NAME_CASES.map((c) => [c.ref, c.class, c] as const))(
+    "ref=%s classe=%s: identificação title-like nunca aparece como corpo, independente da semelhança com o Nome",
+    (_ref, _class, c) => {
+      const resultPt = resolveBodyText(
+        product({ name: c.name, nameEn: c.nameEn, identificationPt: c.identificationPt, identificationEn: c.identificationEn }),
+        "pt",
+        c.name
+      );
+      expect(resultPt).toBeNull();
+
+      const resultEn = resolveBodyText(
+        product({ name: c.name, nameEn: c.nameEn, identificationPt: c.identificationPt, identificationEn: c.identificationEn }),
+        "en",
+        c.nameEn
+      );
+      expect(resultEn).toBeNull();
+    }
+  );
+
+  it("classe (d) sintética — identificação sem relação nenhuma com o Nome também não aparece como corpo", () => {
+    const c = REAL_NAME_IDENTIFICATION_CLASS_D;
+    const result = resolveBodyText(
+      product({ name: c.name, nameEn: c.nameEn, identificationPt: c.identificationPt, identificationEn: c.identificationEn }),
+      "pt",
+      c.name
+    );
+    expect(result).toBeNull();
+  });
 });
 
 describe("isPlaceholderTitle", () => {
