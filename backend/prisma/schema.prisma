@@ -108,6 +108,7 @@ model Product {
   packageHeightCm Decimal? @db.Decimal(10, 2)
 
   images ProductImage[]
+  mercadoLivreListings MercadoLivreListing[]
 
   // Posição definida pelo admin (menor = aparece primeiro no site e no
   // Excel). Não é única: lacunas e empates são tolerados; o desempate é
@@ -201,4 +202,51 @@ model ShippingRate {
 
   @@unique([zoneId, serviceName, maxWeightG])
   @@index([zoneId])
+}
+
+// Integração Mercado Livre — Fase 0 (fundação, só conexão/leitura, ver
+// lib/mercadoLivre/). Uma linha por conta vendedora do Mercado Livre
+// conectada via OAuth. accessToken/refreshToken são SEMPRE armazenados
+// cifrados (AES-256-GCM, ver lib/mercadoLivre/crypto.ts) — nunca em texto
+// puro, nunca logados.
+model MercadoLivreAccount {
+  id       String @id @default(cuid())
+  mlUserId String @unique
+  nickname String
+
+  // Ciphertext (iv + authTag + dado) em base64 — nunca o token em claro.
+  accessToken  String
+  refreshToken String
+  expiresAt    DateTime
+  scope        String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  listings MercadoLivreListing[]
+}
+
+// Vínculo entre um Product do catálogo e um anúncio publicado no Mercado
+// Livre, por conta conectada. Nesta Fase 0 não há publicação real — a tabela
+// já existe para a Fase 1 (POST /items) reaproveitar sem nova migration.
+model MercadoLivreListing {
+  id        String  @id @default(cuid())
+  accountId String
+  productId String
+  mlItemId  String?
+  status    String  @default("pending")
+  permalink String?
+  categoryId String?
+  lastSyncAt DateTime?
+  lastError  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  account MercadoLivreAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  product Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, productId])
+  @@index([accountId])
+  @@index([productId])
 }

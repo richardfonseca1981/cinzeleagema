@@ -48,6 +48,15 @@ const envSchema = z.object({
   SHIPPING_BOX_HEIGHT_CM: z.coerce.number().positive().optional().default(25),
   // Peso da embalagem vazia (gramas), somado uma vez ao peso das peças.
   SHIPPING_PACKAGING_WEIGHT_G: z.coerce.number().positive().optional().default(300),
+
+  // Mercado Livre (Fase 0 — ver lib/mercadoLivre/). Tudo opcional no boot:
+  // sem essas variáveis, as rotas /api/admin/mercadolivre respondem 503
+  // "not_configured" em vez de derrubar o servidor.
+  ML_APP_ID: z.string().optional().default(""),
+  ML_CLIENT_SECRET: z.string().optional().default(""),
+  ML_REDIRECT_URI: z.string().optional().default(""),
+  ML_ENV: z.enum(["test", "prod"]).optional().default("test"),
+  ML_TOKEN_ENC_KEY: z.string().optional().default(""),
 });
 
 export const env = envSchema.parse(process.env);
