@@ -7,7 +7,7 @@
 - Marca definitiva: Cinzel e a Gema
 - Domínio: cinzeleagema.com.br — registrado (Registro.br), mas **ainda não está no ar**: o repositório não tem nenhuma configuração de deploy (sem `vercel.json`, sem config de Railway, histórico com um único commit "setup inicial do projeto") e o próprio README lista "Deploy real em Railway (backend/DB) e Vercel (frontend)" como pendência da próxima fase, não como algo já feito
 - Repositório GitHub: `richardfonseca1981/cinzeleagema`
-- WhatsApp de contato: (14) 99608-1388 (wa.me: 5514996081388), definido pelo Felipe em 06/10/2026 e configurado na variável VITE_WHATSAPP_NUMBER da Vercel
+- WhatsApp de contato: (14) 99822-1804 (wa.me: 5514998221804), configurado na variável VITE_WHATSAPP_NUMBER da Vercel — número atualizado em 10/11/2026 (número anterior no histórico do git, branch fix/novo-whatsapp); constante correspondente no catálogo PDF em backend/src/lib/catalog/pdfPages.ts; **atualização na Vercel feita manualmente pelo cliente, fora deste repositório**
 
 ## Modelo comercial
 - Pagamento único à vista: R$ 2.000 pelo projeto completo (mesmo valor do óleo, ajustado à situação financeira do cliente)

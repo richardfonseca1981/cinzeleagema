@@ -63,13 +63,18 @@ import type { ProcessedCatalogPhoto } from "./photoLayer";
 const CATALOG_LOGO_BUFFER = Buffer.from(CATALOG_LOGO_PNG_BASE64, "base64");
 const LOGO_ASPECT = CATALOG_LOGO_WIDTH / CATALOG_LOGO_HEIGHT;
 
+// Número único de contato do catálogo — DDI 55 + DDD 14 + número.
+// PT exibe sem DDI, EN exibe com +55 (ver uso abaixo).
+const CONTACT_WHATSAPP_NUMBER = "5514998221804";
+const CONTACT_WHATSAPP_LOCAL = `(${CONTACT_WHATSAPP_NUMBER.slice(2, 4)}) ${CONTACT_WHATSAPP_NUMBER.slice(4, 9)}-${CONTACT_WHATSAPP_NUMBER.slice(9)}`;
+
 const LABELS = {
   pt: {
     coverTitle: "Catálogo",
     coverBrand: "O Cinzel e a Gema",
     generatedOn: (date: string) => `Gerado em ${date}`,
     contactTitle: "Contato",
-    contactWhatsapp: "WhatsApp: (14) 99608-1388",
+    contactWhatsapp: `WhatsApp: ${CONTACT_WHATSAPP_LOCAL}`,
     contactSite: "cinzeleagema.com.br",
     legalNoticeHeading: "Avisos importantes",
     priceOnRequest: "Consulte o valor",
@@ -84,7 +89,7 @@ const LABELS = {
     coverBrand: "O Cinzel e a Gema",
     generatedOn: (date: string) => `Generated on ${date}`,
     contactTitle: "Contact",
-    contactWhatsapp: "WhatsApp: +55 (14) 99608-1388",
+    contactWhatsapp: `WhatsApp: +55 ${CONTACT_WHATSAPP_LOCAL}`,
     contactSite: "cinzeleagema.com.br",
     legalNoticeHeading: "Important notices",
     priceOnRequest: "Price on request",
