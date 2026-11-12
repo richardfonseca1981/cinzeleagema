@@ -4,5 +4,9 @@
 
 html {
   scroll-behavior: smooth;
-  scroll-padding-top: 80px;
+  /* Cabeçalho (~80px) + tarja do grupo de WhatsApp (até 40px) — ambos
+     sticky/empilhados no topo (ver PublicHeader.tsx). Com a tarja fechada
+     (sessionStorage), a rolagem fica ~40px além do necessário: cosmético,
+     não é um bug. */
+  scroll-padding-top: 120px;
 }

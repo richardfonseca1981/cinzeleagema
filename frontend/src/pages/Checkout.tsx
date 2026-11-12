@@ -24,6 +24,7 @@ import {
 import type { ShippingQuoteRequest, TechnicalCause } from "../lib/shipping/types";
 import { buildWhatsAppMessage } from "../lib/shipping/whatsappMessage";
 import { OrderSummary } from "../components/shipping/OrderSummary";
+import { WhatsAppGroupLink } from "../components/landing/WhatsAppGroupLink";
 import { useExchangeRate, useExchangeRateInfo } from "../lib/exchangeRate";
 import { isRateApproximate } from "../lib/exchangeRateQuality";
 import { normalizePhone, sanitizePhoneInput } from "../lib/phone";
@@ -249,6 +250,7 @@ export function Checkout() {
           >
             {t("checkout.backToCatalog")}
           </button>
+          <WhatsAppGroupLink className="mt-4 inline-flex items-center justify-center gap-2 text-sm font-medium text-[#C78F50] transition hover:text-[#B37D3F]" />
         </div>
         <WhatsAppFloatingButton whatsappHref={WHATSAPP_HREF} />
       </div>

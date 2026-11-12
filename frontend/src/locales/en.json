@@ -256,6 +256,12 @@
   "whatsapp": {
     "ariaLabel": "Chat on WhatsApp"
   },
+  "whatsappGroup": {
+    "cta": "Join our exclusive offers group",
+    "marqueeMessage": "Join our exclusive offers group on WhatsApp • News and pieces before everyone else • Click to join",
+    "marqueeAriaLabel": "Join our exclusive offers WhatsApp group (opens in a new tab)",
+    "marqueeCloseAriaLabel": "Close the WhatsApp offers group announcement"
+  },
   "cartButton": {
     "ariaLabel": "View my order"
   },
