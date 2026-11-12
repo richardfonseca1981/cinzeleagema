@@ -256,6 +256,12 @@
   "whatsapp": {
     "ariaLabel": "Falar no WhatsApp"
   },
+  "whatsappGroup": {
+    "cta": "Entre no grupo de ofertas exclusivas",
+    "marqueeMessage": "Entre no nosso grupo de ofertas exclusivas no WhatsApp • Novidades e peças antes de todo mundo • Clique e participe",
+    "marqueeAriaLabel": "Entrar no grupo de ofertas exclusivas no WhatsApp (abre em nova aba)",
+    "marqueeCloseAriaLabel": "Fechar aviso do grupo de ofertas no WhatsApp"
+  },
   "cartButton": {
     "ariaLabel": "Ver meu pedido"
   },

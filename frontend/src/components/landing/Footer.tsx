@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { FacebookIcon, InstagramIcon, LinkedinIcon, MailIcon, MapPinIcon, WhatsAppIcon } from "./icons";
+import { WhatsAppGroupLink } from "./WhatsAppGroupLink";
 
 export function Footer({
   whatsappHref,
@@ -48,6 +49,9 @@ export function Footer({
                   </a>
                 </li>
               )}
+              <li>
+                <WhatsAppGroupLink className="flex items-center gap-2 hover:text-white" />
+              </li>
               {contactEmail && (
                 <li>
                   <a href={`mailto:${contactEmail}`} className="flex items-center gap-2 hover:text-white">

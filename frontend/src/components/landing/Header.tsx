@@ -68,7 +68,9 @@ export function Header({ onOpenContact }: { onOpenContact: () => void }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#00020C]">
+    // Posicionamento (sticky/z-index) fica no wrapper de PublicHeader, que
+    // também contém a tarja do grupo de WhatsApp acima deste cabeçalho.
+    <header className="border-b border-white/10 bg-[#00020C]">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-2 lg:py-3">
         <a href="/#home" className="flex items-center">
           <img src={logo} alt={t("header.logoAlt")} className="h-12 w-auto object-contain lg:h-14" />
