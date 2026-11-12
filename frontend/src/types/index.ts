@@ -298,3 +298,13 @@ export interface CatalogOptionsCategory {
   name: string;
   count: number;
 }
+
+// GET/DELETE /api/admin/mercadolivre/* (Fase 0 — conexão/leitura, sem
+// publicação de anúncio ainda). `connected: false` não traz os demais campos.
+export interface MercadoLivreStatus {
+  connected: boolean;
+  mlUserId?: string;
+  nickname?: string;
+  expiresAt?: string;
+  scope?: string;
+}

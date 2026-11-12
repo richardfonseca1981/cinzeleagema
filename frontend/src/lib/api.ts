@@ -12,6 +12,7 @@ import type {
   ColorEnhanceLevel,
   CreateOrderResult,
   IdentificationProposal,
+  MercadoLivreStatus,
   PhotoTreatmentPreviewResult,
   PhotoTreatmentRawPreviewResult,
   Product,
@@ -37,7 +38,12 @@ class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+// `skipAuthRedirect`: usado pela página de callback do Mercado Livre, que
+// precisa mostrar sua própria mensagem de "sessão expirada" (com um link
+// para logar de novo) em vez do redirecionamento forçado e imediato para
+// /admin — que aconteceria ANTES do catch da página rodar e apagaria a
+// mensagem antes do usuário conseguir lê-la.
+async function request<T>(path: string, options: RequestInit = {}, config: { skipAuthRedirect?: boolean } = {}): Promise<T> {
   const session = getSession();
 
   const res = await fetch(`${API_URL}${path}`, {
@@ -51,7 +57,9 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (res.status === 401) {
     clearSession();
-    window.location.href = "/admin";
+    if (!config.skipAuthRedirect) {
+      window.location.href = "/admin";
+    }
     throw new ApiError(401, "Sessão expirada");
   }
 
@@ -201,6 +209,17 @@ export const api = {
   createCatalogJob: (data: CatalogJobRequest) =>
     request<{ id: string }>("/api/admin/catalog/jobs", { method: "POST", body: JSON.stringify(data) }),
   getCatalogJob: (id: string) => request<CatalogJobStatusResponse>(`/api/admin/catalog/jobs/${id}`),
+
+  // Mercado Livre (Fase 0 — conexão/leitura, sem publicação de anúncio).
+  getMercadoLivreStatus: () => request<MercadoLivreStatus>("/api/admin/mercadolivre/status"),
+  connectMercadoLivre: () => request<{ url: string; state: string }>("/api/admin/mercadolivre/connect"),
+  // `code`/`state` chegam crus da querystring da página de callback — vão
+  // via URLSearchParams para escapar corretamente.
+  handleMercadoLivreCallback: (code: string, state: string) => {
+    const query = new URLSearchParams({ code, state });
+    return request<MercadoLivreStatus>(`/api/admin/mercadolivre/callback?${query.toString()}`, {}, { skipAuthRedirect: true });
+  },
+  disconnectMercadoLivre: () => request<void>("/api/admin/mercadolivre/disconnect", { method: "DELETE" }),
 };
 
 // Versão stateless do tratamento por IA, para fotos staged (sem productId/

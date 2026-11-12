@@ -335,5 +335,47 @@
     "proceed": {
       "calculateFirst": "Calcule o frete para continuar."
     }
+  },
+  "mercadoLivreAdmin": {
+    "nav": "Mercado Livre",
+    "title": "Mercado Livre",
+    "subtitle": "Conexão da conta do Mercado Livre para leitura de anúncios (Fase 0 — ainda sem publicação).",
+    "status": {
+      "loading": "Verificando conexão...",
+      "connectedTitle": "Conectado",
+      "disconnectedTitle": "Não conectado",
+      "nickname": "Conta",
+      "expiresAt": "Token expira em",
+      "scope": "Permissões"
+    },
+    "connect": "Conectar com o Mercado Livre",
+    "connecting": "Conectando...",
+    "disconnect": "Desconectar",
+    "disconnecting": "Desconectando...",
+    "cancel": "Cancelar",
+    "disconnectConfirm": {
+      "title": "Desconectar do Mercado Livre?",
+      "message": "O token salvo desta conta será removido. Você pode reconectar quando quiser.",
+      "confirm": "Desconectar"
+    },
+    "errors": {
+      "connect": "Não foi possível iniciar a conexão com o Mercado Livre",
+      "status": "Não foi possível carregar o status da conexão com o Mercado Livre",
+      "disconnect": "Não foi possível desconectar a conta do Mercado Livre"
+    },
+    "toasts": {
+      "disconnected": "Conta do Mercado Livre desconectada"
+    },
+    "callback": {
+      "title": "Conectando ao Mercado Livre",
+      "connecting": "Conectando sua conta do Mercado Livre...",
+      "success": "Conta conectada com sucesso!",
+      "successDetail": "Conta \"{{nickname}}\" conectada.",
+      "missingCode": "Link de retorno inválido — parâmetros ausentes.",
+      "genericError": "Não foi possível concluir a conexão com o Mercado Livre.",
+      "backToPanel": "Voltar para o painel",
+      "sessionExpired": "Sua sessão expirou. Faça login novamente e clique em \"Conectar com o Mercado Livre\" para reiniciar a conexão.",
+      "loginAgain": "Fazer login novamente"
+    }
   }
 }

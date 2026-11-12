@@ -1,11 +1,20 @@
 import { FormEvent, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import logo from "../assets/logo-topo.webp";
 import { api, ApiError } from "../lib/api";
 import { getSession, setSession } from "../lib/auth";
 
+// Só aceita ?returnTo= apontando para dentro do admin (prefixo "/admin/") —
+// vem de ProtectedRoute/api.ts e é controlável pela URL, então validar o
+// prefixo evita um open redirect para um domínio/path arbitrário.
+function sanitizeReturnTo(raw: string | null): string {
+  if (raw && raw.startsWith("/admin/")) return raw;
+  return "/admin/produtos";
+}
+
 export function Login() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -14,8 +23,9 @@ export function Login() {
   useEffect(() => {
     document.title = "Cinzel e a Gema Admin";
     if (getSession()) {
-      navigate("/admin/produtos", { replace: true });
+      navigate(sanitizeReturnTo(searchParams.get("returnTo")), { replace: true });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
   async function handleSubmit(e: FormEvent) {
@@ -25,7 +35,7 @@ export function Login() {
     try {
       const session = await api.login(username, password);
       setSession(session);
-      navigate("/admin/produtos");
+      navigate(sanitizeReturnTo(searchParams.get("returnTo")));
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         setError("Usuário ou senha incorretos");

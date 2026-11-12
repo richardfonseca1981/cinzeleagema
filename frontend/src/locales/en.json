@@ -352,5 +352,47 @@
     "proceed": {
       "calculateFirst": "Calculate shipping to continue."
     }
+  },
+  "mercadoLivreAdmin": {
+    "nav": "Mercado Livre",
+    "title": "Mercado Livre",
+    "subtitle": "Mercado Livre account connection for reading listings (Phase 0 — no publishing yet).",
+    "status": {
+      "loading": "Checking connection...",
+      "connectedTitle": "Connected",
+      "disconnectedTitle": "Not connected",
+      "nickname": "Account",
+      "expiresAt": "Token expires at",
+      "scope": "Permissions"
+    },
+    "connect": "Connect with Mercado Livre",
+    "connecting": "Connecting...",
+    "disconnect": "Disconnect",
+    "disconnecting": "Disconnecting...",
+    "cancel": "Cancel",
+    "disconnectConfirm": {
+      "title": "Disconnect from Mercado Livre?",
+      "message": "The saved token for this account will be removed. You can reconnect anytime.",
+      "confirm": "Disconnect"
+    },
+    "errors": {
+      "connect": "Could not start the connection with Mercado Livre",
+      "status": "Could not load the Mercado Livre connection status",
+      "disconnect": "Could not disconnect the Mercado Livre account"
+    },
+    "toasts": {
+      "disconnected": "Mercado Livre account disconnected"
+    },
+    "callback": {
+      "title": "Connecting to Mercado Livre",
+      "connecting": "Connecting your Mercado Livre account...",
+      "success": "Account connected successfully!",
+      "successDetail": "Account \"{{nickname}}\" connected.",
+      "missingCode": "Invalid return link — missing parameters.",
+      "genericError": "Could not complete the connection with Mercado Livre.",
+      "backToPanel": "Back to the panel",
+      "sessionExpired": "Your session has expired. Log in again and click \"Connect with Mercado Livre\" to restart the connection.",
+      "loginAgain": "Log in again"
+    }
   }
 }
