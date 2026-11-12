@@ -23,7 +23,11 @@ veja [O que falta para a próxima fase](#o-que-falta-para-a-próxima-fase).
   Python (`rembg`, FastAPI, Docker) para remoção de fundo — ver
   [Tratamento de foto por IA](#tratamento-de-foto-por-ia)
 - **Testes**: Vitest + Supertest (backend)
-- **Deploy alvo** (não configurado nesta fase): Railway (backend/DB) + Vercel (frontend)
+- **Deploy**: Railway (backend/DB) + Vercel (frontend) — já no ar em
+  `www.cinzeleagema.com.br` (o apex `cinzeleagema.com.br` redireciona 308
+  para o `www`); configuração feita direto nos painéis da Vercel/Railway,
+  fora deste repositório (sem `railway.json`; `vercel.json` só tem o
+  rewrite da SPA e, a partir da Rodada 1 de SEO, o rewrite de `/sitemap.xml`)
 
 ## Estrutura
 
@@ -365,8 +369,6 @@ impacto na estrutura de dados ou na API.
 - Exibição de timestamps em horário de Brasília no frontend (hoje a API
   retorna UTC cru; a conversão para BRT na exibição fica para quando houver
   telas voltadas ao cliente final)
-- Deploy real em Railway (backend/DB) e Vercel (frontend) — infraestrutura
-  ainda não configurada, só prevista no design
 
 ## Problemas conhecidos
 

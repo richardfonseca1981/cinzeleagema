@@ -48,6 +48,11 @@ const envSchema = z.object({
   SHIPPING_BOX_HEIGHT_CM: z.coerce.number().positive().optional().default(25),
   // Peso da embalagem vazia (gramas), somado uma vez ao peso das peças.
   SHIPPING_PACKAGING_WEIGHT_G: z.coerce.number().positive().optional().default(300),
+
+  // Base das URLs absolutas do sitemap público (ver routes/sitemap.routes.ts)
+  // — sempre o host com "www", mesmo domínio do <link rel="canonical"> do
+  // frontend (VITE_SITE_URL). Sem barra final.
+  PUBLIC_SITE_URL: z.string().optional().default("https://www.cinzeleagema.com.br"),
 });
 
 export const env = envSchema.parse(process.env);

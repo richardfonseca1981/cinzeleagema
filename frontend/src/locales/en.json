@@ -352,5 +352,20 @@
     "proceed": {
       "calculateFirst": "Calculate shipping to continue."
     }
+  },
+  "seo": {
+    "home": {
+      "title": "Cinzel e a Gema — Gemstones",
+      "description": "Cinzel e a Gema — curation and sale of gemstones, focused on quality and provenance."
+    },
+    "catalog": {
+      "title": "Gemstone catalog — Cinzel e a Gema",
+      "description": "Browse the full gemstone catalog from Cinzel e a Gema: weight, size, category and availability for each piece."
+    },
+    "product": {
+      "titleSuffix": "Cinzel e a Gema",
+      "description": "{{name}} — gemstone for sale at Cinzel e a Gema.",
+      "descriptionWithMeasurements": "{{name}} — gemstone for sale at Cinzel e a Gema. Weight and size: {{weightSize}}."
+    }
   }
 }

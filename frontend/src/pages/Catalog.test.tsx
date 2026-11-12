@@ -182,4 +182,15 @@ describe("Catalog — busca", () => {
     await waitFor(() => expect(screen.getByTestId("location-display")).toHaveTextContent("/catalogo"));
     await waitFor(() => expect(screen.getByTestId("location-display")).not.toHaveTextContent("q="));
   });
+
+  it("define title, description e canonical próprios da rota /catalogo, diferentes da home", async () => {
+    renderCatalog();
+    await screen.findByText("Ametista Grande");
+
+    expect(document.title).toBe("Catálogo de pedras preciosas — Cinzel e a Gema");
+    expect(document.title).not.toBe("Cinzel e a Gema — Pedras Preciosas");
+    expect(document.querySelector('link[rel="canonical"]')?.getAttribute("href")).toBe(
+      "https://www.cinzeleagema.com.br/catalogo"
+    );
+  });
 });

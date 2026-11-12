@@ -1,5 +1,6 @@
 {
   "rewrites": [
+    { "source": "/sitemap.xml", "destination": "https://cinzeleagema-production.up.railway.app/api/sitemap.xml" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

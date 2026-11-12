@@ -42,7 +42,9 @@ const CATEGORY_DIVIDER_MIN_CATEGORIES = 2;
 // (export Excel, ProductCard do site). Mantive a regra literal (<=1, inclui
 // 0) porque foi isso que foi pedido, mas é uma divergência do padrão
 // estabelecido em outro lugar — avisar se não era essa a intenção.
-const PLACEHOLDER_PRICE_MAX = 1;
+// Exportado: reaproveitado pelo sitemap público (ver lib/sitemapEligibility.ts)
+// para usar a MESMA regra de preço provisório, em vez de duplicar o valor.
+export const PLACEHOLDER_PRICE_MAX = 1;
 
 export interface GenerateCatalogPdfOptions {
   // Sem productIds: todas as peças (ativas por padrão — ver includeInactive).

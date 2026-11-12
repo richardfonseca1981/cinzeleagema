@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api, ApiError } from "../lib/api";
 import type { Product } from "../types";
 import { PublicHeader } from "../components/landing/PublicHeader";
 import { WhatsAppFloatingButton } from "../components/landing/WhatsAppFloatingButton";
+import { Seo } from "../components/Seo";
 import { formatPrice, formatWeightSize, localizeCategoryName, localizeProductName, localizeText } from "../lib/format";
 import { WHATSAPP_HREF, buildPriceInquiryHref } from "../lib/whatsapp";
 import { useCart } from "../lib/cart";
@@ -15,11 +16,13 @@ import { galleryItemsFromImages } from "../lib/gallery";
 
 export function ProductDetail() {
   const { t, i18n } = useTranslation();
-  const { id } = useParams();
+  const { slugComId } = useParams();
+  const navigate = useNavigate();
   const { addItem } = useCart();
   const { showToast } = useToast();
   const exchangeRate = useExchangeRate();
   const [product, setProduct] = useState<Product | null>(null);
+  const [canonicalSlug, setCanonicalSlug] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -32,16 +35,30 @@ export function ProductDetail() {
   const price = product?.price ?? null;
   const priceInquiryHref = price === null ? buildPriceInquiryHref(t("priceInquiry.message", { name: displayName })) : null;
 
+  // Busca SEMPRE pelo sufixo do id (ver api.getProductBySlug) — atende tanto
+  // o slug novo quanto a URL antiga (cuid puro). Quando o parâmetro da URL
+  // não bate com o canonicalSlug devolvido (peça renomeada depois do link
+  // ser compartilhado, ou link antigo por id), redireciona em vez de
+  // renderizar: evita indexar/mostrar duas URLs para a mesma peça.
   useEffect(() => {
-    if (!id) return;
+    if (!slugComId) return;
+    setLoading(true);
+    setNotFound(false);
     api
-      .getProduct(id)
-      .then(setProduct)
+      .getProductBySlug(slugComId)
+      .then(({ product, canonicalSlug }) => {
+        if (slugComId.toLowerCase() !== canonicalSlug) {
+          navigate(`/catalogo/${canonicalSlug}`, { replace: true });
+          return;
+        }
+        setProduct(product);
+        setCanonicalSlug(canonicalSlug);
+      })
       .catch((err) => {
         if (err instanceof ApiError && err.status === 404) setNotFound(true);
       })
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [slugComId, navigate]);
 
   function handleAdd() {
     if (!product || price === null) return;
@@ -63,6 +80,17 @@ export function ProductDetail() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#1A1A1A]">
+      {product && canonicalSlug && (
+        <Seo
+          title={`${displayName} — ${t("seo.product.titleSuffix")}`}
+          description={
+            weightSize
+              ? t("seo.product.descriptionWithMeasurements", { name: displayName, weightSize })
+              : t("seo.product.description", { name: displayName })
+          }
+          path={`/catalogo/${canonicalSlug}`}
+        />
+      )}
       <PublicHeader />
       <div className="mx-auto max-w-4xl px-4 py-8">
         <Link to="/catalogo" className="text-sm font-medium text-[#5F84BA] hover:underline">
