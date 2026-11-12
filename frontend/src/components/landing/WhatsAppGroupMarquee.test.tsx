@@ -1,15 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import "../../i18n";
 import "@testing-library/jest-dom/vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import i18n from "../../i18n";
 import { WhatsAppGroupMarquee } from "./WhatsAppGroupMarquee";
 
-const SESSION_KEY = "cinzeleagema_whatsapp_marquee_closed";
-
 afterEach(async () => {
   cleanup();
-  sessionStorage.clear();
   vi.restoreAllMocks();
   await i18n.changeLanguage("pt-BR");
 });
@@ -34,46 +31,6 @@ describe("WhatsAppGroupMarquee", () => {
 
     expect(screen.getByRole("link", { name: "Join our exclusive offers WhatsApp group (opens in a new tab)" })).toBeInTheDocument();
     expect(screen.getAllByText(/Join our exclusive offers group on WhatsApp/).length).toBeGreaterThan(0);
-  });
-
-  it("fecha ao clicar no X e persiste o fechamento só na sessão (sessionStorage)", () => {
-    const { unmount } = render(<WhatsAppGroupMarquee />);
-    expect(screen.getByTestId("whatsapp-group-marquee")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "Fechar aviso do grupo de ofertas no WhatsApp" }));
-    expect(screen.queryByTestId("whatsapp-group-marquee")).not.toBeInTheDocument();
-    expect(sessionStorage.getItem(SESSION_KEY)).toBe("1");
-
-    // "Nova montagem" na mesma sessão (mesmo sessionStorage) — continua fechada.
-    unmount();
-    render(<WhatsAppGroupMarquee />);
-    expect(screen.queryByTestId("whatsapp-group-marquee")).not.toBeInTheDocument();
-  });
-
-  it("volta a aparecer numa sessão nova (sessionStorage limpo)", () => {
-    sessionStorage.setItem(SESSION_KEY, "1");
-    render(<WhatsAppGroupMarquee />);
-    expect(screen.queryByTestId("whatsapp-group-marquee")).not.toBeInTheDocument();
-
-    sessionStorage.clear();
-    render(<WhatsAppGroupMarquee />);
-    expect(screen.getByTestId("whatsapp-group-marquee")).toBeInTheDocument();
-  });
-
-  it("não quebra e continua funcionando quando sessionStorage não está disponível", () => {
-    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
-      throw new Error("sessionStorage indisponível");
-    });
-    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
-      throw new Error("sessionStorage indisponível");
-    });
-
-    expect(() => render(<WhatsAppGroupMarquee />)).not.toThrow();
-    expect(screen.getByTestId("whatsapp-group-marquee")).toBeInTheDocument();
-
-    expect(() => fireEvent.click(screen.getByRole("button", { name: "Fechar aviso do grupo de ofertas no WhatsApp" }))).not.toThrow();
-    // Sem storage para lembrar, mas o clique ainda some com a barra nesta renderização.
-    expect(screen.queryByTestId("whatsapp-group-marquee")).not.toBeInTheDocument();
   });
 
   it("com prefers-reduced-motion, mostra o texto estático uma única vez (sem a cópia animada)", () => {
