@@ -15,4 +15,5 @@ if (process.env.TEST_DATABASE_URL) {
 process.env.ML_APP_ID ||= "1234567890123456";
 process.env.ML_CLIENT_SECRET ||= "test-client-secret";
 process.env.ML_REDIRECT_URI ||= "https://admin.cinzeleagema.com.br/mercadolivre/callback";
-process.env.ML_TOKEN_ENC_KEY ||= "test-encryption-passphrase-do-not-use-in-prod";
+// 32 bytes em base64 (requisito de ML_TOKEN_ENC_KEY — ver lib/mercadoLivre/crypto.ts).
+process.env.ML_TOKEN_ENC_KEY ||= "pI/QtQbMld2Mzfddx/Lxpo6/asHLEkO0+4j51YUWTx0=";

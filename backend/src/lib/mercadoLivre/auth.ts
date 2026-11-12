@@ -53,7 +53,7 @@ export function verifyOAuthState(state: string): { adminId: string } {
 
 export function buildAuthorizationUrl(adminId: string): { url: string; state: string } {
   if (!isMercadoLivreConfigured()) {
-    throw new HttpError(503, "Integração com o Mercado Livre não configurada (variáveis ML_* ausentes)");
+    throw new HttpError(503, "Integração Mercado Livre não configurada");
   }
 
   const state = createOAuthState(adminId);
@@ -87,7 +87,7 @@ async function requestToken(params: Record<string, string>): Promise<MercadoLivr
 
 export async function exchangeCodeForTokens(code: string): Promise<MercadoLivreTokenResponse> {
   if (!isMercadoLivreConfigured()) {
-    throw new HttpError(503, "Integração com o Mercado Livre não configurada (variáveis ML_* ausentes)");
+    throw new HttpError(503, "Integração Mercado Livre não configurada");
   }
   return requestToken({
     grant_type: "authorization_code",

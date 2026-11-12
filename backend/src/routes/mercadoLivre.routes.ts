@@ -11,6 +11,7 @@ import {
   upsertAccountFromTokens,
   verifyOAuthState,
 } from "../lib/mercadoLivre/auth";
+import { isMercadoLivreConfigured } from "../lib/mercadoLivre/crypto";
 
 // Fase 0: só conexão/leitura, nenhuma publicação de anúncio. Todas as rotas
 // exigem admin (requireAuth) — inclusive /callback: o ML_REDIRECT_URI deve
@@ -21,6 +22,18 @@ import {
 // requireAuth em todas as rotas, como pedido.
 export const mercadoLivreRouter = Router();
 mercadoLivreRouter.use(requireAuth);
+
+// Produção hoje não tem nenhuma variável ML_* — o boot do backend não pode
+// depender delas (ver lib/env.ts). A validação só acontece aqui, quando uma
+// rota do Mercado Livre é de fato chamada: sem isso, toda rota responde 503
+// de forma uniforme em vez de cada handler reimplementar a checagem (ou,
+// pior, vazar um 200/204 "vazio" por nunca existir conta no banco).
+mercadoLivreRouter.use((_req, _res, next) => {
+  if (!isMercadoLivreConfigured()) {
+    throw new HttpError(503, "Integração Mercado Livre não configurada");
+  }
+  next();
+});
 
 function serializeAccount(account: { mlUserId: string; nickname: string; expiresAt: Date; scope: string }) {
   return {

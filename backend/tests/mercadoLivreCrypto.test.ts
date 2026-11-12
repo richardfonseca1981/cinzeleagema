@@ -47,4 +47,56 @@ describe("mercadoLivre crypto", () => {
     expect(() => fresh.encryptToken("x")).toThrow(/ML_TOKEN_ENC_KEY/);
     expect(fresh.isMercadoLivreConfigured()).toBe(false);
   });
+
+  it("lança erro claro quando ML_TOKEN_ENC_KEY não decodifica para 32 bytes", async () => {
+    vi.resetModules();
+    vi.doMock("../src/lib/env", () => ({
+      env: {
+        ML_TOKEN_ENC_KEY: "fnPzj1qfOZYNDpAo2474DQ==", // 16 bytes, não 32
+        ML_APP_ID: "x",
+        ML_CLIENT_SECRET: "x",
+        ML_REDIRECT_URI: "x",
+      },
+    }));
+
+    const fresh = await import("../src/lib/mercadoLivre/crypto");
+    expect(() => fresh.encryptToken("x")).toThrow(/32 bytes/);
+    // Nunca expor o valor da chave na mensagem de erro.
+    try {
+      fresh.encryptToken("x");
+    } catch (err) {
+      expect(String((err as Error).message)).not.toContain("fnPzj1qfOZYNDpAo2474DQ");
+    }
+  });
+
+  it("lança erro claro quando ML_TOKEN_ENC_KEY não é base64 válido", async () => {
+    vi.resetModules();
+    vi.doMock("../src/lib/env", () => ({
+      env: {
+        ML_TOKEN_ENC_KEY: "isso não é base64 !!! @@@",
+        ML_APP_ID: "x",
+        ML_CLIENT_SECRET: "x",
+        ML_REDIRECT_URI: "x",
+      },
+    }));
+
+    const fresh = await import("../src/lib/mercadoLivre/crypto");
+    expect(() => fresh.encryptToken("x")).toThrow(/base64/);
+  });
+
+  it("round-trip funciona com uma chave de exatamente 32 bytes em base64", async () => {
+    vi.resetModules();
+    vi.doMock("../src/lib/env", () => ({
+      env: {
+        ML_TOKEN_ENC_KEY: "pI/QtQbMld2Mzfddx/Lxpo6/asHLEkO0+4j51YUWTx0=",
+        ML_APP_ID: "x",
+        ML_CLIENT_SECRET: "x",
+        ML_REDIRECT_URI: "x",
+      },
+    }));
+
+    const fresh = await import("../src/lib/mercadoLivre/crypto");
+    const encrypted = fresh.encryptToken("valor-secreto");
+    expect(fresh.decryptToken(encrypted)).toBe("valor-secreto");
+  });
 });
