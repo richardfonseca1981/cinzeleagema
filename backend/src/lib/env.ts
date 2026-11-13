@@ -57,6 +57,13 @@ const envSchema = z.object({
   ML_REDIRECT_URI: z.string().optional().default(""),
   ML_ENV: z.enum(["test", "prod"]).optional().default("test"),
   ML_TOKEN_ENC_KEY: z.string().optional().default(""),
+
+  // Base da URL pública de produto usada no CSV do script de auditoria do
+  // Mercado Livre (ver scripts/auditMercadoLivre.ts, coluna url_publica) —
+  // mesmo host do <link rel="canonical"> do frontend (VITE_SITE_URL),
+  // sempre com "www" e sem barra final. Opcional: o código já usa este
+  // valor como padrão.
+  PUBLIC_SITE_URL: z.string().optional().default("https://www.cinzeleagema.com.br"),
 });
 
 export const env = envSchema.parse(process.env);
