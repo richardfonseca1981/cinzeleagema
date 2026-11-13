@@ -39,6 +39,13 @@ async function extractPageTexts(buffer: Buffer): Promise<string[]> {
   return result.pages.map((page) => normalizeWhitespace(page.text));
 }
 
+// Heading exato (com os dois-pontos) da página de informações — usado em vez
+// da substring "Curadoria Exclusiva" sozinha nos testes que checam
+// ausência/posição exata: essa frase também aparece dentro do rodapé de
+// QUALQUER página de peça desde o ajuste do rodapé (FIX CATÁLOGO/RODAPÉ),
+// então a substring sozinha daria falso positivo numa página de peça.
+const INFO_PAGE_HEADING_PT = "Curadoria Exclusiva – Exemplar Único:";
+
 const syntheticJpeg = (w: number, h: number, color: { r: number; g: number; b: number }) =>
   sharp({ create: { width: w, height: h, channels: 3, background: color } })
     .jpeg()
@@ -257,14 +264,19 @@ describe("generateCatalogPdf", () => {
 
       expect(pages).toHaveLength(4); // capa + informações + 2 peças
       expect(pages[0]).toContain("Catálogo");
-      expect(pages[1]).toContain("Curadoria Exclusiva");
+      expect(pages[1]).toContain(INFO_PAGE_HEADING_PT);
       expect(pages[2]).toContain("Peça Um");
       expect(pages[3]).toContain("Peça Dois");
 
-      // Última página é a última peça — a página de informações (com
-      // "Contato"/"Curadoria Exclusiva") não aparece mais no fim do catálogo.
+      // Última página é a última peça — o HEADING da página de informações
+      // ("Contato"/"Curadoria Exclusiva – Exemplar Único:") não aparece mais
+      // no fim do catálogo. Checar pelo heading completo (com dois-pontos),
+      // não a substring "Curadoria Exclusiva" sozinha — essa frase também
+      // aparece dentro do rodapé de QUALQUER página de peça desde o ajuste
+      // do rodapé (FIX CATÁLOGO/RODAPÉ), então a substring sozinha daria
+      // falso positivo na última página de peça.
       const lastPage = pages[pages.length - 1];
-      expect(lastPage).not.toContain("Curadoria Exclusiva");
+      expect(lastPage).not.toContain(INFO_PAGE_HEADING_PT);
       expect(lastPage).not.toContain("Contato");
     });
 
@@ -279,22 +291,59 @@ describe("generateCatalogPdf", () => {
 
       const pages = await extractPageTexts(result.buffer);
       expect(pages[0]).toContain("Catálogo");
-      expect(pages[1]).toContain("Curadoria Exclusiva");
+      expect(pages[1]).toContain(INFO_PAGE_HEADING_PT);
 
-      // A página de informações nunca aparece depois da capa — só a 2ª.
-      const infoPageIndex = pages.findIndex((text) => text.includes("Curadoria Exclusiva"));
+      // A página de informações (o heading, não a menção no rodapé de
+      // qualquer peça) nunca aparece depois da capa — só a 2ª.
+      const infoPageIndex = pages.findIndex((text) => text.includes(INFO_PAGE_HEADING_PT));
       expect(infoPageIndex).toBe(1);
     });
 
-    it("includeContactPage=false: sem a página de informações, mesmo o texto novo de curadoria, em nenhuma posição", async () => {
+    it("includeContactPage=false: sem a página de informações, mesmo o heading novo de curadoria, em nenhuma posição", async () => {
       await createProduct({ name: "Peça", sku: "INFO-OFF", price: 10 });
       const result = await generateCatalogPdf({ language: "pt", includeContactPage: false });
       const pages = await extractPageTexts(result.buffer);
       const fullText = pages.join("\n");
 
       expect(pages).toHaveLength(2); // capa + 1 peça, sem informações
-      expect(fullText).not.toContain("Curadoria Exclusiva");
+      expect(fullText).not.toContain(INFO_PAGE_HEADING_PT);
       expect(fullText).not.toContain("Contato");
+    });
+  });
+
+  describe("linha de rodapé da página de peça (FIX CATÁLOGO/RODAPÉ — a pedido do Felipe)", () => {
+    // Não existe, em nenhum lugar do código, um modo de gerar o catálogo
+    // SEM capa (drawCoverPage é chamado incondicionalmente, sempre como a
+    // 1ª página) — conferido antes de escrever o texto novo. Por isso o
+    // rodapé pode citar "página 2"/"page 2" diretamente, sem precisar de uma
+    // variante sem número de página.
+    it("PT: toda página de peça traz o novo texto do rodapé, com 'página 2'; o texto antigo não aparece em nenhuma página", async () => {
+      await createProduct({ name: "Peça Um", sku: "FOOT-PT-1", price: 10 });
+      await createProduct({ name: "Peça Dois", sku: "FOOT-PT-2", price: 20 });
+
+      const result = await generateCatalogPdf({ language: "pt" });
+      const pages = await extractPageTexts(result.buffer);
+      const fullText = pages.join("\n");
+
+      // páginas 3 e 4 são as duas peças (capa + informações + 2 peças).
+      expect(pages[2]).toContain("Peça natural e única — veja a Curadoria Exclusiva na página 2.");
+      expect(pages[3]).toContain("Peça natural e única — veja a Curadoria Exclusiva na página 2.");
+
+      expect(fullText).not.toContain("ver avisos importantes na página de contato");
+    });
+
+    it("EN: toda página de peça traz o novo texto do rodapé, com 'page 2'; o texto antigo não aparece em nenhuma página", async () => {
+      await createProduct({ name: "Piece One", sku: "FOOT-EN-1", price: 10 });
+      await createProduct({ name: "Piece Two", sku: "FOOT-EN-2", price: 20 });
+
+      const result = await generateCatalogPdf({ language: "en" });
+      const pages = await extractPageTexts(result.buffer);
+      const fullText = pages.join("\n");
+
+      expect(pages[2]).toContain("Natural, one-of-a-kind piece — see Exclusive Curation on page 2.");
+      expect(pages[3]).toContain("Natural, one-of-a-kind piece — see Exclusive Curation on page 2.");
+
+      expect(fullText).not.toContain("see important notices on the contact page");
     });
   });
 

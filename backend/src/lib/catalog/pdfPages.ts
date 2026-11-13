@@ -81,7 +81,7 @@ const LABELS = {
     ref: "Ref:",
     specWeight: "Peso:",
     specSize: "Tamanho:",
-    legalLine: "Peça natural — ver avisos importantes na página de contato.",
+    legalLine: "Peça natural e única — veja a Curadoria Exclusiva na página 2.",
     pieces: (n: number) => `${n} ${n === 1 ? "peça" : "peças"}`,
   },
   en: {
@@ -96,7 +96,7 @@ const LABELS = {
     ref: "Ref:",
     specWeight: "Weight:",
     specSize: "Size:",
-    legalLine: "Natural piece — see important notices on the contact page.",
+    legalLine: "Natural, one-of-a-kind piece — see Exclusive Curation on page 2.",
     pieces: (n: number) => `${n} ${n === 1 ? "piece" : "pieces"}`,
   },
 } as const satisfies Record<CatalogLanguage, Record<string, unknown>>;
@@ -595,8 +595,9 @@ export function drawProductPage(doc: PDFKit.PDFDocument, options: ProductPageOpt
     }
   }
 
-  // --- Aviso legal de uma linha (sempre, se couber — ver AJUSTES VISUAIS
-  // item 3: o aviso completo mora só na página de contato). ---
+  // --- Linha curta de rodapé (sempre, se couber — ver AJUSTES VISUAIS item
+  // 3): aponta para a página de informações (página 2, ver FIX CATÁLOGO/
+  // PÁGINA DE INFORMAÇÕES), onde mora o texto completo de curadoria. ---
   doc
     .font("opensans-italic")
     .fontSize(LEGAL_LINE_FONT_SIZE)
