@@ -254,6 +254,20 @@ export async function generateCatalogPdf(options: GenerateCatalogPdfOptions): Pr
   pageCount++;
   drawCoverPage(doc, { language, generatedAt });
 
+  // Página de informações (logo, WhatsApp, site, texto de curadoria) — movida
+  // para a 2ª posição (FIX CATÁLOGO/PÁGINA DE INFORMAÇÕES, a pedido do
+  // Felipe); antes era a última página do catálogo. drawContactPage desenha
+  // a MESMA página inteira (nunca separada em duas), só a posição mudou —
+  // ver pdfPages.ts para o conteúdo. Com isso, o catálogo passa a terminar
+  // na última página de peça (ou no divisor de categoria, se a última
+  // categoria ficar sem nenhuma peça com foto — caso que não ocorre na
+  // prática, já que groupProductsByCategory só cria grupos com itens).
+  if (includeContactPage) {
+    doc.addPage();
+    pageCount++;
+    drawContactPage(doc, { language });
+  }
+
   // Passo 1: resolve título/descrição/avisos/dados-faltando e calcula o
   // layout do painel (ver pdfPages.ts computeProductPanelLayout) para TODAS
   // as peças de uma vez — pura medição de texto, sem I/O, então não precisa
@@ -346,12 +360,6 @@ export async function generateCatalogPdf(options: GenerateCatalogPdfOptions): Pr
       seed: result.product.id,
       layout: result.layout as ProductPanelLayout,
     });
-  }
-
-  if (includeContactPage) {
-    doc.addPage();
-    pageCount++;
-    drawContactPage(doc, { language });
   }
 
   doc.end();

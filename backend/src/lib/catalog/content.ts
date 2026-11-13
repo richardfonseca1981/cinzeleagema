@@ -1,5 +1,3 @@
-import { CATALOG_LEGAL_NOTICE } from "./pdfPages";
-
 export type CatalogLanguage = "pt" | "en";
 
 export interface CatalogProductContent {
@@ -155,10 +153,18 @@ function stripLeadingNameRepeat(text: string, title: string): string | null {
 
 // Muitas peças (sobretudo as de importação em lote) têm, no campo
 // `description`/`descriptionEn`, só o aviso legal genérico de pedra natural
-// — o MESMO texto completo que agora vive na página de contato (ver
-// pdfPages.ts CATALOG_LEGAL_NOTICE). Mostrar esse aviso de novo, truncado, em
-// toda página de peça é repetitivo — por isso é tratado como "sem descrição
-// própria" aqui, não como uma description de verdade.
+// — texto de boilerplate conhecido nos dados reais (ver investigação
+// abaixo), DESACOPLADO de pdfPages.ts CATALOG_LEGAL_NOTICE desde o ajuste
+// "página de informações" (a pedido do Felipe): CATALOG_LEGAL_NOTICE agora
+// mostra um texto de curadoria bem diferente (e mais curto, com palavras
+// comuns como "peça"/"pedra"), que NÃO é o boilerplate procurado aqui — se
+// esta lista continuasse derivada dele, uma description real e curta como
+// "Peça lapidada." passaria a bater >=50% de sobreposição de palavras com o
+// novo parágrafo de curadoria (que também usa "peça") e seria incorretamente
+// tratada como "sem descrição própria". Detectado e corrigido durante este
+// mesmo ajuste (teste "peça com description, peso e tamanho não entra em
+// missingData" pegou a regressão). Por isso o texto abaixo é fixo, reflete
+// o boilerplate REAL que já existe no banco, não o que a página exibe hoje.
 //
 // Por quê não um simples prefixo fixo: investigação nos 109 produtos reais
 // (script __investigateNoticeVariants.ts) mostrou que o `description` (PT) é
@@ -204,7 +210,26 @@ function wordOverlapRatio(a: string, b: string): number {
   return shared / Math.min(wordsA.size, wordsB.size);
 }
 
-const KNOWN_NOTICE_PARAGRAPHS = Object.values(CATALOG_LEGAL_NOTICE)
+// Texto literal do boilerplate real encontrado no campo `description` dos
+// produtos (ver comentário acima) — NÃO é mais o que a página de
+// informações exibe (isso vive em pdfPages.ts CATALOG_LEGAL_NOTICE,
+// conteúdo independente desde o ajuste "página de informações").
+const LEGACY_DESCRIPTION_BOILERPLATE: Record<CatalogLanguage, string[]> = {
+  pt: [
+    "Por se tratar de um produto natural, cada pedra é única e pode apresentar variações de tamanho, peso, formato, tonalidade, textura e características minerais.",
+    "As medidas e o peso informados na descrição são aproximados e servem como referência, podendo apresentar pequenas diferenças entre as unidades.",
+    "A pedra recebida será de qualidade e características semelhantes às apresentadas nas imagens, porém não será necessariamente idêntica à fotografia, justamente em razão das variações naturais dos minerais e da disponibilidade em estoque.",
+    "As imagens são meramente ilustrativas e representam o padrão do produto comercializado.",
+  ],
+  en: [
+    "As a natural product, each stone is unique and may present variations in size, weight, shape, color tone, texture, and mineral characteristics.",
+    "The measurements and weight provided in the description are approximate and serve as a reference, and may present slight differences between units.",
+    "The stone received will be of quality and characteristics similar to those shown in the images, but will not necessarily be identical to the photograph, precisely due to natural variations in minerals and stock availability.",
+    "The images are merely illustrative and represent the standard of the product sold.",
+  ],
+};
+
+const KNOWN_NOTICE_PARAGRAPHS = Object.values(LEGACY_DESCRIPTION_BOILERPLATE)
   .flat()
   .map((paragraph) => normalizeForPrefixMatch(paragraph));
 

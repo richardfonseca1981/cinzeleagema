@@ -141,6 +141,13 @@ async function generateSample(language: CatalogLanguage): Promise<{ path: string
   pages++;
   drawCoverPage(doc, { language, generatedAt: new Date() });
 
+  // Página de informações na 2ª posição (FIX CATÁLOGO/PÁGINA DE
+  // INFORMAÇÕES) — mesma ordem de generateCatalogPdf.ts, para este script de
+  // amostra continuar representando o catálogo real.
+  doc.addPage();
+  pages++;
+  drawContactPage(doc, { language });
+
   const truncated: boolean[] = [];
   for (const spec of SAMPLES[language]) {
     const layout = computeProductPanelLayout(doc, {
@@ -167,10 +174,6 @@ async function generateSample(language: CatalogLanguage): Promise<{ path: string
     });
     truncated.push(layout.title.truncated);
   }
-
-  doc.addPage();
-  pages++;
-  drawContactPage(doc, { language });
 
   doc.end();
   const buffer = await finished;
