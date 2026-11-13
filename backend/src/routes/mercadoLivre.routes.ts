@@ -55,11 +55,17 @@ mercadoLivreRouter.get(
     const query = mercadoLivreSimulateQuerySchema.parse(req.query);
     const draft = buildListingDraft(product);
 
+    // markupPct: query > conta conectada > 0. Só uma leitura no banco (sem
+    // chamada à API do Mercado Livre) — funciona sem nenhuma variável ML_*
+    // configurada, igual ao resto desta rota.
+    const account = await getActiveAccount();
+    const markupPct = query.markupPct ?? (account ? Number(account.markupPct) : 0);
+
     const commissionPct = query.commissionPct ?? UNVERIFIED_DEFAULT_COMMISSION_PCT;
     const fixedFeeBRL = query.fixedFeeBRL ?? UNVERIFIED_DEFAULT_FIXED_FEE_BRL;
     const shippingCostBRL = query.shippingCostBRL ?? UNVERIFIED_DEFAULT_SHIPPING_COST_BRL;
     const price = calculateSuggestedPrice(Number(product.price), {
-      markupPct: query.markupPct,
+      markupPct,
       commissionPct,
       fixedFeeBRL,
       shippingCostBRL,

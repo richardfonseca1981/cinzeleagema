@@ -38,7 +38,7 @@ export type ListingBlockerCode =
   | "no_photos"
   | "photo_too_small";
 
-export type ListingWarningCode = "review_photo_branding";
+export type ListingWarningCode = "review_photo_branding" | "unknown_photo_dimension";
 
 export interface ListingValidationIssue<Code extends string> {
   code: Code;
@@ -57,11 +57,24 @@ function toNumberOrNull(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+// Foto "legado" sem width/height gravados (ver ProductImage.width/height no
+// schema: null em fotos antigas, "a trocar") — usado pelo validador E pelo
+// script de auditoria (contagem na coluna do CSV), para as duas fontes
+// nunca divergirem sobre o que conta como "dimensão desconhecida".
+export function hasUnknownDimension(image: ListingValidationImage): boolean {
+  return image.width === null || image.height === null;
+}
+
+export function countUnknownDimensionPhotos(images: ListingValidationImage[]): number {
+  return images.filter(hasUnknownDimension).length;
+}
+
 // Única fonte de verdade de "esta peça pode ser anunciada no Mercado Livre"
 // (Fase 1A — só simulação, nenhuma publicação real ainda). Blockers impedem
 // o anúncio; warnings são avisos para revisão manual, nunca bloqueiam.
 export function validateListing(product: ListingValidationInput): ListingValidationResult {
   const blockers: ListingValidationIssue<ListingBlockerCode>[] = [];
+  const warnings: ListingValidationIssue<ListingWarningCode>[] = [];
 
   if (!product.active) {
     blockers.push({ code: "inactive", message: "Peça está inativa (oculta do site) — não pode ser anunciada." });
@@ -101,13 +114,24 @@ export function validateListing(product: ListingValidationInput): ListingValidat
   if (product.images.length === 0) {
     blockers.push({ code: "no_photos", message: "Peça sem nenhuma foto." });
   } else {
-    const tooSmall = product.images.filter(
-      (img) => (img.width ?? 0) < ML_MIN_PHOTO_PX || (img.height ?? 0) < ML_MIN_PHOTO_PX
+    // Só bloqueia quando a dimensão é CONHECIDA e abaixo do mínimo — dimensão
+    // ausente (null, foto legado) nunca bloqueia, só gera aviso abaixo, para
+    // não reprovar peças por falta de dado em vez de foto realmente pequena.
+    const knownTooSmall = product.images.filter(
+      (img) => !hasUnknownDimension(img) && ((img.width as number) < ML_MIN_PHOTO_PX || (img.height as number) < ML_MIN_PHOTO_PX)
     );
-    if (tooSmall.length > 0) {
+    if (knownTooSmall.length > 0) {
       blockers.push({
         code: "photo_too_small",
-        message: `${tooSmall.length} foto(s) abaixo do mínimo exigido pelo Mercado Livre (${ML_MIN_PHOTO_PX}×${ML_MIN_PHOTO_PX}px).`,
+        message: `${knownTooSmall.length} foto(s) abaixo do mínimo exigido pelo Mercado Livre (${ML_MIN_PHOTO_PX}×${ML_MIN_PHOTO_PX}px).`,
+      });
+    }
+
+    const unknownCount = countUnknownDimensionPhotos(product.images);
+    if (unknownCount > 0) {
+      warnings.push({
+        code: "unknown_photo_dimension",
+        message: `${unknownCount} foto(s) sem dimensão registrada (legado) — conferir manualmente se atende ao mínimo de ${ML_MIN_PHOTO_PX}×${ML_MIN_PHOTO_PX}px exigido pelo Mercado Livre.`,
       });
     }
   }
@@ -116,7 +140,6 @@ export function validateListing(product: ListingValidationInput): ListingValidat
   // marca d'água na foto principal) variam por categoria e não foram
   // verificadas nesta fase (ver categoryFixture.ts) — fica como lembrete de
   // revisão humana sempre que houver pelo menos uma foto.
-  const warnings: ListingValidationIssue<ListingWarningCode>[] = [];
   if (product.images.length > 0) {
     warnings.push({
       code: "review_photo_branding",

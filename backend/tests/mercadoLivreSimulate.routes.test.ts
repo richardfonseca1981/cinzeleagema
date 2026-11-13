@@ -32,6 +32,7 @@ describe("GET /api/admin/mercadolivre/simulate/:productId", () => {
   afterEach(async () => {
     await prisma.productImage.deleteMany();
     await prisma.product.deleteMany();
+    await prisma.mercadoLivreAccount.deleteMany();
   });
 
   afterAll(async () => {
@@ -85,5 +86,53 @@ describe("GET /api/admin/mercadolivre/simulate/:productId", () => {
     expect(res.body.price.commissionAmount).toBeCloseTo(120, 5);
     expect(res.body.price.netReceived).toBeCloseTo(1200 - 120 - 5 - 30, 5);
     expect(res.body.price.estimatesUsed).toEqual({ commissionPct: false, fixedFeeBRL: false, shippingCostBRL: false });
+  });
+
+  it("sem markupPct na query, usa o markupPct da conta conectada como padrão", async () => {
+    await prisma.mercadoLivreAccount.create({
+      data: {
+        mlUserId: "555",
+        nickname: "LOJA_CINZEL_TESTE",
+        accessToken: "token-fake-nao-usado-neste-teste",
+        refreshToken: "refresh-fake-nao-usado-neste-teste",
+        expiresAt: new Date(Date.now() + 3600_000),
+        scope: "offline_access read write",
+        markupPct: 15,
+      },
+    });
+    const product = await createEligibleProduct({ price: 1000 });
+
+    const res = await request(app).get(`/api/admin/mercadolivre/simulate/${product.id}`).set(auth);
+
+    expect(res.status).toBe(200);
+    expect(res.body.price.listingPrice).toBeCloseTo(1150, 5);
+  });
+
+  it("markupPct da query prevalece sobre o markupPct da conta conectada", async () => {
+    await prisma.mercadoLivreAccount.create({
+      data: {
+        mlUserId: "556",
+        nickname: "LOJA_CINZEL_TESTE_2",
+        accessToken: "token-fake-nao-usado-neste-teste",
+        refreshToken: "refresh-fake-nao-usado-neste-teste",
+        expiresAt: new Date(Date.now() + 3600_000),
+        scope: "offline_access read write",
+        markupPct: 15,
+      },
+    });
+    const product = await createEligibleProduct({ price: 1000 });
+
+    const res = await request(app).get(`/api/admin/mercadolivre/simulate/${product.id}`).query({ markupPct: 5 }).set(auth);
+
+    expect(res.status).toBe(200);
+    expect(res.body.price.listingPrice).toBeCloseTo(1050, 5);
+  });
+
+  it("sem conta conectada e sem markupPct na query, usa 0", async () => {
+    const product = await createEligibleProduct({ price: 1000 });
+    const res = await request(app).get(`/api/admin/mercadolivre/simulate/${product.id}`).set(auth);
+
+    expect(res.status).toBe(200);
+    expect(res.body.price.listingPrice).toBeCloseTo(1000, 5);
   });
 });

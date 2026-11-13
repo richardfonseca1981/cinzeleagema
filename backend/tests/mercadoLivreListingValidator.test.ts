@@ -90,9 +90,39 @@ describe("validateListing", () => {
     expect(result.blockers.map((b) => b.code)).toContain("photo_too_small");
   });
 
-  it("bloqueia foto sem dimensão registrada (legado, width/height null)", () => {
+  it("NÃO bloqueia foto sem dimensão registrada (legado, width/height null) — vira aviso, não blocker", () => {
     const result = validateListing(baseProduct({ images: [{ width: null, height: null }] }));
+    expect(result.blockers.map((b) => b.code)).not.toContain("photo_too_small");
+    expect(result.eligible).toBe(true);
+  });
+
+  it("aviso de dimensão desconhecida aparece quando width/height são null", () => {
+    const result = validateListing(baseProduct({ images: [{ width: null, height: null }] }));
+    expect(result.warnings.map((w) => w.code)).toContain("unknown_photo_dimension");
+  });
+
+  it("aviso de dimensão desconhecida NÃO aparece quando todas as fotos têm dimensão conhecida", () => {
+    const result = validateListing(baseProduct());
+    expect(result.warnings.map((w) => w.code)).not.toContain("unknown_photo_dimension");
+  });
+
+  it("dimensão parcialmente null (só height) também conta como desconhecida, não bloqueia", () => {
+    const result = validateListing(baseProduct({ images: [{ width: 1080, height: null }] }));
+    expect(result.blockers.map((b) => b.code)).not.toContain("photo_too_small");
+    expect(result.warnings.map((w) => w.code)).toContain("unknown_photo_dimension");
+  });
+
+  it("mistura foto pequena CONHECIDA (bloqueia) com foto de dimensão desconhecida (só avisa)", () => {
+    const result = validateListing(
+      baseProduct({
+        images: [
+          { width: 499, height: 1920 },
+          { width: null, height: null },
+        ],
+      })
+    );
     expect(result.blockers.map((b) => b.code)).toContain("photo_too_small");
+    expect(result.warnings.map((w) => w.code)).toContain("unknown_photo_dimension");
   });
 
   it("acumula múltiplos blockers ao mesmo tempo", () => {
