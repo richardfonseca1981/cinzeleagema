@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { api } from "../lib/api";
 import type { Category, Product } from "../types";
 import { PublicHeader } from "../components/landing/PublicHeader";
+import { Seo } from "../components/Seo";
 import { WhatsAppFloatingButton } from "../components/landing/WhatsAppFloatingButton";
 import { CategoryNav } from "../components/catalog/CategoryNav";
 import { ProductCard } from "../components/catalog/ProductCard";
@@ -189,6 +190,7 @@ export function Catalog() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#1A1A1A]">
+      <Seo title={t("seo.catalog.title")} description={t("seo.catalog.description")} path="/catalogo" />
       <PublicHeader />
 
       <div className="mx-auto max-w-6xl px-4 py-8">

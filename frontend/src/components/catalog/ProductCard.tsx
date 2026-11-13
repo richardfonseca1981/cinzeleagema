@@ -8,6 +8,7 @@ import { useExchangeRate } from "../../lib/exchangeRate";
 import { useToast } from "../Toast";
 import { ProductImage } from "../ProductImage";
 import { CATALOG_CARD } from "../../lib/catalogCard";
+import { buildPublicProductSlug } from "../../lib/productSlug";
 
 export function ProductCard({ product, priority = false }: { product: Product; priority?: boolean }) {
   const { t, i18n } = useTranslation();
@@ -15,6 +16,7 @@ export function ProductCard({ product, priority = false }: { product: Product; p
   const { showToast } = useToast();
   const exchangeRate = useExchangeRate();
   const image = product.images[0]?.url ?? null;
+  const productHref = `/catalogo/${buildPublicProductSlug(product.name, product.id)}`;
   const displayName = localizeProductName(product, i18n.language, t);
   const weightSize = formatWeightSize(product.weightGrams, product.sizeCm, i18n.language);
   // Preço null = "Consulte o valor" — nunca entra em carrinho/total, diferente
@@ -39,7 +41,7 @@ export function ProductCard({ product, priority = false }: { product: Product; p
 
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-xl border border-[#E2E8F0] bg-white shadow-sm transition hover:shadow-md">
-      <Link to={`/catalogo/${product.id}`} className="block">
+      <Link to={productHref} className="block">
         <ProductImage
           src={image}
           alt={displayName}
@@ -50,7 +52,7 @@ export function ProductCard({ product, priority = false }: { product: Product; p
       </Link>
       {/* Nome (até 2 linhas, altura reservada), preço e botão: cards da mesma linha ficam com a mesma altura. */}
       <div className="flex flex-1 flex-col p-2.5 sm:p-4">
-        <Link to={`/catalogo/${product.id}`}>
+        <Link to={productHref}>
           <h3 className="line-clamp-2 min-h-[2.5rem] text-sm font-semibold leading-5 text-[#1A1A1A] transition hover:text-[#5F84BA] sm:text-base sm:leading-5">
             {displayName}
           </h3>

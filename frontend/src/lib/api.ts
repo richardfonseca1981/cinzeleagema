@@ -128,6 +128,13 @@ export const api = {
   // Admin: quantas peças já têm a capa em 9:16.
   getPhotoStats: () => request<{ total: number; portrait: number }>("/api/products/photo-stats"),
   getProduct: (id: string) => request<Product>(`/api/products/${id}`),
+  // Rota pública usada por /catalogo/:slugComId — acha a peça pelo sufixo do
+  // id (ver backend lib/publicSlug.ts), funciona tanto com o slug novo
+  // quanto com a URL antiga (cuid puro). `canonicalSlug` é o slug ATUAL
+  // (derivado do nome de agora) — ProductDetail redireciona quando o
+  // parâmetro da URL não bate com ele (peça renomeada ou link antigo).
+  getProductBySlug: (slugComId: string) =>
+    request<{ product: Product; canonicalSlug: string }>(`/api/products/by-slug/${slugComId}`),
 
   createOrder: (data: {
     customerName: string;

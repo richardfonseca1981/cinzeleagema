@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { About } from "../components/landing/About";
 import { Blog } from "../components/landing/Blog";
 import { Certification } from "../components/landing/Certification";
@@ -8,6 +9,7 @@ import { Footer } from "../components/landing/Footer";
 import { Hero } from "../components/landing/Hero";
 import { PublicHeader } from "../components/landing/PublicHeader";
 import { QualityPolicyModal } from "../components/landing/QualityPolicyModal";
+import { Seo } from "../components/Seo";
 import { TrustBanner } from "../components/landing/TrustBanner";
 import { WhatsAppFloatingButton } from "../components/landing/WhatsAppFloatingButton";
 import { WHATSAPP_HREF } from "../lib/whatsapp";
@@ -16,6 +18,7 @@ const WHATSAPP_NUMBER = import.meta.env.VITE_WHATSAPP_NUMBER;
 const CONTACT_EMAIL = import.meta.env.VITE_CONTACT_EMAIL;
 
 export function Landing() {
+  const { t } = useTranslation();
   const [qualityOpen, setQualityOpen] = useState(false);
 
   // A rolagem nativa do navegador para "#id" acontece só uma vez, no
@@ -31,6 +34,7 @@ export function Landing() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#1A1A1A]">
+      <Seo title={t("seo.home.title")} description={t("seo.home.description")} path="/" />
       <PublicHeader />
       <Hero />
       <FeaturedProducts />

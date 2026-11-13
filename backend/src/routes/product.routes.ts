@@ -11,6 +11,7 @@ import { filesSafeToRemove, removeFiles } from "../lib/photoFiles";
 import { translateAndSaveProduct, translateProductInBackground } from "../lib/productTranslation";
 import { generateUniqueSlug } from "../lib/productSlug";
 import { buildOrderBy, DEFAULT_ORDER_BY, isSplitSort, splitField, splitOrderBy, splitWindow } from "../lib/productSort";
+import { buildPublicSlug, extractIdSuffix, pickProductBySuffixMatch } from "../lib/publicSlug";
 
 export const productRouter = Router();
 
@@ -169,6 +170,27 @@ productRouter.get(
       return Boolean(cover?.width && cover?.height && isPortrait916(cover.width, cover.height));
     }).length;
     res.json({ total: products.length, portrait });
+  })
+);
+
+// Rota pública usada pela página de produto do catálogo (/catalogo/:slugComId
+// no frontend). Busca só pelo SUFIXO do id (ver lib/publicSlug.ts) — por
+// isso atende tanto o slug novo ("ametista-bruta-a1b2c3") quanto a URL antiga
+// que era o cuid puro (mesmos 6 caracteres finais). Devolve também
+// `canonicalSlug`: o frontend compara com o que veio na URL e redireciona
+// quando a peça foi renomeada (ou quando a URL é a antiga por id) — renomear
+// a peça nunca quebra o link, porque a busca nunca depende do nome.
+productRouter.get(
+  "/by-slug/:slugComId",
+  asyncHandler(async (req, res) => {
+    const suffix = extractIdSuffix(req.params.slugComId);
+    const candidates = await prisma.product.findMany({
+      where: { id: { endsWith: suffix } },
+      include: { images: { orderBy: { position: "asc" } }, category: true, subcategory: true },
+    });
+    const product = pickProductBySuffixMatch(candidates, req.params.slugComId);
+    if (!product) throw new HttpError(404, "Produto não encontrado");
+    res.json({ product: omitIdentification(product), canonicalSlug: buildPublicSlug(product.name, product.id) });
   })
 );
 

@@ -27,7 +27,7 @@ export default function App() {
               <Route path="/" element={<Landing />} />
 
               <Route path="/catalogo" element={<Catalog />} />
-              <Route path="/catalogo/:id" element={<ProductDetail />} />
+              <Route path="/catalogo/:slugComId" element={<ProductDetail />} />
               <Route path="/carrinho" element={<Cart />} />
               <Route path="/finalizar" element={<Checkout />} />
 
