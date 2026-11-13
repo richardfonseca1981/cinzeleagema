@@ -54,6 +54,7 @@
     "@types/node": "^20.16.10",
     "@types/pdfkit": "^0.17.7",
     "@types/supertest": "^6.0.2",
+    "pdf-parse": "^2.4.5",
     "prisma": "5.22.0",
     "supertest": "^7.0.0",
     "tsx": "^4.19.1",

@@ -1,5 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import sharp from "sharp";
+import { PDFParse } from "pdf-parse";
 import "./setup";
 
 vi.mock("../src/lib/r2", async (importOriginal) => {
@@ -17,6 +18,26 @@ import * as r2 from "../src/lib/r2";
 import { cleanDatabase } from "./helpers";
 
 const mockedGetObject = vi.mocked(r2.getObject);
+
+// Extrai o texto de cada página do PDF gerado (pdf-parse/pdfjs-dist) — usado
+// pelos testes da página de informações (FIX CATÁLOGO/PÁGINA DE
+// INFORMAÇÕES) para verificar texto e ORDEM das páginas de verdade, não só
+// a contagem (pageCount já cobria a contagem antes desta rodada).
+// Colapsa quebras de linha em espaço — pdf-parse extrai o texto por LINHA
+// VISUAL renderizada (ex.: um parágrafo que quebrou em 2 linhas no PDF sai
+// como "...selecionada e\nfotografada...", não "...selecionada e fotografada...")
+// então comparar uma frase inteira como string contígua exige normalizar os
+// espaços antes.
+function normalizeWhitespace(text: string): string {
+  return text.replace(/\s+/g, " ").trim();
+}
+
+async function extractPageTexts(buffer: Buffer): Promise<string[]> {
+  const parser = new PDFParse({ data: buffer });
+  const result = await parser.getText();
+  await parser.destroy();
+  return result.pages.map((page) => normalizeWhitespace(page.text));
+}
 
 const syntheticJpeg = (w: number, h: number, color: { r: number; g: number; b: number }) =>
   sharp({ create: { width: w, height: h, channels: 3, background: color } })
@@ -158,6 +179,123 @@ describe("generateCatalogPdf", () => {
 
     expect(withContact.pageCount).toBe(3); // capa + 1 peça + contato
     expect(withoutContact.pageCount).toBe(2); // capa + 1 peça
+  });
+
+  describe("página de informações (FIX CATÁLOGO/PÁGINA DE INFORMAÇÕES — a pedido do Felipe)", () => {
+    it("PT: texto novo de curadoria presente, texto antigo de avisos ausente em NENHUMA página", async () => {
+      await createProduct({ name: "Peça", sku: "INFO-PT", price: 10 });
+      const result = await generateCatalogPdf({ language: "pt" });
+      const pages = await extractPageTexts(result.buffer);
+      const fullText = pages.join("\n");
+
+      expect(fullText).toContain("Curadoria Exclusiva – Exemplar Único:");
+      expect(fullText).toContain(
+        "O cristal apresentado nas imagens é exatamente o exemplar que chegará até você. Cada peça do nosso acervo é selecionada e fotografada individualmente para garantir que você adquira uma obra de arte única esculpida pela natureza."
+      );
+      expect(fullText).toContain(
+        "Marcas naturais como veios, cavidades, inclusões minerais e microfissuras atestam a autenticidade da pedra. A tonalidade pode apresentar sutis nuances em relação às fotos de acordo com a iluminação do espaço ou a calibração da sua tela."
+      );
+
+      expect(fullText).not.toContain("Avisos importantes");
+      expect(fullText).not.toContain("Por se tratar de um produto natural");
+      expect(fullText).not.toContain("As medidas e o peso informados na descrição são aproximados");
+      expect(fullText).not.toContain("A pedra recebida será de qualidade");
+      expect(fullText).not.toContain("As imagens são meramente ilustrativas");
+    });
+
+    it("EN: texto novo de curadoria presente, texto antigo de avisos ausente em NENHUMA página", async () => {
+      await createProduct({ name: "Piece", sku: "INFO-EN", price: 10 });
+      const result = await generateCatalogPdf({ language: "en" });
+      const pages = await extractPageTexts(result.buffer);
+      const fullText = pages.join("\n");
+
+      expect(fullText).toContain("Exclusive Curation – One-of-a-Kind Specimen:");
+      expect(fullText).toContain(
+        "The crystal shown in the images is exactly the specimen that will reach you. Each piece in our collection is individually selected and photographed so that you acquire a unique work of art sculpted by nature."
+      );
+      expect(fullText).toContain(
+        "Natural marks such as veins, cavities, mineral inclusions and microfractures attest to the stone's authenticity. The tone may show subtle differences from the photos depending on the lighting of the space or the calibration of your screen."
+      );
+
+      expect(fullText).not.toContain("Important notices");
+      expect(fullText).not.toContain("As a natural product, each stone is unique");
+      expect(fullText).not.toContain("The measurements and weight provided");
+      expect(fullText).not.toContain("The stone received will be of quality");
+      expect(fullText).not.toContain("The images are merely illustrative");
+    });
+
+    it("PT: a página de informações é a 2ª página (logo após a capa), com os dados de contato juntos, nunca separados", async () => {
+      await createProduct({ name: "Peça", sku: "INFO-POS-PT", price: 10 });
+      const result = await generateCatalogPdf({ language: "pt" });
+      const pages = await extractPageTexts(result.buffer);
+
+      expect(pages).toHaveLength(3); // capa + informações + 1 peça
+      expect(pages[0]).toContain("Catálogo");
+      expect(pages[1]).toContain("Contato");
+      expect(pages[1]).toContain("WhatsApp");
+      expect(pages[1]).toContain("Curadoria Exclusiva – Exemplar Único:");
+    });
+
+    it("EN: a página de informações é a 2ª página, com os dados de contato juntos", async () => {
+      await createProduct({ name: "Piece", sku: "INFO-POS-EN", price: 10 });
+      const result = await generateCatalogPdf({ language: "en" });
+      const pages = await extractPageTexts(result.buffer);
+
+      expect(pages).toHaveLength(3);
+      expect(pages[0]).toContain("Catalog");
+      expect(pages[1]).toContain("Contact");
+      expect(pages[1]).toContain("WhatsApp");
+      expect(pages[1]).toContain("Exclusive Curation – One-of-a-Kind Specimen:");
+    });
+
+    it("ordem das demais páginas: capa, informações, depois as peças na ordem — a última página é a última peça, NÃO mais o contato", async () => {
+      await createProduct({ name: "Peça Um", sku: "ORD-1", price: 10 });
+      await createProduct({ name: "Peça Dois", sku: "ORD-2", price: 20 });
+
+      const result = await generateCatalogPdf({ language: "pt" });
+      const pages = await extractPageTexts(result.buffer);
+
+      expect(pages).toHaveLength(4); // capa + informações + 2 peças
+      expect(pages[0]).toContain("Catálogo");
+      expect(pages[1]).toContain("Curadoria Exclusiva");
+      expect(pages[2]).toContain("Peça Um");
+      expect(pages[3]).toContain("Peça Dois");
+
+      // Última página é a última peça — a página de informações (com
+      // "Contato"/"Curadoria Exclusiva") não aparece mais no fim do catálogo.
+      const lastPage = pages[pages.length - 1];
+      expect(lastPage).not.toContain("Curadoria Exclusiva");
+      expect(lastPage).not.toContain("Contato");
+    });
+
+    it("com divisores de categoria, a página de informações continua na 2ª posição, antes de qualquer divisor", async () => {
+      const catA = await prisma.category.create({ data: { name: "Categoria Divisor A", slug: `cat-div-a-${Date.now()}` } });
+      const catB = await prisma.category.create({ data: { name: "Categoria Divisor B", slug: `cat-div-b-${Date.now()}` } });
+      for (let i = 0; i < 7; i++) await createProduct({ name: `Peça Div A${i}`, sku: `DIV-A-${i}`, price: 10, categoryId: catA.id });
+      for (let i = 0; i < 6; i++) await createProduct({ name: `Peça Div B${i}`, sku: `DIV-B-${i}`, price: 10, categoryId: catB.id });
+
+      const result = await generateCatalogPdf({ language: "pt" });
+      expect(result.categoryDividersIncluded).toBe(true);
+
+      const pages = await extractPageTexts(result.buffer);
+      expect(pages[0]).toContain("Catálogo");
+      expect(pages[1]).toContain("Curadoria Exclusiva");
+
+      // A página de informações nunca aparece depois da capa — só a 2ª.
+      const infoPageIndex = pages.findIndex((text) => text.includes("Curadoria Exclusiva"));
+      expect(infoPageIndex).toBe(1);
+    });
+
+    it("includeContactPage=false: sem a página de informações, mesmo o texto novo de curadoria, em nenhuma posição", async () => {
+      await createProduct({ name: "Peça", sku: "INFO-OFF", price: 10 });
+      const result = await generateCatalogPdf({ language: "pt", includeContactPage: false });
+      const pages = await extractPageTexts(result.buffer);
+      const fullText = pages.join("\n");
+
+      expect(pages).toHaveLength(2); // capa + 1 peça, sem informações
+      expect(fullText).not.toContain("Curadoria Exclusiva");
+      expect(fullText).not.toContain("Contato");
+    });
   });
 
   it("expõe rateSource/rateUpdatedAt quando busca a cotação (EN); null em PT", async () => {

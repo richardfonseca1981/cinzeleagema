@@ -76,7 +76,7 @@ const LABELS = {
     contactTitle: "Contato",
     contactWhatsapp: `WhatsApp: ${CONTACT_WHATSAPP_LOCAL}`,
     contactSite: "cinzeleagema.com.br",
-    legalNoticeHeading: "Avisos importantes",
+    legalNoticeHeading: "Curadoria Exclusiva – Exemplar Único:",
     priceOnRequest: "Consulte o valor",
     ref: "Ref:",
     specWeight: "Peso:",
@@ -91,7 +91,7 @@ const LABELS = {
     contactTitle: "Contact",
     contactWhatsapp: `WhatsApp: +55 ${CONTACT_WHATSAPP_LOCAL}`,
     contactSite: "cinzeleagema.com.br",
-    legalNoticeHeading: "Important notices",
+    legalNoticeHeading: "Exclusive Curation – One-of-a-Kind Specimen:",
     priceOnRequest: "Price on request",
     ref: "Ref:",
     specWeight: "Weight:",
@@ -101,22 +101,19 @@ const LABELS = {
   },
 } as const satisfies Record<CatalogLanguage, Record<string, unknown>>;
 
-// Aviso legal completo — mostrado UMA vez na página de contato (ver AJUSTES
-// VISUAIS item 3/8), não mais repetido em toda página de peça. Mesmo texto
-// (real, já em uso) que antes vinha do campo `description` de peças sem
-// descrição própria — ver CONTEXT do pedido.
+// Texto de curadoria — mostrado UMA vez na página de informações (ver
+// FIX CATÁLOGO/PÁGINA DE INFORMAÇÕES: substituiu o antigo aviso legal de
+// variação natural, a pedido do Felipe, com o heading também trocado — ver
+// `legalNoticeHeading` em LABELS acima). Texto final aprovado, mantido
+// literal (acentos e travessão "–" preservados, sem reescrever).
 export const CATALOG_LEGAL_NOTICE: Record<CatalogLanguage, string[]> = {
   pt: [
-    "Por se tratar de um produto natural, cada pedra é única e pode apresentar variações de tamanho, peso, formato, tonalidade, textura e características minerais.",
-    "As medidas e o peso informados na descrição são aproximados e servem como referência, podendo apresentar pequenas diferenças entre as unidades.",
-    "A pedra recebida será de qualidade e características semelhantes às apresentadas nas imagens, porém não será necessariamente idêntica à fotografia, justamente em razão das variações naturais dos minerais e da disponibilidade em estoque.",
-    "As imagens são meramente ilustrativas e representam o padrão do produto comercializado.",
+    "O cristal apresentado nas imagens é exatamente o exemplar que chegará até você. Cada peça do nosso acervo é selecionada e fotografada individualmente para garantir que você adquira uma obra de arte única esculpida pela natureza.",
+    "Marcas naturais como veios, cavidades, inclusões minerais e microfissuras atestam a autenticidade da pedra. A tonalidade pode apresentar sutis nuances em relação às fotos de acordo com a iluminação do espaço ou a calibração da sua tela.",
   ],
   en: [
-    "As a natural product, each stone is unique and may present variations in size, weight, shape, color tone, texture, and mineral characteristics.",
-    "The measurements and weight provided in the description are approximate and serve as a reference, and may present slight differences between units.",
-    "The stone received will be of quality and characteristics similar to those shown in the images, but will not necessarily be identical to the photograph, precisely due to natural variations in minerals and stock availability.",
-    "The images are merely illustrative and represent the standard of the product sold.",
+    "The crystal shown in the images is exactly the specimen that will reach you. Each piece in our collection is individually selected and photographed so that you acquire a unique work of art sculpted by nature.",
+    "Natural marks such as veins, cavities, mineral inclusions and microfractures attest to the stone's authenticity. The tone may show subtle differences from the photos depending on the lighting of the space or the calibration of your screen.",
   ],
 };
 
@@ -281,7 +278,9 @@ export function drawContactPage(doc: PDFKit.PDFDocument, options: { language: Ca
     .text(labels.contactSite, 0, y, { width: PAGE_WIDTH, align: "center" });
   y += CONTACT_INFO_FONT_SIZE * 1.4 + CONTACT_INFO_GAP;
 
-  // --- Aviso legal completo (ver AJUSTES VISUAIS item 3/8) ---
+  // --- Texto de curadoria (ver CATALOG_LEGAL_NOTICE acima) — nomes de
+  // variável/função mantidos ("legal*") por não serem o foco deste ajuste de
+  // conteúdo, só o texto exibido mudou. ---
   doc
     .font("opensans-bolditalic")
     .fontSize(CONTACT_LEGAL_HEADING_FONT_SIZE)
