@@ -376,6 +376,47 @@
       "backToPanel": "Voltar para o painel",
       "sessionExpired": "Sua sessão expirou. Faça login novamente e clique em \"Conectar com o Mercado Livre\" para reiniciar a conexão.",
       "loginAgain": "Fazer login novamente"
+    },
+    "simulate": {
+      "title": "Simulação de anúncio (Fase 1A)",
+      "description": "Monta, valida e precifica um anúncio a partir do catálogo — sem publicar nada e sem precisar de conta conectada.",
+      "searchLabel": "Buscar peça por nome ou SKU",
+      "searchPlaceholder": "Ex.: Esmeralda, ESM-001...",
+      "searchButton": "Buscar",
+      "searching": "Buscando...",
+      "noResults": "Nenhuma peça encontrada.",
+      "paramsTitle": "Parâmetros (opcionais)",
+      "markupPct": "Acréscimo (%)",
+      "commissionPct": "Comissão (%)",
+      "fixedFeeBRL": "Tarifa fixa (R$)",
+      "shippingCostBRL": "Frete (R$)",
+      "estimateNote": "Deixe em branco para usar uma estimativa não verificada (ver auditoria da Fase 1A em CONTEXT.md).",
+      "simulateButton": "Simular anúncio",
+      "simulating": "Simulando...",
+      "notEligibleTitle": "Peça não apta para anúncio",
+      "blockersLabel": "Motivos:",
+      "eligibleTitle": "Rascunho do anúncio",
+      "warningsLabel": "Conferir manualmente:",
+      "draftTitleLabel": "Título",
+      "draftTitleTruncated": "(truncado em 60 caracteres)",
+      "draftDescriptionLabel": "Descrição",
+      "draftPhotosLabel": "Fotos ({{count}})",
+      "draftPhotosOmitted": "{{count}} foto(s) além do limite de 12 não entraram no anúncio.",
+      "draftCategoryLabel": "Categoria",
+      "draftCategoryUnverified": "placeholder não verificado — confirmar antes de publicar",
+      "priceTitle": "Preço sugerido",
+      "priceBasePrice": "Preço base",
+      "priceMarkupAmount": "Acréscimo",
+      "priceListingPrice": "Preço de anúncio",
+      "priceCommissionAmount": "Comissão",
+      "priceFixedFee": "Tarifa fixa",
+      "priceShippingCost": "Frete",
+      "priceNetReceived": "Líquido estimado",
+      "estimateUsedBadge": "estimativa não verificada",
+      "errors": {
+        "search": "Não foi possível buscar peças",
+        "simulate": "Não foi possível simular o anúncio"
+      }
     }
   }
 }

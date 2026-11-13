@@ -42,7 +42,10 @@ const CATEGORY_DIVIDER_MIN_CATEGORIES = 2;
 // (export Excel, ProductCard do site). Mantive a regra literal (<=1, inclui
 // 0) porque foi isso que foi pedido, mas é uma divergência do padrão
 // estabelecido em outro lugar — avisar se não era essa a intenção.
-const PLACEHOLDER_PRICE_MAX = 1;
+// Exportado para lib/mercadoLivre/listingValidator.ts reaproveitar a mesma
+// definição de "preço placeholder" (ver Fase 1A em CONTEXT.md) em vez de ter
+// duas regras divergindo com o tempo.
+export const PLACEHOLDER_PRICE_MAX = 1;
 
 export interface GenerateCatalogPdfOptions {
   // Sem productIds: todas as peças (ativas por padrão — ver includeInactive).

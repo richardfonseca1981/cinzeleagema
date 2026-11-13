@@ -308,3 +308,57 @@ export interface MercadoLivreStatus {
   expiresAt?: string;
   scope?: string;
 }
+
+// GET /api/admin/mercadolivre/simulate/:productId (Fase 1A — só monta,
+// valida e precifica localmente; nenhuma chamada à API do Mercado Livre,
+// funciona mesmo sem conta conectada).
+export type MercadoLivreBlockerCode =
+  | "inactive"
+  | "out_of_stock"
+  | "placeholder_title"
+  | "missing_price"
+  | "placeholder_price"
+  | "missing_weight"
+  | "missing_size"
+  | "no_photos"
+  | "photo_too_small";
+
+export type MercadoLivreWarningCode = "review_photo_branding";
+
+export interface MercadoLivreIssue<Code extends string> {
+  code: Code;
+  message: string;
+}
+
+export interface MercadoLivreListingDraft {
+  title: string;
+  titleTruncated: boolean;
+  description: string;
+  photos: string[];
+  photosOmitted: number;
+  // id placeholder (não verificado) enquanto a Fase 1B não confirmar a
+  // categoria real via API — ver backend/src/lib/mercadoLivre/categoryFixture.ts.
+  category: { id: string; breadcrumb: string[]; verified: boolean };
+}
+
+export interface MercadoLivrePriceBreakdown {
+  basePrice: number;
+  markupAmount: number;
+  listingPrice: number;
+  commissionAmount: number;
+  fixedFeeBRL: number;
+  shippingCostBRL: number;
+  netReceived: number;
+  // true quando o respectivo valor NÃO veio da query (caiu no padrão
+  // marcado como estimativa não verificada no backend).
+  estimatesUsed: { commissionPct: boolean; fixedFeeBRL: boolean; shippingCostBRL: boolean };
+}
+
+export interface MercadoLivreSimulationResult {
+  productId: string;
+  eligible: boolean;
+  blockers?: MercadoLivreIssue<MercadoLivreBlockerCode>[];
+  warnings: MercadoLivreIssue<MercadoLivreWarningCode>[];
+  draft?: MercadoLivreListingDraft;
+  price?: MercadoLivrePriceBreakdown;
+}

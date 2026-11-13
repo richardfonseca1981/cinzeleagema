@@ -393,6 +393,47 @@
       "backToPanel": "Back to the panel",
       "sessionExpired": "Your session has expired. Log in again and click \"Connect with Mercado Livre\" to restart the connection.",
       "loginAgain": "Log in again"
+    },
+    "simulate": {
+      "title": "Listing simulation (Phase 1A)",
+      "description": "Builds, validates and prices a listing from the catalog — nothing is published and no connected account is required.",
+      "searchLabel": "Search a piece by name or SKU",
+      "searchPlaceholder": "E.g.: Emerald, ESM-001...",
+      "searchButton": "Search",
+      "searching": "Searching...",
+      "noResults": "No pieces found.",
+      "paramsTitle": "Parameters (optional)",
+      "markupPct": "Markup (%)",
+      "commissionPct": "Commission (%)",
+      "fixedFeeBRL": "Fixed fee (R$)",
+      "shippingCostBRL": "Shipping (R$)",
+      "estimateNote": "Leave blank to use an unverified estimate (see the Phase 1A audit in CONTEXT.md).",
+      "simulateButton": "Simulate listing",
+      "simulating": "Simulating...",
+      "notEligibleTitle": "Piece not eligible for listing",
+      "blockersLabel": "Reasons:",
+      "eligibleTitle": "Listing draft",
+      "warningsLabel": "Review manually:",
+      "draftTitleLabel": "Title",
+      "draftTitleTruncated": "(truncated at 60 characters)",
+      "draftDescriptionLabel": "Description",
+      "draftPhotosLabel": "Photos ({{count}})",
+      "draftPhotosOmitted": "{{count}} photo(s) beyond the 12-photo limit were left out of the listing.",
+      "draftCategoryLabel": "Category",
+      "draftCategoryUnverified": "unverified placeholder — confirm before publishing",
+      "priceTitle": "Suggested price",
+      "priceBasePrice": "Base price",
+      "priceMarkupAmount": "Markup",
+      "priceListingPrice": "Listing price",
+      "priceCommissionAmount": "Commission",
+      "priceFixedFee": "Fixed fee",
+      "priceShippingCost": "Shipping",
+      "priceNetReceived": "Estimated net",
+      "estimateUsedBadge": "unverified estimate",
+      "errors": {
+        "search": "Could not search for pieces",
+        "simulate": "Could not simulate the listing"
+      }
     }
   }
 }

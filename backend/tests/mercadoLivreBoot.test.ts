@@ -50,6 +50,22 @@ describe("boot sem variáveis ML_*", () => {
     expect(disconnect.body).toEqual({ error: "Integração Mercado Livre não configurada" });
   });
 
+  it("GET /simulate/:productId NÃO responde 503 mesmo sem ML_* configurado (não depende da API do Mercado Livre)", async () => {
+    vi.resetModules();
+    vi.doMock("../src/lib/env", () => ({
+      env: { ...realEnv, ML_APP_ID: "", ML_CLIENT_SECRET: "", ML_REDIRECT_URI: "", ML_TOKEN_ENC_KEY: "" },
+    }));
+
+    const { createApp } = await import("../src/app");
+    const { generateTestToken } = await import("./helpers");
+    const app = createApp();
+    const auth = { Authorization: `Bearer ${generateTestToken({ sub: "admin-sem-ml" })}` };
+
+    const res = await request(app).get("/api/admin/mercadolivre/simulate/produto-inexistente").set(auth);
+    // 404 (peça não encontrada), nunca 503 — a simulação não depende de ML_*.
+    expect(res.status).toBe(404);
+  });
+
   it("sem token, rotas ML ainda respondem 401 (não 503) mesmo sem ML_* configurado", async () => {
     vi.resetModules();
     vi.doMock("../src/lib/env", () => ({

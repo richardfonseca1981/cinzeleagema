@@ -13,6 +13,7 @@ import type {
   CreateOrderResult,
   IdentificationProposal,
   MercadoLivreStatus,
+  MercadoLivreSimulationResult,
   PhotoTreatmentPreviewResult,
   PhotoTreatmentRawPreviewResult,
   Product,
@@ -220,6 +221,21 @@ export const api = {
     return request<MercadoLivreStatus>(`/api/admin/mercadolivre/callback?${query.toString()}`, {}, { skipAuthRedirect: true });
   },
   disconnectMercadoLivre: () => request<void>("/api/admin/mercadolivre/disconnect", { method: "DELETE" }),
+  // Simulação (Fase 1A) — nunca chama a API do Mercado Livre, funciona sem
+  // conta conectada. Parâmetros ausentes caem no padrão "estimativa não
+  // verificada" do backend (ver price.estimatesUsed na resposta).
+  simulateMercadoLivreListing: (
+    productId: string,
+    params: { markupPct?: number; commissionPct?: number; fixedFeeBRL?: number; shippingCostBRL?: number } = {}
+  ) => {
+    const query = new URLSearchParams();
+    if (params.markupPct !== undefined) query.set("markupPct", String(params.markupPct));
+    if (params.commissionPct !== undefined) query.set("commissionPct", String(params.commissionPct));
+    if (params.fixedFeeBRL !== undefined) query.set("fixedFeeBRL", String(params.fixedFeeBRL));
+    if (params.shippingCostBRL !== undefined) query.set("shippingCostBRL", String(params.shippingCostBRL));
+    const qs = query.toString();
+    return request<MercadoLivreSimulationResult>(`/api/admin/mercadolivre/simulate/${productId}${qs ? `?${qs}` : ""}`);
+  },
 };
 
 // Versão stateless do tratamento por IA, para fotos staged (sem productId/

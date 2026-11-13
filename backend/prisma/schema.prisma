@@ -223,6 +223,12 @@ model MercadoLivreAccount {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Acréscimo percentual configurável aplicado pelo priceCalculator da Fase
+  // 1A (lib/mercadoLivre/priceCalculator.ts) sobre o preço base do catálogo,
+  // antes de subtrair comissão/tarifa/frete estimados do Mercado Livre.
+  // Default 0 = sem acréscimo até o cliente configurar.
+  markupPct Decimal @default(0) @db.Decimal(5, 2)
+
   listings MercadoLivreListing[]
 }
 

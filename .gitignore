@@ -18,6 +18,10 @@ backend/prisma/dev.db-journal
 # PDFs de amostra do catálogo (gerados localmente, nunca versionados)
 backend/tmp/
 
+# CSV da auditoria do Mercado Livre (dados reais do catálogo, gerado por
+# npm run audit:mercadolivre — ver backend/src/scripts/auditMercadoLivre.ts)
+backend/auditoria-mercadolivre.csv
+
 # Dumps de banco (dados reais) — nunca versionados
 /backups/
 

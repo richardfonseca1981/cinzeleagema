@@ -12,6 +12,15 @@ import {
   verifyOAuthState,
 } from "../lib/mercadoLivre/auth";
 import { isMercadoLivreConfigured } from "../lib/mercadoLivre/crypto";
+import { validateListing } from "../lib/mercadoLivre/listingValidator";
+import { buildListingDraft } from "../lib/mercadoLivre/listingBuilder";
+import {
+  calculateSuggestedPrice,
+  UNVERIFIED_DEFAULT_COMMISSION_PCT,
+  UNVERIFIED_DEFAULT_FIXED_FEE_BRL,
+  UNVERIFIED_DEFAULT_SHIPPING_COST_BRL,
+} from "../lib/mercadoLivre/priceCalculator";
+import { mercadoLivreSimulateQuerySchema } from "../schemas/mercadoLivreSimulate.schema";
 
 // Fase 0: só conexão/leitura, nenhuma publicação de anúncio. Todas as rotas
 // exigem admin (requireAuth) — inclusive /callback: o ML_REDIRECT_URI deve
@@ -22,6 +31,58 @@ import { isMercadoLivreConfigured } from "../lib/mercadoLivre/crypto";
 // requireAuth em todas as rotas, como pedido.
 export const mercadoLivreRouter = Router();
 mercadoLivreRouter.use(requireAuth);
+
+// Simulação e auditoria (Fase 1A): nunca chamam a API do Mercado Livre, só
+// montam/validam/precificam localmente a partir do catálogo — por isso
+// precisam funcionar mesmo sem nenhuma variável ML_* configurada. Registradas
+// ANTES do middleware de 503 abaixo, que só se aplica às rotas de
+// conexão/leitura real (connect/callback/status/disconnect).
+mercadoLivreRouter.get(
+  "/simulate/:productId",
+  asyncHandler(async (req, res) => {
+    const product = await prisma.product.findUnique({
+      where: { id: req.params.productId },
+      include: { images: { orderBy: { position: "asc" } } },
+    });
+    if (!product) throw new HttpError(404, "Peça não encontrada");
+
+    const validation = validateListing(product);
+    if (!validation.eligible) {
+      res.json({ productId: product.id, eligible: false, blockers: validation.blockers, warnings: validation.warnings });
+      return;
+    }
+
+    const query = mercadoLivreSimulateQuerySchema.parse(req.query);
+    const draft = buildListingDraft(product);
+
+    const commissionPct = query.commissionPct ?? UNVERIFIED_DEFAULT_COMMISSION_PCT;
+    const fixedFeeBRL = query.fixedFeeBRL ?? UNVERIFIED_DEFAULT_FIXED_FEE_BRL;
+    const shippingCostBRL = query.shippingCostBRL ?? UNVERIFIED_DEFAULT_SHIPPING_COST_BRL;
+    const price = calculateSuggestedPrice(Number(product.price), {
+      markupPct: query.markupPct,
+      commissionPct,
+      fixedFeeBRL,
+      shippingCostBRL,
+    });
+
+    res.json({
+      productId: product.id,
+      eligible: true,
+      warnings: validation.warnings,
+      draft,
+      price: {
+        ...price,
+        // Sinaliza quais valores vieram do padrão NÃO verificado (ver
+        // priceCalculator.ts) em vez do que o admin informou na query.
+        estimatesUsed: {
+          commissionPct: query.commissionPct === undefined,
+          fixedFeeBRL: query.fixedFeeBRL === undefined,
+          shippingCostBRL: query.shippingCostBRL === undefined,
+        },
+      },
+    });
+  })
+);
 
 // Produção hoje não tem nenhuma variável ML_* — o boot do backend não pode
 // depender delas (ver lib/env.ts). A validação só acontece aqui, quando uma
