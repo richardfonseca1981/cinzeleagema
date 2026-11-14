@@ -22,6 +22,11 @@ backend/tmp/
 # npm run audit:mercadolivre — ver backend/src/scripts/auditMercadoLivre.ts)
 backend/auditoria-mercadolivre.csv
 
+# CSV de sugestões de título do Mercado Livre (dados reais do catálogo,
+# gerado por npm run generate:ml-titles — ver
+# backend/src/scripts/generateTitleSuggestions.ts)
+backend/sugestoes-titulo-mercadolivre.csv
+
 # Dumps de banco (dados reais) — nunca versionados
 /backups/
 
