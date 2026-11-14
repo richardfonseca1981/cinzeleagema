@@ -26,7 +26,8 @@
     "catalog:sample": "tsx src/scripts/generateSampleCatalog.ts",
     "catalog:investigate-name-dup": "tsx src/scripts/investigateNameDuplication.ts",
     "audit:mercadolivre": "tsx src/scripts/auditMercadoLivre.ts",
-    "generate:ml-titles": "tsx src/scripts/generateTitleSuggestions.ts"
+    "generate:ml-titles": "tsx src/scripts/generateTitleSuggestions.ts",
+    "simulate:mercadolivre": "tsx src/scripts/simulateMercadoLivre.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

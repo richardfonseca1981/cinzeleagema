@@ -51,3 +51,29 @@ export function calculateSuggestedPrice(basePrice: number, config: MercadoLivreP
     netReceived,
   };
 }
+
+// Markup mínimo (%) pra que o líquido recebido cubra pelo menos o preço base
+// (ponto de equilíbrio: a comissão/tarifa/frete saem do acréscimo, não do
+// preço base) — usado pelo script de simulação (scripts/simulateMercadoLivre.ts)
+// pra o Felipe ver, por peça, o piso de acréscimo que não dá prejuízo frente
+// ao preço já praticado hoje. Mesma ressalva de calculateSuggestedPrice:
+// comissão/tarifa/frete aqui são SEMPRE o que o chamador informar, nunca
+// assumidos — se vierem dos UNVERIFIED_DEFAULT_* acima, o resultado herda a
+// mesma incerteza (não verificado contra a API oficial).
+//
+// Derivação: netReceived(markup) = basePrice sse
+//   basePrice*(1+markup/100)*(1-commissionPct/100) - fixedFeeBRL - shippingCostBRL = basePrice
+// Comissão >= 100%: nenhum markup finito fecha a conta — devolve Infinity
+// (o chamador decide como reportar isso, nunca lança).
+export function calculateMinimumMarkupForBreakeven(
+  basePrice: number,
+  config: Omit<MercadoLivrePriceConfig, "markupPct">
+): number {
+  if (!(basePrice > 0)) throw new Error("basePrice deve ser maior que zero");
+
+  const commissionFactor = 1 - config.commissionPct / 100;
+  if (commissionFactor <= 0) return Infinity;
+
+  const requiredListingPrice = (basePrice + config.fixedFeeBRL + config.shippingCostBRL) / commissionFactor;
+  return (requiredListingPrice / basePrice - 1) * 100;
+}

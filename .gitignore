@@ -27,6 +27,11 @@ backend/auditoria-mercadolivre.csv
 # backend/src/scripts/generateTitleSuggestions.ts)
 backend/sugestoes-titulo-mercadolivre.csv
 
+# CSV de simulação de anúncio do Mercado Livre (dados reais do catálogo,
+# gerado por npm run simulate:mercadolivre — ver
+# backend/src/scripts/simulateMercadoLivre.ts)
+backend/simulacao-mercadolivre.csv
+
 # Dumps de banco (dados reais) — nunca versionados
 /backups/
 
