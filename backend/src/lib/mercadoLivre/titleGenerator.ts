@@ -1,5 +1,4 @@
 import { resolveTitle } from "../catalog/content";
-import { formatWeightLabel } from "../catalog/pdfPages";
 import { validateListing, ML_TITLE_MAX_CHARS, type ListingValidationInput } from "./listingValidator";
 
 // Gerador de sugestões de título para anúncio do Mercado Livre (Fase 1A —
@@ -15,9 +14,19 @@ import { validateListing, ML_TITLE_MAX_CHARS, type ListingValidationInput } from
 // (inalcançável por construção, já que os dois chamam resolveTitle com os
 // mesmos argumentos). Os códigos dos blockers entram na mensagem do aviso
 // "ineligible" abaixo, para o motivo real aparecer no CSV.
-export interface TitleGenerationInput extends ListingValidationInput {
-  categoryName: string | null;
-}
+//
+// Ajustado após a rodada real de produção (ver CONTEXT.md): sem "Natural"
+// duplicado, variação B sem o nome de categoria interno, truncamento que
+// nunca termina em conectivo nem soma tamanho redundante quando o nome já
+// tem dimensões, e diferenciação por peso de verdade (inclusive peças de
+// mesmo nome com tamanho a até 1cm de distância).
+// Não leva mais categoria (ver buildVariantParts/pickVariantBSearchTerm): a
+// categoria interna do catálogo (ex.: "Formas", "Homedecor") nunca foi um
+// termo de busca útil pro comprador — removida da variação B a pedido do
+// Felipe, trocada por "Pedra Natural"/"Peça Única". Fica como alias do tipo
+// do validador (em vez de reexportar o mesmo formato por extends vazio) —
+// contrato público estável mesmo que listingValidator mude no futuro.
+export type TitleGenerationInput = ListingValidationInput;
 
 export type TitleWarningCode =
   | "ineligible"
@@ -60,10 +69,10 @@ function normalizeSpaces(text: string): string {
 }
 
 // Aspas retas (ASCII, seguras de digitar) + aspas curvas/guillemets via
-// escape \uXXXX explícito (nunca o caractere literal no source — o mesmo
-// problema do BOM em auditMercadoLivre.ts: um caractere "smart quote"
-// colado direto no editor pode virar silenciosamente uma aspa reta
-// duplicada em vez do caractere pretendido, e o regex perde o match real).
+// String.fromCharCode explícito (nunca o caractere literal no source — o
+// mesmo problema do BOM em auditMercadoLivre.ts: um caractere "smart quote"
+// colado direto no editor pode virar silenciosamente outra coisa, e o regex
+// perde o match real — já aconteceu numa rodada anterior deste arquivo).
 // U+201C/201D "aspas duplas curvas", U+2018/2019 'aspas simples curvas',
 // U+00AB/00BB «guillemets».
 const CURLY_QUOTE_CHARS = [0x201c, 0x201d, 0x2018, 0x2019, 0x00ab, 0x00bb].map((code) => String.fromCharCode(code)).join("");
@@ -89,8 +98,9 @@ function escapeRegExp(value: string): string {
 
 // Termos promocionais/de preço e o nome da loja NUNCA entram num título
 // gerado por este módulo (o vocabulário que ele mesmo usa — "Natural",
-// categoria, tamanho, peso — nunca inclui nenhum deles) — esta lista é uma
-// proteção defensiva contra o `name` cadastrado já trazer algum por engano.
+// "Pedra Natural", "Peça Única", tamanho, peso — nunca inclui nenhum deles)
+// — esta lista é uma proteção defensiva contra o `name` cadastrado já
+// trazer algum por engano.
 const BANNED_TERMS = [
   "oferta",
   "ofertas",
@@ -142,9 +152,26 @@ export function sanitizeTitleText(text: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Material (para decidir se "natural" faz sentido) — dicionário de pedras/
-// minerais comuns no catálogo; sem correspondência, "natural" não é usado
-// (nunca inventa material que o nome não indica).
+// Dimensões embutidas no nome ("(38x20x14 cm)") — extraídas do núcleo do
+// nome pra virarem uma parte REMOVÍVEL própria (ver TitlePart abaixo, regra
+// 3: "preferir remover o trecho entre parênteses" antes de truncar palavra).
+// Quando o nome já tem esse trecho, o tamanho (sizeCm) NÃO é somado de novo
+// como sufixo — evita "Geodo (38x20x14 cm) 23cm" redundante.
+// ---------------------------------------------------------------------------
+
+const EMBEDDED_DIMENSIONS_PATTERN = /\(\s*\d+(?:[.,]\d+)?\s*x\s*\d+(?:[.,]\d+)?\s*x\s*\d+(?:[.,]\d+)?\s*cm\s*\)/i;
+
+function extractEmbeddedDimensions(cleanName: string): { core: string; dims: string | null } {
+  const match = cleanName.match(EMBEDDED_DIMENSIONS_PATTERN);
+  if (!match) return { core: cleanName, dims: null };
+  const core = normalizeSpaces(cleanName.replace(match[0], ""));
+  return { core, dims: match[0] };
+}
+
+// ---------------------------------------------------------------------------
+// Material (para decidir se "Natural"/"Pedra Natural" faz sentido) —
+// dicionário de pedras/minerais comuns no catálogo; sem correspondência,
+// nenhuma das duas é usada (nunca inventa material que o nome não indica).
 // ---------------------------------------------------------------------------
 
 const KNOWN_MATERIALS = [
@@ -193,9 +220,20 @@ function hasKnownMaterial(name: string): boolean {
   return KNOWN_MATERIALS.some((material) => normalized.includes(material));
 }
 
+// Checa a PALAVRA inteira (nunca substring solta) em qualquer posição,
+// ignorando maiúsculas/acentos — usada pra nunca duplicar "natural"/"única"
+// quando o nome cadastrado já traz a palavra (regra 1 do ajuste pós-produção).
+function containsWord(text: string, word: string): boolean {
+  const normalized = normalizeForMatch(text);
+  const re = new RegExp(`\\b${escapeRegExp(normalizeForMatch(word))}\\b`);
+  return re.test(normalized);
+}
+
 // ---------------------------------------------------------------------------
-// Tamanho (cm) — mesma convenção pt-BR do catálogo em PDF (ver
-// pdfPages.ts formatSizeLabel, não exportado — reescrito aqui, 1 linha).
+// Tamanho (cm) e peso — rótulos próprios deste módulo. Peso usa um formato
+// compacto ("540g"/"1kg", sem espaço) diferente do formatWeightLabel do
+// catálogo em PDF ("850 g"/"1,2 kg") — pedido explicitamente neste formato
+// pra diferenciação de título, mais curto (cabe mais vezes no limite de 60).
 // ---------------------------------------------------------------------------
 
 function formatSizeCmLabel(sizeCm: number): string {
@@ -203,18 +241,40 @@ function formatSizeCmLabel(sizeCm: number): string {
   return `${formatted}cm`;
 }
 
+function formatWeightCompactLabel(weightGrams: number): string {
+  if (weightGrams < 1000) return `${Math.round(weightGrams)}g`;
+  const kg = Math.round((weightGrams / 1000) * 10) / 10;
+  const formatted = kg % 1 === 0 ? String(kg) : kg.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  return `${formatted}kg`;
+}
+
 // ---------------------------------------------------------------------------
-// Montagem do título com limite de 60 chars: nunca corta palavra no meio.
-// Partes "removíveis" (adjetivos — "Natural", prefixo de categoria) somem
-// primeiro, em ordem de prioridade; o tamanho só some depois; o nome nunca
-// é removido. Se mesmo sem nenhuma parte removível o nome sozinho passar do
-// limite, trunca no último espaço que cabe (nunca no meio de uma palavra).
+// Montagem do título com limite de 60 chars: nunca corta palavra no meio,
+// nunca termina em conectivo. Partes "removíveis" somem primeiro, em ordem
+// de prioridade (dimensões embutidas > adjetivo/termo de busca > tamanho >
+// peso de diferenciação); o núcleo do nome nunca é removido. Se mesmo sem
+// nenhuma parte removível o núcleo sozinho passar do limite, trunca no
+// último espaço que cabe (nunca no meio de uma palavra) — e, nos dois
+// casos, remove conectivo(s) soltos que sobrarem no fim.
 // ---------------------------------------------------------------------------
 
 interface TitlePart {
   text: string;
   removable: boolean;
   removalPriority: number;
+}
+
+// Nunca termina em conectivo isolado (e, de, do, da, com, em, na, no, a, o,
+// para) — regra 3 do ajuste pós-produção. Remove um ou mais, da direita pra
+// esquerda, sem nunca esvaziar o texto por completo.
+const TRAILING_CONNECTIVES = new Set(["e", "de", "do", "da", "com", "em", "na", "no", "a", "o", "para"]);
+
+function stripTrailingConnectives(text: string): string {
+  const words = text.split(" ");
+  while (words.length > 1 && TRAILING_CONNECTIVES.has(normalizeForMatch(words[words.length - 1]))) {
+    words.pop();
+  }
+  return words.join(" ").trim();
 }
 
 function truncateAtWordBoundary(text: string, maxChars: number): string {
@@ -240,60 +300,97 @@ function assembleTitle(parts: TitlePart[], maxChars: number): { text: string; ha
     text = join(current);
   }
 
-  if (text.length <= maxChars) return { text, hardTruncated: false };
-  return { text: truncateAtWordBoundary(text, maxChars), hardTruncated: true };
+  if (text.length <= maxChars) return { text: stripTrailingConnectives(text), hardTruncated: false };
+  return { text: stripTrailingConnectives(truncateAtWordBoundary(text, maxChars)), hardTruncated: true };
 }
 
 // ---------------------------------------------------------------------------
-// Duas variações por peça, estruturalmente diferentes uma da outra (ordem/
-// conteúdo), para já ajudar a diferenciar peças com o mesmo nome cadastrado
-// mesmo antes do passo de desduplicação entre peças (ver
-// differentiateDuplicates abaixo).
+// Duas variações por peça, estruturalmente diferentes uma da outra. B não
+// leva mais o nome de categoria interno (ex.: "Formas", "Homedecor" — não
+// são termos de busca úteis pro comprador) — usa, no lugar, "Pedra Natural"
+// (quando há material reconhecido e o nome ainda não diz "natural") ou
+// "Peça Única" (quando o nome ainda não diz "única"/"único") como termo de
+// busca; sem nenhum dos dois disponível, B fica só com núcleo + dimensões/
+// tamanho/peso, igual A — nesse caso `variants_equal` pega a colisão e B
+// não é gerado (ver generateTitleSuggestions).
 // ---------------------------------------------------------------------------
 
-function buildVariantA(cleanName: string, sizeLabel: string | null, natural: boolean): TitlePart[] {
-  return [
-    { text: cleanName, removable: false, removalPriority: 99 },
-    { text: natural ? "Natural" : "", removable: true, removalPriority: 1 },
-    { text: sizeLabel ?? "", removable: true, removalPriority: 2 },
-  ];
+function pickVariantBSearchTerm(cleanName: string, naturalMakesSense: boolean): string | null {
+  if (naturalMakesSense) return "Pedra Natural";
+  if (!containsWord(cleanName, "unica") && !containsWord(cleanName, "unico")) return "Peça Única";
+  return null;
 }
 
-function buildVariantB(cleanName: string, sizeLabel: string | null, categoryName: string | null, weightLabel: string | null): TitlePart[] {
-  if (categoryName) {
-    return [
-      { text: categoryName, removable: true, removalPriority: 1 },
-      { text: cleanName, removable: false, removalPriority: 99 },
-      { text: sizeLabel ?? "", removable: true, removalPriority: 2 },
-    ];
+function buildVariantParts(options: {
+  core: string;
+  dims: string | null;
+  sizeLabel: string | null;
+  weightLabel: string | null;
+  prefix: string | null;
+  suffix: string | null;
+}): TitlePart[] {
+  const parts: TitlePart[] = [];
+  if (options.prefix) parts.push({ text: options.prefix, removable: true, removalPriority: 1 });
+  parts.push({ text: options.core, removable: false, removalPriority: 99 });
+  if (options.dims) parts.push({ text: options.dims, removable: true, removalPriority: 0 });
+  if (options.suffix) parts.push({ text: options.suffix, removable: true, removalPriority: 1 });
+  parts.push({ text: options.sizeLabel ?? "", removable: true, removalPriority: 2 });
+  parts.push({ text: options.weightLabel ?? "", removable: true, removalPriority: 3 });
+  return parts;
+}
+
+// ---------------------------------------------------------------------------
+// Diferenciação por peso entre peças de MESMO NOME com tamanho igual ou a
+// até 1cm de distância (regra 4 do ajuste pós-produção — antes o peso só
+// era tentado como um simples acréscimo de última hora no texto já pronto,
+// e silenciosamente desistia se não coubesse; agora entra como parte
+// legítima do título, deslocando outras partes removíveis pra abrir espaço,
+// igual qualquer outra parte de assembleTitle).
+// ---------------------------------------------------------------------------
+
+interface PreparedProduct {
+  id: string;
+  core: string;
+  dims: string | null;
+  sizeCm: number;
+  sizeLabel: string | null;
+  weightGrams: number;
+  weightLabel: string | null;
+  naturalMakesSense: boolean;
+}
+
+const SIZE_PROXIMITY_THRESHOLD_CM = 1;
+
+function computeNeedsWeightDifferentiation(products: PreparedProduct[]): Set<string> {
+  const byCoreName = new Map<string, PreparedProduct[]>();
+  for (const product of products) {
+    const key = normalizeForMatch(product.core);
+    const group = byCoreName.get(key) ?? [];
+    group.push(product);
+    byCoreName.set(key, group);
   }
-  // Sem categoria disponível: usa o peso (quando houver) como diferencial
-  // estrutural de B em vez do prefixo de categoria — ainda assim distinto
-  // de A (que nunca inclui peso).
-  return [
-    { text: cleanName, removable: false, removalPriority: 99 },
-    { text: sizeLabel ?? "", removable: true, removalPriority: 2 },
-    { text: weightLabel ?? "", removable: true, removalPriority: 1 },
-  ];
+
+  const needsWeight = new Set<string>();
+  for (const group of byCoreName.values()) {
+    if (group.length < 2) continue;
+    for (let i = 0; i < group.length; i++) {
+      for (let j = i + 1; j < group.length; j++) {
+        if (Math.abs(group[i].sizeCm - group[j].sizeCm) <= SIZE_PROXIMITY_THRESHOLD_CM) {
+          needsWeight.add(group[i].id);
+          needsWeight.add(group[j].id);
+        }
+      }
+    }
+  }
+  return needsWeight;
 }
 
-// ---------------------------------------------------------------------------
-// Desduplicação entre peças: peças com título A (ou B) IDÊNTICO a outra
-// peça tentam se diferenciar acrescentando o peso ao final (só se couber no
-// limite de 60 e o peso ainda não estiver no texto); se mesmo assim duas ou
-// mais continuarem idênticas, falha com aviso — mantém a primeira, zera o
-// título das demais (nunca emite duplicado silenciosamente).
-// ---------------------------------------------------------------------------
-
-function appendWeightIfPossible(title: string, weightLabel: string | null, maxChars: number): { text: string; appended: boolean } {
-  if (!weightLabel) return { text: title, appended: false };
-  if (normalizeForMatch(title).includes(normalizeForMatch(weightLabel))) return { text: title, appended: false };
-  const candidate = normalizeSpaces(`${title} ${weightLabel}`);
-  if (candidate.length > maxChars) return { text: title, appended: false };
-  return { text: candidate, appended: true };
-}
-
-function differentiateDuplicates(
+// Rede de segurança final: depois de tudo (inclusive a diferenciação por
+// peso acima), se DUAS OU MAIS peças ainda chegarem ao mesmo texto final
+// (nomes diferentes que colapsaram pro mesmo título truncado, por exemplo),
+// tenta acrescentar o peso uma última vez; se mesmo assim colidir, falha
+// com aviso e esvazia o título das excedentes — nunca duplicado silencioso.
+function resolveResidualCollisions(
   rows: TitleSuggestionRow[],
   weightLabels: Map<string, string | null>,
   field: "titleA" | "titleB",
@@ -315,8 +412,12 @@ function differentiateDuplicates(
 
     const attempts = group.map((row) => {
       const current = row[field] as string;
-      const { text, appended } = appendWeightIfPossible(current, weightLabels.get(row.id) ?? null, ML_TITLE_MAX_CHARS);
-      return { row, text, appended };
+      const weightLabel = weightLabels.get(row.id) ?? null;
+      if (!weightLabel || normalizeForMatch(current).includes(normalizeForMatch(weightLabel))) {
+        return { row, text: current };
+      }
+      const candidate = normalizeSpaces(`${current} ${weightLabel}`);
+      return { row, text: candidate.length <= ML_TITLE_MAX_CHARS ? candidate : current };
     });
 
     const afterGroups = new Map<string, typeof attempts>();
@@ -329,15 +430,11 @@ function differentiateDuplicates(
 
     for (const bucket of afterGroups.values()) {
       if (bucket.length < 2) {
-        // Diferenciado com sucesso (ou já era único) — grava o texto final.
         const [attempt] = bucket;
         attempt.row[field] = attempt.text;
         attempt.row[lengthField] = attempt.text.length;
         continue;
       }
-      // Ainda colide mesmo depois de tentar o peso: mantém a primeira
-      // ocorrência do grupo, zera as demais com aviso — nunca duplicado
-      // silencioso.
       bucket.forEach((attempt, index) => {
         if (index === 0) {
           attempt.row[field] = attempt.text;
@@ -356,12 +453,16 @@ function differentiateDuplicates(
 }
 
 // ---------------------------------------------------------------------------
-// Geração por peça (passo 1) + desduplicação entre peças (passo 2, só faz
-// sentido com o lote inteiro em mãos — por isso a função recebe um array).
+// Geração: passo 1 prepara dados puros de cada peça apta (sem montar título
+// ainda); passo 2 decide, com o lote inteiro em mãos, quais peças precisam
+// do peso pra se diferenciar (regra 4); passo 3 monta A/B peça a peça;
+// passo 4 roda a rede de segurança final.
 // ---------------------------------------------------------------------------
 
 export function generateTitleSuggestions(products: TitleGenerationInput[]): TitleSuggestionRow[] {
   const rows: TitleSuggestionRow[] = [];
+  const rowById = new Map<string, TitleSuggestionRow>();
+  const prepared: PreparedProduct[] = [];
   const weightLabels = new Map<string, string | null>();
 
   for (const product of products) {
@@ -377,6 +478,7 @@ export function generateTitleSuggestions(products: TitleGenerationInput[]): Titl
       warnings: [],
     };
     rows.push(row);
+    rowById.set(product.id, row);
 
     const eligibility = validateListing(product);
     if (!eligibility.eligible) {
@@ -386,39 +488,77 @@ export function generateTitleSuggestions(products: TitleGenerationInput[]): Titl
     }
 
     const cleanName = sanitizeTitleText(currentName);
+    const { core, dims } = extractEmbeddedDimensions(cleanName);
     const sizeCm = toNumberOrNull(product.sizeCm) ?? 0;
-    const sizeLabel = sizeCm > 0 ? formatSizeCmLabel(sizeCm) : null;
+    // Nome já traz dimensões embutidas: não soma o "Ncm" de novo (regra 3).
+    const sizeLabel = !dims && sizeCm > 0 ? formatSizeCmLabel(sizeCm) : null;
     const weightGrams = toNumberOrNull(product.weightGrams) ?? 0;
-    const weightLabel = weightGrams > 0 ? formatWeightLabel(weightGrams, "pt") : null;
+    const weightLabel = weightGrams > 0 ? formatWeightCompactLabel(weightGrams) : null;
     weightLabels.set(product.id, weightLabel);
-    const natural = hasKnownMaterial(cleanName);
-    const categoryName = product.categoryName ? sanitizeTitleText(product.categoryName) : null;
+    // "Natural" só faz sentido com material reconhecido E o nome ainda não
+    // disser "natural" em lugar nenhum (regra 1 — nunca duplica a palavra).
+    const naturalMakesSense = hasKnownMaterial(cleanName) && !containsWord(cleanName, "natural");
 
-    const variantA = assembleTitle(buildVariantA(cleanName, sizeLabel, natural), ML_TITLE_MAX_CHARS);
-    const variantB = assembleTitle(buildVariantB(cleanName, sizeLabel, categoryName, weightLabel), ML_TITLE_MAX_CHARS);
+    prepared.push({ id: product.id, core, dims, sizeCm, sizeLabel, weightGrams, weightLabel, naturalMakesSense });
+  }
+
+  const needsWeight = computeNeedsWeightDifferentiation(prepared);
+
+  for (const item of prepared) {
+    const row = rowById.get(item.id)!;
+    const cleanName = item.dims ? `${item.core} ${item.dims}` : item.core; // só pra pickVariantBSearchTerm checar "única"/"unico" no texto completo
+    const weightPart = needsWeight.has(item.id) ? item.weightLabel : null;
+
+    const variantA = assembleTitle(
+      buildVariantParts({
+        core: item.core,
+        dims: item.dims,
+        sizeLabel: item.sizeLabel,
+        weightLabel: weightPart,
+        prefix: null,
+        suffix: item.naturalMakesSense ? "Natural" : null,
+      }),
+      ML_TITLE_MAX_CHARS
+    );
+
+    const searchTerm = pickVariantBSearchTerm(cleanName, item.naturalMakesSense);
+    const variantB = assembleTitle(
+      buildVariantParts({
+        core: item.core,
+        dims: item.dims,
+        sizeLabel: item.sizeLabel,
+        weightLabel: weightPart,
+        prefix: searchTerm,
+        suffix: null,
+      }),
+      ML_TITLE_MAX_CHARS
+    );
 
     row.titleA = variantA.text;
     row.titleALength = variantA.text.length;
     if (variantA.hardTruncated) {
-      row.warnings.push({ code: "title_a_hard_truncated", message: "Título A precisou truncar o próprio nome (não coube nem sem os adjetivos)." });
+      row.warnings.push({ code: "title_a_hard_truncated", message: "Título A precisou truncar o próprio nome (não coube nem sem as partes opcionais)." });
     }
 
     if (normalizeForMatch(variantB.text) === normalizeForMatch(variantA.text)) {
-      // Peça sem material reconhecido, sem categoria e sem peso: nada
-      // sobrou pra diferenciar B de A — falha com aviso em vez de emitir
-      // duas sugestões idênticas.
-      row.warnings.push({ code: "variants_equal", message: "Não foi possível diferenciar a variação B da A (sem material, categoria ou peso disponível) — título B não gerado." });
+      // Sem termo de busca disponível (nome já diz "natural"/"única") e sem
+      // diferença de peso/tamanho: nada sobrou pra diferenciar B de A —
+      // falha com aviso em vez de emitir duas sugestões idênticas.
+      row.warnings.push({
+        code: "variants_equal",
+        message: "Não foi possível diferenciar a variação B da A (sem termo de busca, tamanho ou peso disponível) — título B não gerado.",
+      });
     } else {
       row.titleB = variantB.text;
       row.titleBLength = variantB.text.length;
       if (variantB.hardTruncated) {
-        row.warnings.push({ code: "title_b_hard_truncated", message: "Título B precisou truncar o próprio nome (não coube nem sem os adjetivos)." });
+        row.warnings.push({ code: "title_b_hard_truncated", message: "Título B precisou truncar o próprio nome (não coube nem sem as partes opcionais)." });
       }
     }
   }
 
-  differentiateDuplicates(rows, weightLabels, "titleA", "titleALength", "duplicate_title_a");
-  differentiateDuplicates(rows, weightLabels, "titleB", "titleBLength", "duplicate_title_b");
+  resolveResidualCollisions(rows, weightLabels, "titleA", "titleALength", "duplicate_title_a");
+  resolveResidualCollisions(rows, weightLabels, "titleB", "titleBLength", "duplicate_title_b");
 
   return rows;
 }

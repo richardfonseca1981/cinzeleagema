@@ -23,7 +23,6 @@ function baseProduct(overrides: Partial<TitleGenerationInput> = {}): TitleGenera
     weightGrams: 850,
     sizeCm: 23,
     images: [{ width: 1080, height: 1920 }],
-    categoryName: "Pedras Brutas",
     ...overrides,
   };
 }
@@ -50,7 +49,7 @@ describe("buildTitleSuggestionCsvRows", () => {
 
   it("avisos vêm dos códigos do gerador, separados por '; '", () => {
     const [row] = buildTitleSuggestionCsvRows([
-      baseProduct({ name: "Peca Decorativa Artesanal Sem Material Reconhecido", categoryName: null }),
+      baseProduct({ name: "Peca Decorativa Artesanal Sem Material Reconhecido" }),
     ]);
     expect(row.avisos).toBe("variants_equal");
   });

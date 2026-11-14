@@ -75,14 +75,11 @@ export function buildTitleSuggestionCsvContent(products: TitleGenerationInput[])
 }
 
 async function fetchProductsReadOnly(): Promise<TitleGenerationInput[]> {
-  const products = await prisma.$transaction(
+  return prisma.$transaction(
     async (tx) => {
       await tx.$executeRawUnsafe("SET TRANSACTION READ ONLY");
       return tx.product.findMany({
-        include: {
-          images: { orderBy: { position: "asc" } },
-          category: { select: { name: true } },
-        },
+        include: { images: { orderBy: { position: "asc" } } },
         orderBy: { sortOrder: "asc" },
       });
     },
@@ -90,7 +87,6 @@ async function fetchProductsReadOnly(): Promise<TitleGenerationInput[]> {
     // (CONTEXT.md) adiciona latência de rede que o padrão não cobre.
     { timeout: 30_000 }
   );
-  return products.map((product) => ({ ...product, categoryName: product.category?.name ?? null }));
 }
 
 async function main() {
