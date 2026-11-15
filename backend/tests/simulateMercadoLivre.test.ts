@@ -1,9 +1,34 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import "./setup";
+import { Prisma } from "@prisma/client";
+
+// vi.hoisted: vi.mock() é içado para o topo do arquivo pelo vitest, antes de
+// qualquer `const` — referenciar diretamente um `vi.fn()` declarado fora do
+// factory daria ReferenceError. Os mocks ficam aqui para os testes de
+// fetchReadOnly simularem o Prisma sem precisar de banco real (nem do
+// Docker Desktop rodando).
+const mocks = vi.hoisted(() => ({
+  findMany: vi.fn(),
+  findFirst: vi.fn(),
+}));
+
+vi.mock("../src/lib/prisma", () => ({
+  prisma: {
+    $transaction: (fn: (tx: unknown) => unknown) =>
+      fn({
+        $executeRawUnsafe: vi.fn(),
+        product: { findMany: mocks.findMany },
+        mercadoLivreAccount: { findFirst: mocks.findFirst },
+      }),
+  },
+}));
+
 import {
   parseArgs,
   buildSimulationCsvRows,
   buildSimulationCsvContent,
+  fetchReadOnly,
+  ACCOUNT_UNAVAILABLE_WARNING,
 } from "../src/scripts/simulateMercadoLivre";
 import { calculateMinimumMarkupForBreakeven, UNVERIFIED_DEFAULT_COMMISSION_PCT, UNVERIFIED_DEFAULT_FIXED_FEE_BRL, UNVERIFIED_DEFAULT_SHIPPING_COST_BRL } from "../src/lib/mercadoLivre/priceCalculator";
 
@@ -137,5 +162,64 @@ describe("buildSimulationCsvContent", () => {
   it("escapa valores com vírgula", () => {
     const csv = buildSimulationCsvContent(["NAO, EXISTE"], [], 0);
     expect(csv).toContain('"NAO, EXISTE"');
+  });
+
+  it("anexa o aviso de conta ausente em toda linha quando informado", () => {
+    const csv = buildSimulationCsvContent(["AME-001"], [baseProduct({ price: 1000 })], 0, ACCOUNT_UNAVAILABLE_WARNING);
+    const dataLine = csv.slice(1).split("\n")[1];
+    expect(dataLine).toContain(ACCOUNT_UNAVAILABLE_WARNING);
+  });
+});
+
+describe("fetchReadOnly", () => {
+  beforeEach(() => {
+    mocks.findMany.mockReset();
+    mocks.findFirst.mockReset();
+    mocks.findMany.mockResolvedValue([]);
+  });
+
+  it("com --markup informado: nem consulta a tabela MercadoLivreAccount (funciona mesmo sem a migração da Fase 0 em produção)", async () => {
+    const result = await fetchReadOnly(["AME-001"], 15);
+
+    expect(mocks.findFirst).not.toHaveBeenCalled();
+    expect(result).toEqual({ products: [], accountMarkupPct: null, accountUnavailable: false });
+  });
+
+  it("sem --markup, com conta conectada: usa o markupPct da conta", async () => {
+    mocks.findFirst.mockResolvedValue({ markupPct: 12.5 });
+
+    const result = await fetchReadOnly(["AME-001"], null);
+
+    expect(mocks.findFirst).toHaveBeenCalledWith({ orderBy: { updatedAt: "desc" } });
+    expect(result).toEqual({ products: [], accountMarkupPct: 12.5, accountUnavailable: false });
+  });
+
+  it("sem --markup e sem conta conectada (tabela existe, mas nenhuma linha): markup indisponível", async () => {
+    mocks.findFirst.mockResolvedValue(null);
+
+    const result = await fetchReadOnly(["AME-001"], null);
+
+    expect(result).toEqual({ products: [], accountMarkupPct: null, accountUnavailable: true });
+  });
+
+  it("sem --markup e com a tabela MercadoLivreAccount ausente (P2021, migração da Fase 0 não aplicada): cai para markup indisponível, nunca lança", async () => {
+    mocks.findFirst.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError("The table `public.MercadoLivreAccount` does not exist in the current database.", {
+        code: "P2021",
+        clientVersion: "5.22.0",
+      })
+    );
+
+    const result = await fetchReadOnly(["AME-001"], null);
+
+    expect(result).toEqual({ products: [], accountMarkupPct: null, accountUnavailable: true });
+  });
+
+  it("outro erro do Prisma (não P2021) continua sendo relançado, não é mascarado", async () => {
+    mocks.findFirst.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError("Connection timed out", { code: "P2024", clientVersion: "5.22.0" })
+    );
+
+    await expect(fetchReadOnly(["AME-001"], null)).rejects.toThrow("Connection timed out");
   });
 });

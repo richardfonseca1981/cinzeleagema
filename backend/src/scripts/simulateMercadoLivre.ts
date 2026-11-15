@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { validateListing, type ListingValidationInput } from "../lib/mercadoLivre/listingValidator";
 import { generateTitleSuggestions } from "../lib/mercadoLivre/titleGenerator";
@@ -46,6 +47,13 @@ import {
 //     transação — o Postgres passa a rejeitar qualquer INSERT/UPDATE/DELETE
 //     dentro dela com erro, mesmo que um bug futuro neste arquivo tente
 //     escrever. Isso é reforço de defesa, não confiança no código acima.
+//
+// Produção hoje NÃO tem a migração da Fase 0 aplicada (tabela
+// MercadoLivreAccount não existe) — e este script NUNCA aplica migração.
+// Por isso: com --markup explícito, a tabela nem é consultada (item
+// desnecessário para o resultado); sem --markup, uma tabela ausente
+// (Prisma P2021) é tratada como "sem conta conectada" (markup 0 + aviso),
+// nunca um erro fatal — ver fetchReadOnly.
 //
 // AS TAXAS (comissão, tarifa fixa, frete) SÃO ESTIMATIVAS NÃO VERIFICADAS
 // contra a documentação oficial do Mercado Livre — ver priceCalculator.ts
@@ -127,10 +135,20 @@ export function parseArgs(argv: string[]): { skus: string[]; markupPctArg: numbe
   return { skus, markupPctArg };
 }
 
+// Aviso global do lote (ex.: "conta ML ausente: markup 0" — ver
+// fetchReadOnly) anexado em TODAS as linhas, inclusive sku_nao_encontrado e
+// peça inapta: é sobre a fonte do markup usado na rodada inteira, não sobre
+// uma peça específica, então quem revisa o CSV precisa vê-lo em qualquer
+// linha que abrir.
+function appendWarning(codes: string[], extra: string | null): string {
+  return extra ? [...codes, extra].join("; ") : codes.join("; ");
+}
+
 export function buildSimulationCsvRows(
   requestedSkus: string[],
   products: SimulationProduct[],
-  markupPct: number
+  markupPct: number,
+  accountWarning: string | null = null
 ): SimulationCsvRow[] {
   const productsBySku = new Map(products.filter((p) => p.sku !== null).map((p) => [p.sku as string, p]));
   const titleSuggestionsById = new Map(generateTitleSuggestions(products).map((row) => [row.id, row]));
@@ -149,7 +167,7 @@ export function buildSimulationCsvRows(
         frete_estimado_estimativa_nao_verificada: "",
         liquido_estimado: "",
         markup_minimo_breakeven: "",
-        avisos: "sku_nao_encontrado",
+        avisos: appendWarning(["sku_nao_encontrado"], accountWarning),
       };
     }
 
@@ -166,7 +184,7 @@ export function buildSimulationCsvRows(
         frete_estimado_estimativa_nao_verificada: "",
         liquido_estimado: "",
         markup_minimo_breakeven: "",
-        avisos: eligibility.blockers.map((blocker) => blocker.code).join("; "),
+        avisos: appendWarning(eligibility.blockers.map((blocker) => blocker.code), accountWarning),
       };
     }
 
@@ -204,7 +222,7 @@ export function buildSimulationCsvRows(
       frete_estimado_estimativa_nao_verificada: formatDecimal(price.shippingCostBRL),
       liquido_estimado: formatDecimal(price.netReceived),
       markup_minimo_breakeven: formatDecimal(minMarkup),
-      avisos: warnings.join("; "),
+      avisos: appendWarning(warnings, accountWarning),
     };
   });
 }
@@ -215,13 +233,28 @@ export function buildSimulationCsvRows(
 // invisível direto no source (fácil de perder num editor/diff).
 const UTF8_BOM = String.fromCharCode(0xfeff);
 
-export function buildSimulationCsvContent(requestedSkus: string[], products: SimulationProduct[], markupPct: number): string {
-  const rows = buildSimulationCsvRows(requestedSkus, products, markupPct);
+export function buildSimulationCsvContent(
+  requestedSkus: string[],
+  products: SimulationProduct[],
+  markupPct: number,
+  accountWarning: string | null = null
+): string {
+  const rows = buildSimulationCsvRows(requestedSkus, products, markupPct, accountWarning);
   const lines = [CSV_HEADER.join(","), ...rows.map((row) => CSV_HEADER.map((key) => csvEscape(row[key])).join(","))];
   return `${UTF8_BOM}${lines.join("\n")}\n`;
 }
 
-async function fetchReadOnly(skus: string[]): Promise<{ products: SimulationProduct[]; accountMarkupPct: number | null }> {
+// Aviso usado em main()/CSV quando o markup cai pra 0 por falta de conta
+// Mercado Livre — mesmo texto tanto pra "tabela ainda não existe em
+// produção" (P2021, migração da Fase 0 não aplicada) quanto pra "tabela
+// existe mas nenhuma conta foi conectada ainda": do ponto de vista de quem
+// lê o CSV, o resultado prático é idêntico (markup 0, revisar manualmente).
+export const ACCOUNT_UNAVAILABLE_WARNING = "conta ML ausente: markup 0";
+
+export async function fetchReadOnly(
+  skus: string[],
+  markupPctArg: number | null
+): Promise<{ products: SimulationProduct[]; accountMarkupPct: number | null; accountUnavailable: boolean }> {
   return prisma.$transaction(
     async (tx) => {
       await tx.$executeRawUnsafe("SET TRANSACTION READ ONLY");
@@ -231,10 +264,25 @@ async function fetchReadOnly(skus: string[]): Promise<{ products: SimulationProd
         include: { images: { orderBy: { position: "asc" } } },
       });
 
-      const account = await tx.mercadoLivreAccount.findFirst({ orderBy: { updatedAt: "desc" } });
-      const accountMarkupPct = account ? Number(account.markupPct) : null;
+      // --markup explícito: o markup não depende da conta — nem consultamos
+      // a tabela, então um --markup informado funciona mesmo que
+      // MercadoLivreAccount ainda não exista (produção hoje).
+      if (markupPctArg !== null) {
+        return { products, accountMarkupPct: null, accountUnavailable: false };
+      }
 
-      return { products, accountMarkupPct };
+      try {
+        const account = await tx.mercadoLivreAccount.findFirst({ orderBy: { updatedAt: "desc" } });
+        return { products, accountMarkupPct: account ? Number(account.markupPct) : null, accountUnavailable: account === null };
+      } catch (err) {
+        // P2021 = tabela não existe (migração da Fase 0 não aplicada em
+        // produção). Nunca relançar como fatal nem tentar migrar/escrever
+        // aqui — cai para "sem conta", igual a não encontrar nenhuma linha.
+        if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2021") {
+          return { products, accountMarkupPct: null, accountUnavailable: true };
+        }
+        throw err;
+      }
     },
     // timeout maior que o default (5s) — rodar via proxy TCP da Railway
     // (CONTEXT.md) adiciona latência de rede que o padrão não cobre.
@@ -257,18 +305,20 @@ async function main() {
 
   console.log(`Banco: ${describeDatabase()} (transação SET TRANSACTION READ ONLY)`);
 
-  const { products, accountMarkupPct } = await fetchReadOnly(skus);
+  const { products, accountMarkupPct, accountUnavailable } = await fetchReadOnly(skus, markupPctArg);
 
+  const accountWarning = accountUnavailable ? ACCOUNT_UNAVAILABLE_WARNING : null;
   const markupPct = markupPctArg ?? accountMarkupPct ?? 0;
   const markupSource = markupPctArg !== null ? "argumento --markup" : accountMarkupPct !== null ? "conta Mercado Livre conectada" : "padrão (sem conta conectada)";
   console.log(`Markup usado: ${markupPct}% (fonte: ${markupSource})`);
+  if (accountWarning) console.log(accountWarning);
   console.log("Comissão/tarifa fixa/frete: estimativas NÃO verificadas contra a API oficial do Mercado Livre — ver colunas do CSV.");
 
-  const csv = buildSimulationCsvContent(skus, products, markupPct);
+  const csv = buildSimulationCsvContent(skus, products, markupPct, accountWarning);
   const outputPath = path.resolve(__dirname, "../../simulacao-mercadolivre.csv");
   fs.writeFileSync(outputPath, csv, "utf8");
 
-  const rows = buildSimulationCsvRows(skus, products, markupPct);
+  const rows = buildSimulationCsvRows(skus, products, markupPct, accountWarning);
   const comPreco = rows.filter((row) => row.preco_base !== "").length;
   console.log(`Total de SKUs pedidos: ${rows.length} (com simulação de preço: ${comPreco}, sem: ${rows.length - comPreco})`);
   console.log(`CSV gravado em: ${outputPath}`);
