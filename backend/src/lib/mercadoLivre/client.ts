@@ -8,6 +8,13 @@ export interface MercadoLivreRequestOptions {
   method?: "GET" | "POST" | "PUT" | "DELETE";
   body?: unknown;
   query?: Record<string, string | number | undefined>;
+  // Repassado para fetchWithRetry (default ali: 2). Quem publica/altera um
+  // recurso (POST /items e qualquer PUT de status — ver publisherClient.ts)
+  // deve passar 0: um 429/5xx em POST pode significar que o Mercado Livre já
+  // processou o pedido e só a resposta se perdeu — tentar de novo sem saber
+  // o resultado da primeira tentativa arrisca criar/alterar em duplicidade.
+  // GET nunca tem esse risco (idempotente por natureza) e mantém o default.
+  maxRetries?: number;
 }
 
 export interface MercadoLivreResponse<T> {
@@ -33,15 +40,19 @@ export async function mercadoLivreRequest<T = unknown>(
   }
 
   const call = (accessToken: string) =>
-    fetchWithRetry(url.toString(), {
-      method: options.method ?? "GET",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Accept: "application/json",
-        ...(options.body ? { "Content-Type": "application/json" } : {}),
+    fetchWithRetry(
+      url.toString(),
+      {
+        method: options.method ?? "GET",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+          ...(options.body ? { "Content-Type": "application/json" } : {}),
+        },
+        body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
       },
-      body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
-    });
+      { maxRetries: options.maxRetries }
+    );
 
   let accessToken = await getValidToken(accountId);
   let response = await call(accessToken);

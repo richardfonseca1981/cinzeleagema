@@ -1,0 +1,129 @@
+import { env } from "../env";
+import { validateListing, type ListingValidationInput } from "./listingValidator";
+import {
+  buildListingDraft,
+  assertReadyToPublish,
+  ListingNotReadyError,
+  type ListingBuilderInput,
+  type MercadoLivreListingDraft,
+} from "./listingBuilder";
+
+// Fase 1B — monta o payload de POST /items a partir de uma peça do catálogo.
+// Formato geral (campos abaixo) é conhecimento prévio da API pública do
+// Mercado Livre, NÃO confirmado contra a doc atual — 403 anti-bot bloqueou
+// as 3 tentativas de consulta durante o planejamento desta fase, mesmo
+// bloqueio documentado em categoryFixture.ts (ver CONTEXT.md "Mercado Livre
+// — Fase 1B, débitos"). `shipping` (dimensões de pacote) fica fora deste
+// payload por enquanto — entra numa etapa própria (presets de embalagem).
+// Intersecção (não `extends`): os dois `images` só diferem no que cada um
+// adiciona (width/height vs. url/position) — mesmo padrão de
+// scripts/simulateMercadoLivre.ts SimulationProduct, que já resolve isso
+// assim. `extends` exigiria os dois tipos de `images` IDÊNTICOS.
+export type MercadoLivrePublishableProduct = ListingValidationInput & ListingBuilderInput;
+
+export interface MercadoLivreItemPicture {
+  source: string;
+}
+
+export interface MercadoLivreItemPayload {
+  title: string;
+  category_id: string;
+  price: number;
+  currency_id: "BRL";
+  available_quantity: 1;
+  buying_mode: "buy_it_now";
+  listing_type_id: string;
+  condition: "new";
+  pictures: MercadoLivreItemPicture[];
+  // SUPOSIÇÃO não verificada: "seller_custom_field" é o campo público
+  // conhecido historicamente pra carregar o SKU do vendedor — pode ser um
+  // atributo customizado em vez disso (só confirmável com a API real).
+  // Omitido quando a peça não tem SKU cadastrado — nesse caso a
+  // reconciliação por SKU (findItemsBySku, ver publisherClient.ts) nunca
+  // encontra este item, limitação conhecida e aceita nesta fase.
+  seller_custom_field?: string;
+}
+
+export interface BuildMercadoLivreItemPayloadInput {
+  product: MercadoLivrePublishableProduct;
+  // Preço FINAL de anúncio, já com markup aplicado (ver
+  // priceCalculator.ts calculateSuggestedPrice().listingPrice) — este
+  // builder nunca calcula preço, só recebe o resultado já pronto.
+  listingPriceBRL: number;
+}
+
+// Erro de CONFIGURAÇÃO (não da peça) — listing_type_id depende do plano de
+// anúncio contratado pelo vendedor e nunca tem um "padrão razoável" seguro
+// (ver ML_LISTING_TYPE_ID em lib/env.ts): publicar com o tipo errado tem
+// custo real (exposição/tarifa diferentes).
+export class MercadoLivrePublishConfigError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "MercadoLivrePublishConfigError";
+  }
+}
+
+// Nunca monta payload parcial: toda checagem roda ANTES do primeiro campo
+// do payload ser montado — qualquer falha lança antes de chegar a
+// assemblePayload. Ordem deliberada (mais barato/menos dependente da peça
+// primeiro): configuração do sistema -> sanidade do preço informado pelo
+// chamador -> elegibilidade da peça -> categoria. Isso também é o que torna
+// cada guarda testável isoladamente (ver tests/mercadoLivrePublisherPayload.test.ts):
+// a categoria placeholder desta fase (ver categoryFixture.ts) SEMPRE
+// bloqueia por último, nunca mascarando os outros três motivos de falha.
+export function buildMercadoLivreItemPayload(input: BuildMercadoLivreItemPayloadInput): MercadoLivreItemPayload {
+  const { product, listingPriceBRL } = input;
+
+  if (!env.ML_LISTING_TYPE_ID) {
+    throw new MercadoLivrePublishConfigError(
+      "ML_LISTING_TYPE_ID não configurado — defina o tipo de anúncio do plano contratado antes de publicar (ver .env.example)."
+    );
+  }
+
+  if (!Number.isFinite(listingPriceBRL) || listingPriceBRL <= 0) {
+    throw new ListingNotReadyError(`Preço de anúncio inválido (${listingPriceBRL}) — não é possível publicar.`);
+  }
+
+  const eligibility = validateListing(product);
+  if (!eligibility.eligible) {
+    throw new ListingNotReadyError(
+      `Peça não apta para publicação no Mercado Livre: ${eligibility.blockers.map((blocker) => blocker.code).join(", ")}`
+    );
+  }
+
+  // assertReadyToPublish lança ListingNotReadyError enquanto a categoria for
+  // o placeholder não verificado (ver categoryFixture.ts) — hoje SEMPRE,
+  // até a Fase que confirmar o id real via API autenticada.
+  const draft = buildListingDraft(product);
+  assertReadyToPublish(draft);
+
+  return assemblePayload(draft, product.sku, listingPriceBRL, env.ML_LISTING_TYPE_ID);
+}
+
+// Montagem pura dos campos, separada das checagens acima de propósito: um
+// MercadoLivreListingDraft com `category.verified: true` só existe de
+// verdade numa fase futura (depois da categoria real confirmada) — para o
+// FORMATO do payload (SKU, fotos como URL pública, listing_type_id vindo de
+// configuração) já ter cobertura de teste agora, sem depender disso, os
+// testes chamam esta função direto com um draft construído à mão.
+export function assemblePayload(
+  draft: MercadoLivreListingDraft,
+  sku: string | null,
+  listingPriceBRL: number,
+  listingTypeId: string
+): MercadoLivreItemPayload {
+  return {
+    title: draft.title,
+    category_id: draft.category.id,
+    price: listingPriceBRL,
+    currency_id: "BRL",
+    available_quantity: 1,
+    buying_mode: "buy_it_now",
+    listing_type_id: listingTypeId,
+    condition: "new",
+    // draft.photos já são URLs públicas do R2 (ver listingBuilder.ts/
+    // ProductImage.url) — nunca uma referência de arquivo local.
+    pictures: draft.photos.map((url) => ({ source: url })),
+    ...(sku ? { seller_custom_field: sku } : {}),
+  };
+}

@@ -1,7 +1,10 @@
 import "dotenv/config";
 import { z } from "zod";
 
-const envSchema = z.object({
+// Exportado (não só o `env` já parseado abaixo) para o teste de parsing de
+// ML_PUBLISH_ENABLED (tests/env.test.ts) validar o schema de um campo
+// isoladamente, sem precisar montar um process.env completo.
+export const envSchema = z.object({
   PORT: z.coerce.number().default(3334),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   DATABASE_URL: z.string().min(1, "DATABASE_URL é obrigatório"),
@@ -67,6 +70,13 @@ const envSchema = z.object({
     .optional()
     .default("false")
     .transform((value) => value === "true" || value === "1"),
+  // "" (padrão) propositalmente SEM fallback para um valor "razoável": qual
+  // listing_type_id é correto depende do plano de anúncio contratado pelo
+  // vendedor (ex.: "gold_special" — SUPOSIÇÃO, não verificado contra a API
+  // real) e publicar com o tipo errado tem custo real (exposição/tarifa
+  // diferentes) — melhor falhar alto e claro (ver publisherPayload.ts) do
+  // que assumir em silêncio.
+  ML_LISTING_TYPE_ID: z.string().optional().default(""),
 
   // Base da URL pública de produto usada no CSV do script de auditoria do
   // Mercado Livre (ver scripts/auditMercadoLivre.ts, coluna url_publica) —

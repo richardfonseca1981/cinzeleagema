@@ -63,13 +63,24 @@ export function buildListingDraft(product: ListingBuilderInput): MercadoLivreLis
   };
 }
 
-// Reaproveitável pela Fase 1B (POST /items, fora do escopo desta fase):
-// garante que nenhuma publicação real aconteça enquanto a categoria do
+// Erro tipado (não um Error genérico) — o builder do payload de publicação
+// (publisherPayload.ts, Fase 1B) precisa distinguir "peça não pronta pra
+// publicar" de qualquer outro bug/erro inesperado na montagem do payload,
+// sem checar o texto da mensagem.
+export class ListingNotReadyError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ListingNotReadyError";
+  }
+}
+
+// Garante que nenhuma publicação real aconteça enquanto a categoria do
 // rascunho ainda for o placeholder não verificado desta fase (ver
-// categoryFixture.ts). Nenhuma rota chama esta função ainda.
+// categoryFixture.ts). Chamada pelo builder do payload (publisherPayload.ts)
+// ANTES de montar qualquer campo — nunca monta payload parcial.
 export function assertReadyToPublish(draft: MercadoLivreListingDraft): void {
   if (!draft.category.verified || draft.category.id === ML_FIXME_CATEGORY_ID) {
-    throw new Error(
+    throw new ListingNotReadyError(
       `Categoria do Mercado Livre ainda não verificada (placeholder "${draft.category.id}") — publicação bloqueada até confirmar a categoria real via API.`
     );
   }
