@@ -19,9 +19,18 @@ export const UNVERIFIED_DEFAULT_COMMISSION_PCT = 12.5;
 export const UNVERIFIED_DEFAULT_FIXED_FEE_BRL = 6;
 // O Mercado Envios tem regras de frete próprias, diferentes da caixa fixa do
 // Melhor Envio usada no site (lib/shipping/shipment.ts) — decisão explícita
-// de NÃO reaproveitar aquele cálculo aqui. Sem um valor seguro para assumir
-// como padrão, por isso 0: o chamador deve informar o frete real estimado.
-export const UNVERIFIED_DEFAULT_SHIPPING_COST_BRL = 0;
+// de NÃO reaproveitar aquele cálculo aqui.
+//
+// NUNCA 0 por padrão (ajustado em 2026-11-15): um frete grátis/zero por
+// padrão inflava o líquido estimado de forma enganosa — toda peça real tem
+// algum custo de envio. R$25 é um ponto de partida conservador (mais alto
+// que o frete típico de um item pequeno/leve) pra peça de porte médio por
+// Mercado Envios no Brasil — ainda assim uma estimativa de agregadores de
+// terceiros, NÃO a tarifa oficial (mesmo bloqueio 403 ao consultar a API
+// pública do ML, ver categoryFixture.ts). Peças muito pesadas tendem a
+// custar mais que isso; ajustar aqui (ou informar shippingCostBRL
+// explicitamente) quando houver um número real confirmado.
+export const UNVERIFIED_DEFAULT_SHIPPING_COST_BRL = 25;
 
 export interface MercadoLivrePriceBreakdown {
   basePrice: number;
