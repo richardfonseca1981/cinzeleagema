@@ -57,6 +57,16 @@ const envSchema = z.object({
   ML_REDIRECT_URI: z.string().optional().default(""),
   ML_ENV: z.enum(["test", "prod"]).optional().default("test"),
   ML_TOKEN_ENC_KEY: z.string().optional().default(""),
+  // Fase 1B (publicação) — kill switch global: "false" (padrão, inclusive em
+  // produção até decisão explícita em contrário) força toda tentativa de
+  // publicar/pausar/encerrar a cair em dry-run (cliente simulado, nenhuma
+  // chamada real), mesmo com conta conectada e peça apta. Ver
+  // lib/mercadoLivre/publisherClient.ts.
+  ML_PUBLISH_ENABLED: z
+    .string()
+    .optional()
+    .default("false")
+    .transform((value) => value === "true" || value === "1"),
 
   // Base da URL pública de produto usada no CSV do script de auditoria do
   // Mercado Livre (ver scripts/auditMercadoLivre.ts, coluna url_publica) —

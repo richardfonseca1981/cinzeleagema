@@ -256,3 +256,38 @@ model MercadoLivreListing {
   @@index([accountId])
   @@index([productId])
 }
+
+// Fase 1B — notificações (webhooks) do Mercado Livre. Uma linha por
+// notificação recebida, usada só para idempotência: o ML reenvia a mesma
+// notificação em retry de entrega se não receber 200 rápido o suficiente, e
+// o processamento (GET autenticado do recurso + reconciliação) nunca deve
+// rodar duas vezes para a mesma entrega. Formato exato do corpo (nomes de
+// campo, se há um id de evento estável entre retries) é suposição NÃO
+// verificada — doc bloqueada por 403 anti-bot, mesmo bloqueio documentado em
+// lib/mercadoLivre/categoryFixture.ts (ver CONTEXT.md "Mercado Livre — Fase
+// 1B, débitos"). Por isso o dedup usa bodyHash (calculado por nós, nunca
+// assume nome de campo do payload) em vez de um id do próprio ML.
+model MercadoLivreWebhookEvent {
+  id String @id @default(cuid())
+
+  // sha256 do corpo cru recebido — duas ENTREGAS byte-idênticas (reenvio do
+  // ML) produzem o mesmo hash. Limitação conhecida e documentada: se o ML
+  // alterar algum campo entre reenvios (ex.: contador de tentativas embutido
+  // no corpo — não confirmado), o hash muda e o dedup por si só não pega;
+  // por isso o processamento em si (GET autenticado do estado atual antes
+  // de agir, nunca confiar no corpo) também precisa ser idempotente, não só
+  // esta tabela.
+  bodyHash String @unique
+
+  // Best-effort (nullable): preenchidos quando o corpo tem os campos que
+  // esperamos (resource/topic — suposição de nome), só para
+  // visibilidade/debug, nunca usados como chave de dedup.
+  resource String?
+  topic    String?
+
+  receivedAt  DateTime  @default(now())
+  processedAt DateTime?
+  lastError   String?
+
+  @@index([resource])
+}
