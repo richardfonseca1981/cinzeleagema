@@ -92,6 +92,12 @@ describe("assemblePayload", () => {
     photos: ["https://r2.example/esm-1.webp", "https://r2.example/esm-2.webp"],
     photosOmitted: 0,
     category: { id: "MLB123456", breadcrumb: ["Joias e Relógios", "Pedras Preciosas", "Gemas Brutas"], verified: true },
+    packageBox: {
+      ok: true as const,
+      preset: "M" as const,
+      box: { lengthCm: 35, widthCm: 28, heightCm: 20 },
+      packageWeightGrams: 1150,
+    },
   };
 
   it("monta todos os campos fixos corretamente (currency_id BRL, available_quantity 1, buying_mode, condition)", () => {
@@ -124,5 +130,17 @@ describe("assemblePayload", () => {
     const payload = assemblePayload(verifiedDraft, null, 1500, "gold_special");
     expect(payload.seller_custom_field).toBeUndefined();
     expect("seller_custom_field" in payload).toBe(false);
+  });
+
+  it("inclui shipping.dimensions a partir do packageBox estimado do draft", () => {
+    const payload = assemblePayload(verifiedDraft, "ESM-001", 1500, "gold_special");
+    expect(payload.shipping).toEqual({ dimensions: "35x28x20cm,1150g" });
+  });
+
+  it("omite shipping quando o packageBox do draft for ok:false (defensivo — nunca inventa dimensão)", () => {
+    const draftWithoutPackage = { ...verifiedDraft, packageBox: { ok: false as const, reason: "size_exceeds_limit" as const } };
+    const payload = assemblePayload(draftWithoutPackage, "ESM-001", 1500, "gold_special");
+    expect(payload.shipping).toBeUndefined();
+    expect("shipping" in payload).toBe(false);
   });
 });

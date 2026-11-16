@@ -85,6 +85,38 @@ export const envSchema = z.object({
   // código quando o limite real for confirmado.
   ML_DESCRIPTION_MAX_CHARS: z.coerce.number().int().positive().optional().default(5000),
 
+  // Fase 1B etapa 4 — presets de caixa de embalagem (ver
+  // lib/mercadoLivre/packagePresets.ts estimatePackageBox). SUPOSIÇÃO FORTE,
+  // não verificada: nem as dimensões reais das caixas usadas pelo cliente,
+  // nem o formato de `shipping.dimensions` do Mercado Livre (mesmo bloqueio
+  // 403 da doc, ver categoryFixture.ts) foram confirmados — só um ponto de
+  // partida conservador até existir override manual por peça (última etapa
+  // do plano, ver CONTEXT.md). Peso extra de embalagem: mesmo valor
+  // conservador já usado no frete nacional por falta de dado melhor (ver
+  // SHIPPING_PACKAGING_WEIGHT_G acima).
+  ML_PACKAGE_WEIGHT_MARGIN_G: z.coerce.number().positive().optional().default(300),
+  // Acima destes limites (tamanho OU peso), a peça não cabe nem no maior
+  // preset (GG) — bloqueada até um override manual existir (ver
+  // listingBuilder.ts assertReadyToPublish, código package_requires_manual).
+  // Nunca "chuta" uma caixa maior sem confirmação.
+  ML_PACKAGE_MAX_SIZE_CM: z.coerce.number().positive().optional().default(60),
+  ML_PACKAGE_MAX_WEIGHT_G: z.coerce.number().positive().optional().default(15000),
+  // Dimensões (cm) de cada preset — comprimento x largura x altura da CAIXA,
+  // não da peça. Ver packagePresets.ts para a faixa de peça (tamanho/peso)
+  // que cada preset cobre e o raciocínio por trás dos valores abaixo.
+  ML_PACKAGE_BOX_P_LENGTH_CM: z.coerce.number().positive().optional().default(20),
+  ML_PACKAGE_BOX_P_WIDTH_CM: z.coerce.number().positive().optional().default(16),
+  ML_PACKAGE_BOX_P_HEIGHT_CM: z.coerce.number().positive().optional().default(12),
+  ML_PACKAGE_BOX_M_LENGTH_CM: z.coerce.number().positive().optional().default(35),
+  ML_PACKAGE_BOX_M_WIDTH_CM: z.coerce.number().positive().optional().default(28),
+  ML_PACKAGE_BOX_M_HEIGHT_CM: z.coerce.number().positive().optional().default(20),
+  ML_PACKAGE_BOX_G_LENGTH_CM: z.coerce.number().positive().optional().default(50),
+  ML_PACKAGE_BOX_G_WIDTH_CM: z.coerce.number().positive().optional().default(40),
+  ML_PACKAGE_BOX_G_HEIGHT_CM: z.coerce.number().positive().optional().default(30),
+  ML_PACKAGE_BOX_GG_LENGTH_CM: z.coerce.number().positive().optional().default(65),
+  ML_PACKAGE_BOX_GG_WIDTH_CM: z.coerce.number().positive().optional().default(50),
+  ML_PACKAGE_BOX_GG_HEIGHT_CM: z.coerce.number().positive().optional().default(40),
+
   // Base da URL pública de produto usada no CSV do script de auditoria do
   // Mercado Livre (ver scripts/auditMercadoLivre.ts, coluna url_publica) —
   // mesmo host do <link rel="canonical"> do frontend (VITE_SITE_URL),

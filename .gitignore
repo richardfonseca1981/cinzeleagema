@@ -32,6 +32,11 @@ backend/sugestoes-titulo-mercadolivre.csv
 # backend/src/scripts/simulateMercadoLivre.ts)
 backend/simulacao-mercadolivre.csv
 
+# Qualquer outro CSV de auditoria/simulação gerado localmente em backend/
+# (dados reais do catálogo) — rede de segurança além dos nomes específicos
+# acima, que ficam mantidos pelo comentário/documentação de cada um.
+backend/*.csv
+
 # Dumps de banco (dados reais) — nunca versionados
 /backups/
 

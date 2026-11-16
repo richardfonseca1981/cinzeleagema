@@ -404,6 +404,14 @@
       "draftPhotosOmitted": "{{count}} foto(s) além do limite de 12 não entraram no anúncio.",
       "draftCategoryLabel": "Categoria",
       "draftCategoryUnverified": "placeholder não verificado — confirmar antes de publicar",
+      "draftPackageLabel": "Embalagem",
+      "draftPackageEstimateTag": "(estimativa não verificada)",
+      "draftPackageSummary": "Preset {{preset}} — caixa {{length}}x{{width}}x{{height}}cm, pacote {{weight}}g",
+      "draftPackageBlocked": {
+        "size_exceeds_limit": "Peça maior que o maior preset de caixa disponível — publicação bloqueada até definir a embalagem manualmente.",
+        "weight_exceeds_limit": "Peça mais pesada que o maior preset de embalagem disponível — publicação bloqueada até definir a embalagem manualmente.",
+        "both_exceed_limit": "Peça fora da faixa de tamanho E de peso de qualquer preset — publicação bloqueada até definir a embalagem manualmente."
+      },
       "priceTitle": "Preço sugerido",
       "priceBasePrice": "Preço base",
       "priceMarkupAmount": "Acréscimo",

@@ -4,7 +4,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { validateListing, type ListingValidationInput } from "../lib/mercadoLivre/listingValidator";
 import { generateTitleSuggestions } from "../lib/mercadoLivre/titleGenerator";
-import { buildListingDraft, assertReadyToPublish, type ListingBuilderInput } from "../lib/mercadoLivre/listingBuilder";
+import { buildListingDraft, getReadinessIssues, type ListingBuilderInput } from "../lib/mercadoLivre/listingBuilder";
 import {
   calculateSuggestedPrice,
   calculateMinimumMarkupForBreakeven,
@@ -36,9 +36,13 @@ import {
 //  - priceCalculator (calculateSuggestedPrice/calculateMinimumMarkupForBreakeven):
 //    breakdown de preço e o markup mínimo pra não dar prejuízo frente ao
 //    preço já praticado hoje.
-//  - listingBuilder (buildListingDraft/assertReadyToPublish): sinaliza
-//    quando a categoria ainda não foi verificada (placeholder da Fase 1A —
-//    ver categoryFixture.ts), o que bloquearia a publicação real.
+//  - listingBuilder (buildListingDraft/getReadinessIssues): sinaliza quando
+//    a categoria ainda não foi verificada (placeholder da Fase 1A — ver
+//    categoryFixture.ts) e/ou quando a peça excede o maior preset de
+//    embalagem (GG — ver packagePresets.ts), o que bloquearia a publicação
+//    real. getReadinessIssues (não assertReadyToPublish) porque o CSV
+//    precisa mostrar os DOIS motivos quando os dois se aplicarem, não só o
+//    primeiro que a versão que lança pararia em.
 //
 // Somente leitura em DOIS níveis, não só "só chamamos findMany":
 //  1) Código: as únicas chamadas ao Prisma aqui são product.findMany e
@@ -76,6 +80,12 @@ export interface SimulationCsvRow {
   frete_estimado_estimativa_nao_verificada: string;
   liquido_estimado: string;
   markup_minimo_breakeven: string;
+  // Preset de caixa de embalagem (ver lib/mercadoLivre/packagePresets.ts) —
+  // vazio quando a peça excede o maior preset (GG); o motivo aparece em
+  // "avisos" (package_requires_manual). SUPOSIÇÃO não verificada, igual às
+  // colunas de taxa acima.
+  caixa_estimada_estimativa_nao_verificada: string;
+  peso_pacote_g_estimativa_nao_verificada: string;
   avisos: string;
 }
 
@@ -90,6 +100,8 @@ const CSV_HEADER: (keyof SimulationCsvRow)[] = [
   "frete_estimado_estimativa_nao_verificada",
   "liquido_estimado",
   "markup_minimo_breakeven",
+  "caixa_estimada_estimativa_nao_verificada",
+  "peso_pacote_g_estimativa_nao_verificada",
   "avisos",
 ];
 
@@ -167,6 +179,8 @@ export function buildSimulationCsvRows(
         frete_estimado_estimativa_nao_verificada: "",
         liquido_estimado: "",
         markup_minimo_breakeven: "",
+        caixa_estimada_estimativa_nao_verificada: "",
+        peso_pacote_g_estimativa_nao_verificada: "",
         avisos: appendWarning(["sku_nao_encontrado"], accountWarning),
       };
     }
@@ -184,6 +198,8 @@ export function buildSimulationCsvRows(
         frete_estimado_estimativa_nao_verificada: "",
         liquido_estimado: "",
         markup_minimo_breakeven: "",
+        caixa_estimada_estimativa_nao_verificada: "",
+        peso_pacote_g_estimativa_nao_verificada: "",
         avisos: appendWarning(eligibility.blockers.map((blocker) => blocker.code), accountWarning),
       };
     }
@@ -191,11 +207,18 @@ export function buildSimulationCsvRows(
     const titleRow = titleSuggestionsById.get(product.id);
     const warnings: string[] = (titleRow?.warnings ?? []).map((warning) => warning.code);
 
-    try {
-      assertReadyToPublish(buildListingDraft(product));
-    } catch {
-      warnings.push("category_not_verified");
-    }
+    const draft = buildListingDraft(product);
+    warnings.push(...getReadinessIssues(draft));
+
+    // Mostra a caixa/peso estimados SEMPRE que o preset deu certo (ok:
+    // true) — independente de a categoria ainda bloquear a publicação de
+    // verdade nesta fase (as duas checagens são independentes, ver
+    // getReadinessIssues). Vazio só quando a peça excede o maior preset
+    // (ok: false) — "avisos" já carrega package_requires_manual nesse caso.
+    const caixaEstimada = draft.packageBox.ok
+      ? `${draft.packageBox.preset} (${draft.packageBox.box.lengthCm}x${draft.packageBox.box.widthCm}x${draft.packageBox.box.heightCm}cm)`
+      : "";
+    const pesoPacoteEstimado = draft.packageBox.ok ? String(draft.packageBox.packageWeightGrams) : "";
 
     const priceConfig = {
       markupPct,
@@ -222,6 +245,8 @@ export function buildSimulationCsvRows(
       frete_estimado_estimativa_nao_verificada: formatDecimal(price.shippingCostBRL),
       liquido_estimado: formatDecimal(price.netReceived),
       markup_minimo_breakeven: formatDecimal(minMarkup),
+      caixa_estimada_estimativa_nao_verificada: caixaEstimada,
+      peso_pacote_g_estimativa_nao_verificada: pesoPacoteEstimado,
       avisos: appendWarning(warnings, accountWarning),
     };
   });

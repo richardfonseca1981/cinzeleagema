@@ -421,6 +421,14 @@
       "draftPhotosOmitted": "{{count}} photo(s) beyond the 12-photo limit were left out of the listing.",
       "draftCategoryLabel": "Category",
       "draftCategoryUnverified": "unverified placeholder — confirm before publishing",
+      "draftPackageLabel": "Packaging",
+      "draftPackageEstimateTag": "(unverified estimate)",
+      "draftPackageSummary": "Preset {{preset}} — box {{length}}x{{width}}x{{height}}cm, package {{weight}}g",
+      "draftPackageBlocked": {
+        "size_exceeds_limit": "Item larger than the biggest available box preset — publishing blocked until packaging is set manually.",
+        "weight_exceeds_limit": "Item heavier than the biggest available packaging preset — publishing blocked until packaging is set manually.",
+        "both_exceed_limit": "Item outside both the size AND weight range of any preset — publishing blocked until packaging is set manually."
+      },
       "priceTitle": "Suggested price",
       "priceBasePrice": "Base price",
       "priceMarkupAmount": "Markup",

@@ -122,6 +122,22 @@ describe("buildSimulationCsvRows", () => {
     expect(row.avisos).toContain("category_not_verified");
   });
 
+  it("mostra a caixa e o peso de pacote estimados (preset dentro da faixa coberta)", () => {
+    const product = baseProduct({ price: 1000, weightGrams: 850, sizeCm: 23 });
+    const [row] = buildSimulationCsvRows(["AME-001"], [product], 0);
+    expect(row.caixa_estimada_estimativa_nao_verificada).toMatch(/^M \(\d+x\d+x\d+cm\)$/);
+    expect(row.peso_pacote_g_estimativa_nao_verificada).toBe(String(850 + 300));
+  });
+
+  it("peça fora das faixas de preset (ex.: capela de 16,8kg): caixa/peso ficam vazios e avisos ganha package_requires_manual, SEM esconder category_not_verified", () => {
+    const product = baseProduct({ price: 1000, weightGrams: 16800, sizeCm: 20 });
+    const [row] = buildSimulationCsvRows(["AME-001"], [product], 0);
+    expect(row.caixa_estimada_estimativa_nao_verificada).toBe("");
+    expect(row.peso_pacote_g_estimativa_nao_verificada).toBe("");
+    expect(row.avisos).toContain("package_requires_manual");
+    expect(row.avisos).toContain("category_not_verified");
+  });
+
   it("markup 0 (sem --markup, sem conta conectada): preço de anúncio igual ao preço base", () => {
     const product = baseProduct({ price: 500 });
     const [row] = buildSimulationCsvRows(["AME-001"], [product], 0);
@@ -155,7 +171,7 @@ describe("buildSimulationCsvContent", () => {
     const csv = buildSimulationCsvContent(["AME-001"], [baseProduct()], 0);
     const firstLine = csv.slice(1).split("\n")[0];
     expect(firstLine).toBe(
-      "sku,titulo,preco_base,acrescimo,preco_anuncio,comissao_estimativa_nao_verificada,tarifa_fixa_estimativa_nao_verificada,frete_estimado_estimativa_nao_verificada,liquido_estimado,markup_minimo_breakeven,avisos"
+      "sku,titulo,preco_base,acrescimo,preco_anuncio,comissao_estimativa_nao_verificada,tarifa_fixa_estimativa_nao_verificada,frete_estimado_estimativa_nao_verificada,liquido_estimado,markup_minimo_breakeven,caixa_estimada_estimativa_nao_verificada,peso_pacote_g_estimativa_nao_verificada,avisos"
     );
   });
 

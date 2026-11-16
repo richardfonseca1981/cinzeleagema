@@ -72,6 +72,21 @@ describe("GET /api/admin/mercadolivre/simulate/:productId", () => {
 
     expect(res.body.price.basePrice).toBe(1500);
     expect(res.body.price.estimatesUsed).toEqual({ commissionPct: true, fixedFeeBRL: true, shippingCostBRL: true });
+
+    // Preset de embalagem (Fase 1B etapa 4) chega na simulação via
+    // draft.packageBox — ver packagePresets.ts/listingBuilder.ts.
+    expect(res.body.draft.packageBox.ok).toBe(true);
+    expect(res.body.draft.packageBox.preset).toBe("P");
+    expect(res.body.draft.packageBox.packageWeightGrams).toBeGreaterThan(2);
+  });
+
+  it("peça fora das faixas de preset (ex.: capela de 16,8kg) devolve draft.packageBox com ok:false", async () => {
+    const product = await createEligibleProduct({ weightGrams: 16800, sizeCm: 20 });
+    const res = await request(app).get(`/api/admin/mercadolivre/simulate/${product.id}`).set(auth);
+
+    expect(res.status).toBe(200);
+    expect(res.body.eligible).toBe(true);
+    expect(res.body.draft.packageBox).toEqual({ ok: false, reason: "weight_exceeds_limit" });
   });
 
   it("aceita comissão/tarifa/frete/markup informados via query, sem usar os padrões não verificados", async () => {

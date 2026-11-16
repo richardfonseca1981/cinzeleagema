@@ -339,6 +339,27 @@ function MercadoLivreSimulate() {
                   )}
                 </dd>
               </div>
+              <div>
+                <dt className="text-xs text-[#64748B]">
+                  {t("mercadoLivreAdmin.simulate.draftPackageLabel")}
+                  <span className="ml-1 text-[#B45309]">{t("mercadoLivreAdmin.simulate.draftPackageEstimateTag")}</span>
+                </dt>
+                {simulation.draft.packageBox.ok ? (
+                  <dd className="text-[#1A1A1A]">
+                    {t("mercadoLivreAdmin.simulate.draftPackageSummary", {
+                      preset: simulation.draft.packageBox.preset,
+                      length: simulation.draft.packageBox.box.lengthCm,
+                      width: simulation.draft.packageBox.box.widthCm,
+                      height: simulation.draft.packageBox.box.heightCm,
+                      weight: simulation.draft.packageBox.packageWeightGrams,
+                    })}
+                  </dd>
+                ) : (
+                  <dd className="text-[#B45309]">
+                    {t(`mercadoLivreAdmin.simulate.draftPackageBlocked.${simulation.draft.packageBox.reason}`)}
+                  </dd>
+                )}
+              </div>
             </dl>
           </div>
 

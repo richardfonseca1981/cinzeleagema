@@ -330,6 +330,15 @@ export interface MercadoLivreIssue<Code extends string> {
   message: string;
 }
 
+// Estimativa de caixa/peso de embalagem (Fase 1B etapa 4) — ver
+// backend/src/lib/mercadoLivre/packagePresets.ts. "ok: false" quando a peça
+// excede o maior preset (GG) e precisa de override manual (etapa futura).
+export type MercadoLivrePackagePreset = "P" | "M" | "G" | "GG";
+
+export type MercadoLivrePackageBoxEstimate =
+  | { ok: true; preset: MercadoLivrePackagePreset; box: { lengthCm: number; widthCm: number; heightCm: number }; packageWeightGrams: number }
+  | { ok: false; reason: "size_exceeds_limit" | "weight_exceeds_limit" | "both_exceed_limit" };
+
 export interface MercadoLivreListingDraft {
   title: string;
   titleTruncated: boolean;
@@ -339,6 +348,7 @@ export interface MercadoLivreListingDraft {
   // id placeholder (não verificado) enquanto a Fase 1B não confirmar a
   // categoria real via API — ver backend/src/lib/mercadoLivre/categoryFixture.ts.
   category: { id: string; breadcrumb: string[]; verified: boolean };
+  packageBox: MercadoLivrePackageBoxEstimate;
 }
 
 export interface MercadoLivrePriceBreakdown {

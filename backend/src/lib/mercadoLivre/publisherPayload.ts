@@ -13,8 +13,9 @@ import {
 // Mercado Livre, NÃO confirmado contra a doc atual — 403 anti-bot bloqueou
 // as 3 tentativas de consulta durante o planejamento desta fase, mesmo
 // bloqueio documentado em categoryFixture.ts (ver CONTEXT.md "Mercado Livre
-// — Fase 1B, débitos"). `shipping` (dimensões de pacote) fica fora deste
-// payload por enquanto — entra numa etapa própria (presets de embalagem).
+// — Fase 1B, débitos"). `shipping.dimensions` vem do preset de embalagem
+// estimado pelo builder (ver packagePresets.ts/listingBuilder.ts
+// draft.packageBox) — formato da string também é suposição não verificada.
 // Intersecção (não `extends`): os dois `images` só diferem no que cada um
 // adiciona (width/height vs. url/position) — mesmo padrão de
 // scripts/simulateMercadoLivre.ts SimulationProduct, que já resolve isso
@@ -23,6 +24,17 @@ export type MercadoLivrePublishableProduct = ListingValidationInput & ListingBui
 
 export interface MercadoLivreItemPicture {
   source: string;
+}
+
+// SUPOSIÇÃO FORTE, não verificada: formato de "dimensions" como string
+// "LxWxHcm,pesoG" é conhecimento prévio histórico da API pública — não
+// confirmado contra a doc atual (mesmo bloqueio 403, ver categoryFixture.ts
+// e CONTEXT.md "débitos"). Omitido do payload inteiro quando packageBox não
+// pôde ser estimado (ver assemblePayload) — mas isso nunca acontece pelo
+// fluxo real (buildMercadoLivreItemPayload), que já bloqueia em
+// assertReadyToPublish antes de chegar aqui.
+export interface MercadoLivreItemShipping {
+  dimensions: string;
 }
 
 export interface MercadoLivreItemPayload {
@@ -42,6 +54,7 @@ export interface MercadoLivreItemPayload {
   // reconciliação por SKU (findItemsBySku, ver publisherClient.ts) nunca
   // encontra este item, limitação conhecida e aceita nesta fase.
   seller_custom_field?: string;
+  shipping?: MercadoLivreItemShipping;
 }
 
 export interface BuildMercadoLivreItemPayloadInput {
@@ -125,5 +138,17 @@ export function assemblePayload(
     // ProductImage.url) — nunca uma referência de arquivo local.
     pictures: draft.photos.map((url) => ({ source: url })),
     ...(sku ? { seller_custom_field: sku } : {}),
+    // packageBox.ok é sempre true quando chegamos aqui pelo fluxo real
+    // (buildMercadoLivreItemPayload já chamou assertReadyToPublish, que
+    // bloqueia antes). Omite `shipping` só no caso defensivo de alguém
+    // chamar assemblePayload direto com um draft "ok: false" (ver testes) —
+    // nunca inventa dimensões pra uma peça sem preset válido.
+    ...(draft.packageBox.ok
+      ? {
+          shipping: {
+            dimensions: `${draft.packageBox.box.lengthCm}x${draft.packageBox.box.widthCm}x${draft.packageBox.box.heightCm}cm,${draft.packageBox.packageWeightGrams}g`,
+          },
+        }
+      : {}),
   };
 }
