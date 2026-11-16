@@ -174,7 +174,11 @@ function extractEmbeddedDimensions(cleanName: string): { core: string; dims: str
 // nenhuma das duas é usada (nunca inventa material que o nome não indica).
 // ---------------------------------------------------------------------------
 
-const KNOWN_MATERIALS = [
+// Exportado (além de uso interno aqui) para o builder de descrição
+// estendida do anúncio reaproveitar a MESMA regra de "nunca inventa
+// material que o nome não indica" (ver descriptionBuilder.ts) — em vez de
+// duplicar a lista e o critério de detecção.
+export const KNOWN_MATERIALS = [
   "ametista",
   "agata",
   "quartzo",
@@ -215,7 +219,7 @@ function normalizeForMatch(text: string): string {
     .toLowerCase();
 }
 
-function hasKnownMaterial(name: string): boolean {
+export function hasKnownMaterial(name: string): boolean {
   const normalized = normalizeForMatch(name);
   return KNOWN_MATERIALS.some((material) => normalized.includes(material));
 }

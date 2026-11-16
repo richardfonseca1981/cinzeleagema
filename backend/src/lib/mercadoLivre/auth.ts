@@ -66,14 +66,28 @@ export function buildAuthorizationUrl(adminId: string): { url: string; state: st
 }
 
 async function requestToken(params: Record<string, string>): Promise<MercadoLivreTokenResponse> {
-  const response = await fetchWithRetry(TOKEN_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      Accept: "application/json",
+  // maxRetries: 0 — mesmo motivo do POST /items (ver client.ts
+  // MercadoLivreRequestOptions.maxRetries): tanto `code` (authorization_code)
+  // quanto `refresh_token` são de uso único (confirmado na doc, ver
+  // performRefresh abaixo). Um timeout aqui pode significar que o Mercado
+  // Livre já processou a troca e só a resposta se perdeu — reter
+  // automaticamente reenviaria a MESMA credencial já consumida, que o
+  // Mercado Livre rejeitaria (400 invalid_grant) mesmo a renovação tendo
+  // funcionado do lado dele, derrubando a conexão sem necessidade. Quem
+  // chama decide se tenta de novo (com um refresh_token/code novo, nunca o
+  // mesmo).
+  const response = await fetchWithRetry(
+    TOKEN_URL,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "application/json",
+      },
+      body: new URLSearchParams(params),
     },
-    body: new URLSearchParams(params),
-  });
+    { maxRetries: 0 }
+  );
 
   const payload = await parseJsonSafe(response);
   if (!response.ok) {

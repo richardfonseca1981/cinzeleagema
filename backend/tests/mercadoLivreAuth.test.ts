@@ -138,6 +138,23 @@ describe("refreshAccessToken", () => {
     expect(decryptToken(persisted.refreshToken)).toBe("TG-new-refresh-token");
   });
 
+  it("nunca retenta às cegas um timeout na chamada de renovação (refresh_token é de uso único)", async () => {
+    const account = await createAccount({ expiresAt: new Date(Date.now() - 1000), refreshToken: "old-refresh-token" });
+    const fetchMock = vi.fn().mockRejectedValue(new DOMException("The operation was aborted.", "AbortError"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(refreshAccessToken(account.id)).rejects.toMatchObject({ status: 0 });
+
+    // Reter automaticamente reenviaria o MESMO refresh_token (uso único) —
+    // se a 1ª tentativa já tiver sido processada do lado do Mercado Livre e
+    // só a resposta se perdeu, a 2ª seria rejeitada (400 invalid_grant) e
+    // derrubaria a conexão sem necessidade. Por isso só 1 chamada.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    const persisted = await prisma.mercadoLivreAccount.findUniqueOrThrow({ where: { id: account.id } });
+    expect(decryptToken(persisted.refreshToken)).toBe("old-refresh-token");
+  });
+
   it("não chama a API quando o token ainda não está perto de expirar", async () => {
     const account = await createAccount({ expiresAt: new Date(Date.now() + 6 * 60 * 60 * 1000) });
     const fetchMock = vi.fn();

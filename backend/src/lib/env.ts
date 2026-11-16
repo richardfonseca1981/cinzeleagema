@@ -77,6 +77,13 @@ export const envSchema = z.object({
   // diferentes) — melhor falhar alto e claro (ver publisherPayload.ts) do
   // que assumir em silêncio.
   ML_LISTING_TYPE_ID: z.string().optional().default(""),
+  // Limite de tamanho da descrição estendida do anúncio (ver
+  // lib/mercadoLivre/descriptionBuilder.ts) — SUPOSIÇÃO não verificada: o
+  // limite real de `plain_text` em POST /items/{id}/description nunca foi
+  // confirmado contra a doc atual (mesmo bloqueio 403, ver
+  // categoryFixture.ts). Configurável via env para ajustar sem deploy de
+  // código quando o limite real for confirmado.
+  ML_DESCRIPTION_MAX_CHARS: z.coerce.number().int().positive().optional().default(5000),
 
   // Base da URL pública de produto usada no CSV do script de auditoria do
   // Mercado Livre (ver scripts/auditMercadoLivre.ts, coluna url_publica) —
