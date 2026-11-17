@@ -17,6 +17,12 @@ export interface MercadoLivreFoundItem {
   sellerCustomField: string | null;
 }
 
+export interface MercadoLivreItemStatusInfo {
+  id: string;
+  status: MercadoLivreItemStatus;
+  permalink: string;
+}
+
 // Porta (Fase 1B): toda chamada que cria/altera/consulta um anúncio no
 // Mercado Livre passa por esta interface — o publisher, o webhook e os
 // testes dependem desta abstração, nunca de RealMercadoLivrePublisherClient
@@ -32,6 +38,11 @@ export interface MercadoLivrePublisherClient {
   // timeout em createItem, procura se o Mercado Livre criou o item mesmo
   // assim, pra nunca deixar um anúncio órfão/duplicado.
   findItemsBySku(accountId: string, sku: string): Promise<MercadoLivreFoundItem[]>;
+  // Fase 1B etapa 6 — lê o status atual do item diretamente no Mercado
+  // Livre (GET idempotente, mantém o retry padrão). Usado pela rota de
+  // sincronização: útil quando alguém pausa/reativa o anúncio direto no
+  // painel do Mercado Livre, sem passar pelas rotas deste admin.
+  getItem(accountId: string, mlItemId: string): Promise<MercadoLivreItemStatusInfo>;
 }
 
 // Implementação real. NENHUM teste automatizado chama isto de verdade —
@@ -97,6 +108,19 @@ export class RealMercadoLivrePublisherClient implements MercadoLivrePublisherCli
 
     return res.data.results.map((id) => ({ id, permalink: "", status: "active" as const, sellerCustomField: sku }));
   }
+
+  async getItem(accountId: string, mlItemId: string): Promise<MercadoLivreItemStatusInfo> {
+    // GET /items/{id} — endpoint público bem conhecido historicamente (get
+    // por id é o caso mais básico de uma API REST), mas ainda assim NÃO
+    // confirmado contra a doc atual (mesmo bloqueio 403, ver
+    // categoryFixture.ts). Mantém o retry padrão (idempotente, sem o risco
+    // do POST/PUT acima).
+    const res = await mercadoLivreRequest<{ id: string; status: MercadoLivreItemStatus; permalink: string }>(
+      accountId,
+      `/items/${mlItemId}`
+    );
+    return { id: res.data.id, status: res.data.status, permalink: res.data.permalink };
+  }
 }
 
 // Erros injetáveis pelo teste — mesmo "formato" de erro que
@@ -110,7 +134,7 @@ export type FakePublisherFailure =
   | { type: "invalid_attribute"; message: string } // 4xx de validação (categoria/atributo rejeitado)
   | { type: "timeout_item_created"; mlItemId: string }; // nunca recebemos resposta, mas o Mercado Livre processou e criou o item — só reconciliação por SKU encontra depois
 
-type FakePublisherMethod = "createItem" | "updateItemStatus" | "setItemDescription" | "findItemsBySku";
+type FakePublisherMethod = "createItem" | "updateItemStatus" | "setItemDescription" | "findItemsBySku" | "getItem";
 
 interface FakeItem {
   id: string;
@@ -206,5 +230,14 @@ export class FakeMercadoLivrePublisherClient implements MercadoLivrePublisherCli
     return [...this.items.values()]
       .filter((item) => item.sellerCustomField === sku)
       .map((item) => ({ id: item.id, permalink: item.permalink, status: item.status, sellerCustomField: item.sellerCustomField }));
+  }
+
+  async getItem(_accountId: string, mlItemId: string): Promise<MercadoLivreItemStatusInfo> {
+    const failure = this.takeFailure("getItem");
+    if (failure) throwFakeFailure(failure);
+
+    const item = this.items.get(mlItemId);
+    if (!item) throw new MercadoLivreApiError(`Item não encontrado: ${mlItemId}`, 404, null);
+    return { id: item.id, status: item.status, permalink: item.permalink };
   }
 }

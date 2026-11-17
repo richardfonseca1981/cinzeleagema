@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { env } from "../lib/env";
 import { prisma } from "../lib/prisma";
 import { requireAuth } from "../middleware/auth";
@@ -33,8 +33,15 @@ import {
   UNVERIFIED_DEFAULT_FIXED_FEE_BRL,
   UNVERIFIED_DEFAULT_SHIPPING_COST_BRL,
 } from "../lib/mercadoLivre/priceCalculator";
+import {
+  getListingActionTargetStatus,
+  getTransitionBlockReason,
+  type ListingLifecycleAction,
+  type ListingTransitionBlockReason,
+} from "../lib/mercadoLivre/listingLifecycle";
 import { mercadoLivreSimulateQuerySchema } from "../schemas/mercadoLivreSimulate.schema";
 import { mercadoLivrePublishBodySchema } from "../schemas/mercadoLivrePublish.schema";
+import { mercadoLivreCloseBodySchema, mercadoLivrePauseAllBodySchema } from "../schemas/mercadoLivreListingAction.schema";
 
 // Fase 0: só conexão/leitura, nenhuma publicação de anúncio. Todas as rotas
 // exigem admin (requireAuth) — inclusive /callback: o ML_REDIRECT_URI deve
@@ -116,11 +123,13 @@ mercadoLivreRouter.get(
 // para o ritmo normal de um admin clicando manualmente.
 const publishRateLimiter = createIpRateLimiter({ windowMs: 60_000, max: 30 });
 
-// Log estruturado de cada tentativa de publicação/reconciliação — peça,
-// modo e resultado, nunca payload completo nem qualquer token/credencial
-// (ver ponto 6 do pedido: "sem dados sensíveis nem tokens em log").
-function logPublishAttempt(entry: { productId: string; mode: string; result: string }): void {
-  console.info(JSON.stringify({ event: "ml_publish_attempt", ...entry, at: new Date().toISOString() }));
+// Log estruturado de cada tentativa de publicação/reconciliação/ação de
+// ciclo de vida (pausar/reativar/encerrar/sincronizar, Etapa 6) — peça, modo
+// (ou ação) e resultado, nunca payload completo nem qualquer token/
+// credencial (ver ponto 6 do pedido: "sem dados sensíveis nem tokens em
+// log").
+function logMercadoLivreAttempt(entry: { productId: string; mode: string; result: string }): void {
+  console.info(JSON.stringify({ event: "ml_action_attempt", ...entry, at: new Date().toISOString() }));
 }
 
 function roundBRL(value: number): number {
@@ -175,12 +184,12 @@ mercadoLivreRouter.post(
       });
       listingPriceBRL = roundBRL(priceBreakdown.listingPrice);
     } catch (err) {
-      logPublishAttempt({ productId: product.id, mode: body.mode, result: "price_calc_failed" });
+      logMercadoLivreAttempt({ productId: product.id, mode: body.mode, result: "price_calc_failed" });
       throw new HttpError(422, err instanceof Error ? err.message : "Não foi possível calcular o preço de anúncio.");
     }
 
     if (roundBRL(body.expectedPrice) !== listingPriceBRL) {
-      logPublishAttempt({ productId: product.id, mode: body.mode, result: "price_mismatch" });
+      logMercadoLivreAttempt({ productId: product.id, mode: body.mode, result: "price_mismatch" });
       throw new HttpError(
         409,
         `Preço de anúncio mudou desde que a tela foi carregada (atual R$ ${listingPriceBRL.toFixed(2)}, informado R$ ${body.expectedPrice.toFixed(2)}) — recarregue a simulação e confirme de novo.`
@@ -207,7 +216,7 @@ mercadoLivreRouter.post(
           listingPriceBRL,
         }));
       } catch (err) {
-        logPublishAttempt({ productId: product.id, mode: "dry-run", result: "validation_failed" });
+        logMercadoLivreAttempt({ productId: product.id, mode: "dry-run", result: "validation_failed" });
         throw toPublishHttpError(err);
       }
 
@@ -222,7 +231,7 @@ mercadoLivreRouter.post(
         sizeCm: Number(product.sizeCm),
       }));
 
-      logPublishAttempt({ productId: product.id, mode: "dry-run", result: "previewed" });
+      logMercadoLivreAttempt({ productId: product.id, mode: "dry-run", result: "previewed" });
       res.json({
         productId: product.id,
         mode: "dry-run",
@@ -245,7 +254,7 @@ mercadoLivreRouter.post(
     try {
       payload = buildMercadoLivreItemPayload({ product: product as MercadoLivrePublishableProduct, listingPriceBRL });
     } catch (err) {
-      logPublishAttempt({ productId: product.id, mode: "real", result: "validation_failed" });
+      logMercadoLivreAttempt({ productId: product.id, mode: "real", result: "validation_failed" });
       throw toPublishHttpError(err);
     }
 
@@ -289,7 +298,7 @@ mercadoLivreRouter.post(
           });
     }).catch((err) => {
       if (err instanceof HttpError) {
-        logPublishAttempt({ productId: product.id, mode: "real", result: "blocked_duplicate" });
+        logMercadoLivreAttempt({ productId: product.id, mode: "real", result: "blocked_duplicate" });
       }
       throw err;
     });
@@ -310,7 +319,7 @@ mercadoLivreRouter.post(
 
       if (isValidationError) {
         await prisma.mercadoLivreListing.update({ where: { id: listing.id }, data: { status: "error", lastError: message } });
-        logPublishAttempt({ productId: product.id, mode: "real", result: "create_rejected" });
+        logMercadoLivreAttempt({ productId: product.id, mode: "real", result: "create_rejected" });
         throw new HttpError(422, `Mercado Livre recusou o anúncio: ${message}`);
       }
 
@@ -319,7 +328,7 @@ mercadoLivreRouter.post(
       // aqui, ver client.ts maxRetries:0) até a reconciliação por SKU
       // confirmar o que de fato aconteceu.
       await prisma.mercadoLivreListing.update({ where: { id: listing.id }, data: { lastError: message } });
-      logPublishAttempt({ productId: product.id, mode: "real", result: "create_ambiguous_failure" });
+      logMercadoLivreAttempt({ productId: product.id, mode: "real", result: "create_ambiguous_failure" });
       throw new HttpError(
         502,
         `Falha ao confirmar a publicação no Mercado Livre (${message}) — rode a reconciliação (POST /reconcile/${product.id}) antes de tentar de novo, para não arriscar duplicar o anúncio.`
@@ -339,7 +348,7 @@ mercadoLivreRouter.post(
       });
       await client.setItemDescription(account.id, created.id, description);
       await prisma.mercadoLivreListing.update({ where: { id: listing.id }, data: { lastSyncAt: new Date(), lastError: null } });
-      logPublishAttempt({ productId: product.id, mode: "real", result: "published" });
+      logMercadoLivreAttempt({ productId: product.id, mode: "real", result: "published" });
       res.json({ productId: product.id, mode: "real", status: "active", mlItemId: created.id, permalink: created.permalink });
     } catch (err) {
       // Item já existe no Mercado Livre — só a descrição falhou. Nunca
@@ -347,7 +356,7 @@ mercadoLivreRouter.post(
       // reenvio de descrição abaixo); a peça fica publicada, só com a
       // descrição estendida pendente.
       await prisma.mercadoLivreListing.update({ where: { id: listing.id }, data: { lastError: "description_failed" } });
-      logPublishAttempt({ productId: product.id, mode: "real", result: "description_failed" });
+      logMercadoLivreAttempt({ productId: product.id, mode: "real", result: "description_failed" });
       res.status(207).json({
         productId: product.id,
         mode: "real",
@@ -389,10 +398,10 @@ mercadoLivreRouter.post(
     try {
       await client.setItemDescription(account.id, listing.mlItemId, description);
       await prisma.mercadoLivreListing.update({ where: { id: listing.id }, data: { lastError: null, lastSyncAt: new Date() } });
-      logPublishAttempt({ productId: product.id, mode: "real", result: "description_retry_ok" });
+      logMercadoLivreAttempt({ productId: product.id, mode: "real", result: "description_retry_ok" });
       res.json({ productId: product.id, status: "active", mlItemId: listing.mlItemId });
     } catch (err) {
-      logPublishAttempt({ productId: product.id, mode: "real", result: "description_retry_failed" });
+      logMercadoLivreAttempt({ productId: product.id, mode: "real", result: "description_retry_failed" });
       throw new HttpError(502, `Falha ao reenviar a descrição: ${err instanceof Error ? err.message : String(err)}`);
     }
   })
@@ -430,7 +439,7 @@ mercadoLivreRouter.post(
       // Libera nova tentativa: "error" nunca bloqueia a checagem de
       // idempotência do POST /publish (ver BLOCKING_LISTING_STATUSES acima).
       await prisma.mercadoLivreListing.update({ where: { id: listing.id }, data: { status: "error", lastError: "reconcile_not_found" } });
-      logPublishAttempt({ productId: product.id, mode: "reconcile", result: "not_found" });
+      logMercadoLivreAttempt({ productId: product.id, mode: "reconcile", result: "not_found" });
       res.json({ productId: product.id, status: "error", reconciled: false, reason: "not_found" });
       return;
     }
@@ -441,7 +450,7 @@ mercadoLivreRouter.post(
     // manual, sem tocar na linha local (fica como estava, pra rodar de novo
     // depois que o caso for resolvido).
     if (found.length > 1) {
-      logPublishAttempt({ productId: product.id, mode: "reconcile", result: "ambiguous" });
+      logMercadoLivreAttempt({ productId: product.id, mode: "reconcile", result: "ambiguous" });
       res.status(409).json({ productId: product.id, status: listing.status, reconciled: false, reason: "ambiguous", candidates: found });
       return;
     }
@@ -451,10 +460,213 @@ mercadoLivreRouter.post(
       where: { id: listing.id },
       data: { mlItemId: match.id, permalink: match.permalink, status: match.status, lastError: null, lastSyncAt: new Date() },
     });
-    logPublishAttempt({ productId: product.id, mode: "reconcile", result: "adopted" });
+    logMercadoLivreAttempt({ productId: product.id, mode: "reconcile", result: "adopted" });
     res.json({ productId: product.id, status: match.status, reconciled: true, mlItemId: match.id, permalink: match.permalink });
   })
 );
+
+// Fase 1B etapa 6 — pausar/reativar/encerrar um anúncio JÁ publicado, e
+// sincronizar o status local com o que está no Mercado Livre agora. Mesmo
+// motivo das rotas de publicação/reconciliação acima: registradas ANTES do
+// middleware de 503 abaixo, funcionam com o cliente FAKE injetado por teste
+// sem precisar de nenhuma credencial ML_* real.
+const TRANSITION_BLOCK_MESSAGES: Record<ListingTransitionBlockReason, (status: string) => string> = {
+  already_closed: () =>
+    'Anúncio já está encerrado ("closed") — ação irreversível, não é possível reabrir nem alterar de novo.',
+  needs_reconciliation: (status) =>
+    `Anúncio em status "${status}" — rode a reconciliação (POST /reconcile/:productId) antes de pausar/reativar/encerrar.`,
+  invalid_transition: (status) => `Transição inválida a partir do status atual ("${status}").`,
+};
+
+const LIFECYCLE_ACTION_LABEL: Record<ListingLifecycleAction, string> = {
+  pause: "pausar",
+  reactivate: "reativar",
+  close: "encerrar",
+};
+
+// Compartilhada pelas 3 rotas de ação individual (pause/reactivate/close) —
+// a única diferença entre elas é qual `action` é passada; toda a regra de
+// transição válida/bloqueio mora em listingLifecycle.ts, nunca duplicada
+// aqui.
+async function performListingTransition(req: Request, res: Response, action: ListingLifecycleAction): Promise<void> {
+  const account = await getActiveAccount();
+  if (!account) throw new HttpError(503, "Nenhuma conta do Mercado Livre conectada.");
+
+  const product = await prisma.product.findUnique({ where: { id: req.params.productId } });
+  if (!product) throw new HttpError(404, "Peça não encontrada");
+
+  const listing = await prisma.mercadoLivreListing.findUnique({
+    where: { accountId_productId: { accountId: account.id, productId: product.id } },
+  });
+  if (!listing) throw new HttpError(404, "Nenhum anúncio encontrado para esta peça.");
+
+  const blockReason = getTransitionBlockReason(listing.status, action);
+  if (blockReason) {
+    logMercadoLivreAttempt({ productId: product.id, mode: action, result: `blocked_${blockReason}` });
+    throw new HttpError(409, TRANSITION_BLOCK_MESSAGES[blockReason](listing.status));
+  }
+
+  // Única ação que a flag global bloqueia — pausar/encerrar são ações de
+  // SEGURANÇA (nunca publicam nada novo no Mercado Livre), continuam
+  // liberadas com ML_PUBLISH_ENABLED=false (ver decisão do cliente,
+  // CONTEXT.md). Reativar volta a expor o anúncio como se fosse uma
+  // publicação nova — por isso respeita o kill switch, igual ao POST
+  // /publish. Nunca lança erro: devolve 200 com forcedDryRun, mesmo padrão
+  // de resposta do /publish quando a flag força dry-run.
+  if (action === "reactivate" && !env.ML_PUBLISH_ENABLED) {
+    logMercadoLivreAttempt({ productId: product.id, mode: action, result: "forced_dry_run" });
+    res.json({
+      productId: product.id,
+      action,
+      status: listing.status,
+      forcedDryRun: true,
+      notice: "ML_PUBLISH_ENABLED=false — reativação não enviada ao Mercado Livre.",
+    });
+    return;
+  }
+
+  if (!listing.mlItemId) {
+    throw new HttpError(422, "Anúncio sem mlItemId registrado — rode a reconciliação antes de pausar/reativar/encerrar.");
+  }
+
+  const targetStatus = getListingActionTargetStatus(action);
+  const client = getMercadoLivrePublisherClient();
+
+  try {
+    // maxRetries: 0 no PUT (ver publisherClient.ts) — mesmo motivo do
+    // createItem: um 429/5xx aqui pode significar que o Mercado Livre já
+    // aplicou a mudança e só a resposta se perdeu.
+    await client.updateItemStatus(account.id, listing.mlItemId, targetStatus);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    // Estado local só muda DEPOIS do sucesso da API — em falha, grava
+    // lastError e MANTÉM o status anterior (nunca assume que o PUT aplicou
+    // do lado do Mercado Livre).
+    await prisma.mercadoLivreListing.update({ where: { id: listing.id }, data: { lastError: message } });
+    logMercadoLivreAttempt({ productId: product.id, mode: action, result: "api_error" });
+    throw new HttpError(502, `Falha ao ${LIFECYCLE_ACTION_LABEL[action]} o anúncio no Mercado Livre: ${message}`);
+  }
+
+  const updated = await prisma.mercadoLivreListing.update({
+    where: { id: listing.id },
+    data: { status: targetStatus, lastError: null, lastSyncAt: new Date() },
+  });
+  logMercadoLivreAttempt({ productId: product.id, mode: action, result: "ok" });
+  res.json({ productId: product.id, action, status: updated.status, mlItemId: updated.mlItemId });
+}
+
+mercadoLivreRouter.post(
+  "/listings/:productId/pause",
+  publishRateLimiter,
+  asyncHandler((req, res) => performListingTransition(req, res, "pause"))
+);
+
+mercadoLivreRouter.post(
+  "/listings/:productId/reactivate",
+  publishRateLimiter,
+  asyncHandler((req, res) => performListingTransition(req, res, "reactivate"))
+);
+
+mercadoLivreRouter.post(
+  "/listings/:productId/close",
+  publishRateLimiter,
+  asyncHandler(async (req, res) => {
+    // Irreversível (closed é terminal) — confirmação reforçada com a string
+    // exata, verificada ANTES de qualquer leitura/transição (ver
+    // mercadoLivreListingAction.schema.ts).
+    mercadoLivreCloseBodySchema.parse(req.body);
+    await performListingTransition(req, res, "close");
+  })
+);
+
+// "Pausar tudo": afeta TODOS os anúncios ativos da conta de uma vez — nunca
+// automático, sempre exige a confirmação reforçada. Processa um anúncio por
+// vez (nunca em paralelo — mais fácil de diagnosticar se o Mercado Livre
+// estiver instável, e nunca sobrecarrega a API com N chamadas simultâneas),
+// continua em caso de erro individual e devolve um resumo ok/erro por
+// anúncio — uma falha isolada nunca aborta o restante do lote.
+mercadoLivreRouter.post(
+  "/listings/pause-all",
+  publishRateLimiter,
+  asyncHandler(async (req, res) => {
+    mercadoLivrePauseAllBodySchema.parse(req.body);
+
+    const account = await getActiveAccount();
+    if (!account) throw new HttpError(503, "Nenhuma conta do Mercado Livre conectada.");
+
+    const activeListings = await prisma.mercadoLivreListing.findMany({
+      where: { accountId: account.id, status: "active" },
+    });
+
+    const client = getMercadoLivrePublisherClient();
+    const results: Array<{ productId: string; mlItemId: string | null; ok: boolean; error?: string }> = [];
+
+    for (const listing of activeListings) {
+      if (!listing.mlItemId) {
+        results.push({ productId: listing.productId, mlItemId: null, ok: false, error: "sem mlItemId registrado" });
+        continue;
+      }
+      try {
+        await client.updateItemStatus(account.id, listing.mlItemId, "paused");
+        await prisma.mercadoLivreListing.update({
+          where: { id: listing.id },
+          data: { status: "paused", lastError: null, lastSyncAt: new Date() },
+        });
+        results.push({ productId: listing.productId, mlItemId: listing.mlItemId, ok: true });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        // Mesma regra das ações individuais: falha mantém o status anterior
+        // ("active"), só grava lastError — nunca assume que o PUT aplicou.
+        await prisma.mercadoLivreListing.update({ where: { id: listing.id }, data: { lastError: message } });
+        results.push({ productId: listing.productId, mlItemId: listing.mlItemId, ok: false, error: message });
+      }
+    }
+
+    const succeeded = results.filter((r) => r.ok).length;
+    logMercadoLivreAttempt({ productId: "*", mode: "pause-all", result: `${succeeded}/${results.length} ok` });
+    res.json({ total: results.length, succeeded, results });
+  })
+);
+
+// Sincronização: lê o status atual do item diretamente no Mercado Livre e
+// atualiza a linha local — útil quando alguém pausa/reativa/encerra direto
+// no painel do Mercado Livre, fora destas rotas admin. GET e POST aceitos
+// de propósito (leitura remota + escrita local: nem puramente idempotente
+// como um GET comum, nem uma ação de negócio como as rotas acima).
+async function performListingSync(req: Request, res: Response): Promise<void> {
+  const account = await getActiveAccount();
+  if (!account) throw new HttpError(503, "Nenhuma conta do Mercado Livre conectada.");
+
+  const product = await prisma.product.findUnique({ where: { id: req.params.productId } });
+  if (!product) throw new HttpError(404, "Peça não encontrada");
+
+  const listing = await prisma.mercadoLivreListing.findUnique({
+    where: { accountId_productId: { accountId: account.id, productId: product.id } },
+  });
+  if (!listing) throw new HttpError(404, "Nenhum anúncio encontrado para esta peça.");
+  if (!listing.mlItemId) throw new HttpError(422, "Anúncio sem mlItemId registrado — nada para sincronizar.");
+
+  const client = getMercadoLivrePublisherClient();
+  try {
+    const info = await client.getItem(account.id, listing.mlItemId);
+    const updated = await prisma.mercadoLivreListing.update({
+      where: { id: listing.id },
+      data: { status: info.status, permalink: info.permalink, lastError: null, lastSyncAt: new Date() },
+    });
+    logMercadoLivreAttempt({ productId: product.id, mode: "sync", result: "ok" });
+    res.json({ productId: product.id, status: updated.status, mlItemId: updated.mlItemId, permalink: updated.permalink, synced: true });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    // Leitura falhou — nunca muda o status local sem confirmar o estado
+    // real primeiro, só registra o erro pra visibilidade.
+    await prisma.mercadoLivreListing.update({ where: { id: listing.id }, data: { lastError: message } });
+    logMercadoLivreAttempt({ productId: product.id, mode: "sync", result: "api_error" });
+    throw new HttpError(502, `Falha ao sincronizar com o Mercado Livre: ${message}`);
+  }
+}
+
+mercadoLivreRouter.get("/listings/:productId/sync", publishRateLimiter, asyncHandler(performListingSync));
+mercadoLivreRouter.post("/listings/:productId/sync", publishRateLimiter, asyncHandler(performListingSync));
 
 // Produção hoje não tem nenhuma variável ML_* — o boot do backend não pode
 // depender delas (ver lib/env.ts). A validação só acontece aqui, quando uma
