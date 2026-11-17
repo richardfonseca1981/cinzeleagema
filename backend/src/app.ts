@@ -19,12 +19,17 @@ import { shippingRouter } from "./routes/shipping.routes";
 import { shippingAdminRouter } from "./routes/shippingAdmin.routes";
 import { catalogJobRouter } from "./routes/catalogJob.routes";
 import { mercadoLivreRouter } from "./routes/mercadoLivre.routes";
+import { mercadoLivreWebhookRouter } from "./routes/mercadoLivreWebhook.routes";
 
 export function createApp() {
   const app = express();
 
   app.use(cors({ origin: env.CORS_ORIGIN }));
-  app.use(express.json());
+  // `verify` captura os bytes CRUS do corpo em req.rawBody — usado só pelo
+  // webhook do Mercado Livre (hash de deduplicação, ver
+  // mercadoLivreWebhook.routes.ts). Custo desprezível pras demais rotas (só
+  // guarda a referência ao buffer já lido pelo parser).
+  app.use(express.json({ verify: (req, _res, buf) => { (req as express.Request).rawBody = buf; } }));
 
   app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
@@ -42,6 +47,7 @@ export function createApp() {
   app.use("/api/admin/shipping", shippingAdminRouter);
   app.use("/api/admin/catalog", catalogJobRouter);
   app.use("/api/admin/mercadolivre", mercadoLivreRouter);
+  app.use("/api/webhooks/mercadolivre", mercadoLivreWebhookRouter);
   app.use("/api/products", productRouter);
   app.use("/api/orders", orderRouter);
   app.use("/api/products/:productId/images", imageRouter);

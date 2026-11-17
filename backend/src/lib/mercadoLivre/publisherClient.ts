@@ -23,6 +23,28 @@ export interface MercadoLivreItemStatusInfo {
   permalink: string;
 }
 
+// Fase 1B etapa 8 (webhook) — item de um pedido, reduzido ao único campo que
+// o fluxo de "pedido pago -> marcar peça vendida" precisa: o SKU do
+// vendedor. SUPOSIÇÃO FORTE, não verificada: nem o nome do campo
+// (`sellerCustomField` aqui, por analogia ao `seller_custom_field` usado em
+// POST /items — ver publisherPayload.ts — mas a API de pedidos pode usar um
+// nome diferente, ex. `seller_sku`) nem o formato de `GET /orders/{id}`
+// foram confirmados (mesmo bloqueio 403, ver categoryFixture.ts).
+export interface MercadoLivreOrderLineItem {
+  sellerCustomField: string | null;
+}
+
+export interface MercadoLivreOrderInfo {
+  id: string;
+  // SUPOSIÇÃO: valores históricos conhecidos de pedidos do Mercado Livre
+  // ("paid", "cancelled", "confirmed", "payment_required" etc.) — nenhum
+  // confirmado contra a doc atual. Só "paid"/"cancelled" têm tratamento
+  // especial no processador do webhook (ver webhookProcessor.ts); qualquer
+  // outro valor é um no-op registrado.
+  status: string;
+  items: MercadoLivreOrderLineItem[];
+}
+
 // Porta (Fase 1B): toda chamada que cria/altera/consulta um anúncio no
 // Mercado Livre passa por esta interface — o publisher, o webhook e os
 // testes dependem desta abstração, nunca de RealMercadoLivrePublisherClient
@@ -43,6 +65,11 @@ export interface MercadoLivrePublisherClient {
   // sincronização: útil quando alguém pausa/reativa o anúncio direto no
   // painel do Mercado Livre, sem passar pelas rotas deste admin.
   getItem(accountId: string, mlItemId: string): Promise<MercadoLivreItemStatusInfo>;
+  // Fase 1B etapa 8 — lê um pedido (GET idempotente, mantém retry padrão).
+  // Usado pelo processador do webhook de tópico de pedidos pra confirmar o
+  // status real (nunca confia no corpo da notificação) e localizar o SKU
+  // vendido.
+  getOrder(accountId: string, orderId: string): Promise<MercadoLivreOrderInfo>;
 }
 
 // Implementação real. NENHUM teste automatizado chama isto de verdade —
@@ -121,6 +148,25 @@ export class RealMercadoLivrePublisherClient implements MercadoLivrePublisherCli
     );
     return { id: res.data.id, status: res.data.status, permalink: res.data.permalink };
   }
+
+  async getOrder(accountId: string, orderId: string): Promise<MercadoLivreOrderInfo> {
+    // SUPOSIÇÃO FORTE, não verificada: GET /orders/{id} devolveria
+    // `order_items: [{ item: { seller_custom_field } }]` — nome do campo e
+    // formato do array nunca confirmados (mesmo bloqueio 403).
+    const res = await mercadoLivreRequest<{
+      id: number | string;
+      status: string;
+      order_items?: Array<{ item?: { seller_custom_field?: string | null } }>;
+    }>(accountId, `/orders/${orderId}`);
+
+    return {
+      id: String(res.data.id),
+      status: res.data.status,
+      items: (res.data.order_items ?? []).map((orderItem) => ({
+        sellerCustomField: orderItem.item?.seller_custom_field ?? null,
+      })),
+    };
+  }
 }
 
 // Erros injetáveis pelo teste — mesmo "formato" de erro que
@@ -134,7 +180,7 @@ export type FakePublisherFailure =
   | { type: "invalid_attribute"; message: string } // 4xx de validação (categoria/atributo rejeitado)
   | { type: "timeout_item_created"; mlItemId: string }; // nunca recebemos resposta, mas o Mercado Livre processou e criou o item — só reconciliação por SKU encontra depois
 
-type FakePublisherMethod = "createItem" | "updateItemStatus" | "setItemDescription" | "findItemsBySku" | "getItem";
+type FakePublisherMethod = "createItem" | "updateItemStatus" | "setItemDescription" | "findItemsBySku" | "getItem" | "getOrder";
 
 interface FakeItem {
   id: string;
@@ -142,6 +188,15 @@ interface FakeItem {
   status: MercadoLivreItemStatus;
   sellerCustomField: string | null;
   description: string;
+}
+
+// Seedado diretamente pelo teste via `client.orders.set(...)` — não existe
+// nenhum método de criação (os pedidos nunca são criados por este sistema,
+// só lidos pelo webhook de pedidos).
+export interface FakeOrder {
+  id: string;
+  status: string;
+  items: MercadoLivreOrderLineItem[];
 }
 
 function throwFakeFailure(failure: FakePublisherFailure): never {
@@ -166,6 +221,7 @@ function throwFakeFailure(failure: FakePublisherFailure): never {
 // ver lib/env.ts). Nunca faz nenhuma chamada de rede real.
 export class FakeMercadoLivrePublisherClient implements MercadoLivrePublisherClient {
   readonly items = new Map<string, FakeItem>();
+  readonly orders = new Map<string, FakeOrder>();
   private nextId = 1;
   private queuedFailures: Partial<Record<FakePublisherMethod, FakePublisherFailure>> = {};
 
@@ -239,5 +295,14 @@ export class FakeMercadoLivrePublisherClient implements MercadoLivrePublisherCli
     const item = this.items.get(mlItemId);
     if (!item) throw new MercadoLivreApiError(`Item não encontrado: ${mlItemId}`, 404, null);
     return { id: item.id, status: item.status, permalink: item.permalink };
+  }
+
+  async getOrder(_accountId: string, orderId: string): Promise<MercadoLivreOrderInfo> {
+    const failure = this.takeFailure("getOrder");
+    if (failure) throwFakeFailure(failure);
+
+    const order = this.orders.get(orderId);
+    if (!order) throw new MercadoLivreApiError(`Pedido não encontrado: ${orderId}`, 404, null);
+    return { id: order.id, status: order.status, items: order.items };
   }
 }

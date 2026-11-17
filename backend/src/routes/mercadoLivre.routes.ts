@@ -27,6 +27,8 @@ import {
 import { buildMercadoLivreDescription } from "../lib/mercadoLivre/descriptionBuilder";
 import { FakeMercadoLivrePublisherClient } from "../lib/mercadoLivre/publisherClient";
 import { getMercadoLivrePublisherClient } from "../lib/mercadoLivre/publisherClientRegistry";
+import { syncListingFromRemote } from "../lib/mercadoLivre/listingSync";
+import { reprocessWebhookEvent } from "../lib/mercadoLivre/webhookProcessor";
 import { MercadoLivreApiError } from "../lib/mercadoLivre/httpBase";
 import {
   calculateSuggestedPrice,
@@ -638,27 +640,62 @@ async function performListingSync(req: Request, res: Response): Promise<void> {
   if (!listing) throw new HttpError(404, "Nenhum anúncio encontrado para esta peça.");
   if (!listing.mlItemId) throw new HttpError(422, "Anúncio sem mlItemId registrado — nada para sincronizar.");
 
-  const client = getMercadoLivrePublisherClient();
-  try {
-    const info = await client.getItem(account.id, listing.mlItemId);
-    const updated = await prisma.mercadoLivreListing.update({
-      where: { id: listing.id },
-      data: { status: info.status, permalink: info.permalink, lastError: null, lastSyncAt: new Date() },
-    });
-    logMercadoLivreAttempt({ productId: product.id, mode: "sync", result: "ok" });
-    res.json({ productId: product.id, status: updated.status, mlItemId: updated.mlItemId, permalink: updated.permalink, synced: true });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    // Leitura falhou — nunca muda o status local sem confirmar o estado
-    // real primeiro, só registra o erro pra visibilidade.
-    await prisma.mercadoLivreListing.update({ where: { id: listing.id }, data: { lastError: message } });
+  const result = await syncListingFromRemote(account, listing);
+  if (!result.ok) {
     logMercadoLivreAttempt({ productId: product.id, mode: "sync", result: "api_error" });
-    throw new HttpError(502, `Falha ao sincronizar com o Mercado Livre: ${message}`);
+    throw new HttpError(502, `Falha ao sincronizar com o Mercado Livre: ${result.error}`);
   }
+
+  logMercadoLivreAttempt({ productId: product.id, mode: "sync", result: "ok" });
+  res.json({ productId: product.id, status: result.status, mlItemId: listing.mlItemId, permalink: result.permalink, synced: true });
 }
 
 mercadoLivreRouter.get("/listings/:productId/sync", publishRateLimiter, asyncHandler(performListingSync));
 mercadoLivreRouter.post("/listings/:productId/sync", publishRateLimiter, asyncHandler(performListingSync));
+
+// Fase 1B etapa 8 — visibilidade/reprocessamento dos eventos de webhook
+// (ver webhookProcessor.ts e mercadoLivreWebhook.routes.ts, rota pública
+// separada). Registradas aqui, ANTES do middleware de 503 abaixo, pelo MESMO
+// motivo das rotas acima: funcionam com o cliente FAKE injetado por teste
+// sem nenhuma credencial ML_* real — `reprocessWebhookEvent` só depende de
+// `getActiveAccount()` (leitura no banco) e do publisher client.
+//
+// O Mercado Livre só reenvia uma notificação quando NÃO recebe 200 rápido o
+// suficiente (ver mercadoLivreWebhook.routes.ts: respondemos 200 ANTES de
+// processar) — um erro de processamento DEPOIS da resposta nunca seria
+// repetido sozinho por eles. Esta rota de listagem + a de reprocessar
+// existem exatamente pra cobrir essa lacuna manualmente.
+mercadoLivreRouter.get(
+  "/webhook-events",
+  publishRateLimiter,
+  asyncHandler(async (req, res) => {
+    // ?status=all devolve todos os eventos; por padrão só os com erro de
+    // verdade (lastError não nulo — ver schema.prisma, nota sobre
+    // lastError vs. note: eventos "ignorados"/informativos NUNCA aparecem
+    // aqui, só falhas técnicas elegíveis pra reprocessar).
+    const onlyErrors = req.query.status !== "all";
+    const events = await prisma.mercadoLivreWebhookEvent.findMany({
+      where: onlyErrors ? { lastError: { not: null } } : {},
+      orderBy: { receivedAt: "desc" },
+      take: 200,
+    });
+    res.json({ items: events });
+  })
+);
+
+mercadoLivreRouter.post(
+  "/webhook-events/:id/reprocess",
+  publishRateLimiter,
+  asyncHandler(async (req, res) => {
+    const event = await prisma.mercadoLivreWebhookEvent.findUnique({ where: { id: req.params.id } });
+    if (!event) throw new HttpError(404, "Evento não encontrado.");
+
+    const result = await reprocessWebhookEvent(event.id);
+    const updated = await prisma.mercadoLivreWebhookEvent.findUniqueOrThrow({ where: { id: event.id } });
+    logMercadoLivreAttempt({ productId: event.resource ?? "unknown", mode: "webhook-reprocess", result: result.ok ? "ok" : "error" });
+    res.status(result.ok ? 200 : 502).json({ ok: result.ok, message: result.message, event: updated });
+  })
+);
 
 // Produção hoje não tem nenhuma variável ML_* — o boot do backend não pode
 // depender delas (ver lib/env.ts). A validação só acontece aqui, quando uma

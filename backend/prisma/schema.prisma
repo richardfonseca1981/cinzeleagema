@@ -296,7 +296,20 @@ model MercadoLivreWebhookEvent {
 
   receivedAt  DateTime  @default(now())
   processedAt DateTime?
-  lastError   String?
+  // Erro técnico/retentável (falha de API, recurso inválido, SKU não
+  // encontrado) — é a coluna usada pela rota admin de listagem de "eventos
+  // com erro" e pela ação de reprocessar (Fase 1B etapa 8). Nunca usada para
+  // resultados que não são erro (ver `note` abaixo).
+  lastError String?
+  // Nota informativa de um resultado que NÃO é erro mas merece atenção
+  // humana (ex.: pedido cancelado depois de marcado como vendido — "registra
+  // o evento e deixa um aviso para decisão manual", nunca desfaz nada
+  // sozinho) ou só contexto de um evento ignorado (tópico desconhecido, sem
+  // conta conectada, user_id não bate). Deliberadamente SEPARADA de
+  // `lastError`: a rota de reprocessar só lista erros de verdade, nunca
+  // eventos que já foram processados com sucesso mas só precisam de
+  // revisão/registro.
+  note String?
 
   @@index([resource])
 }
