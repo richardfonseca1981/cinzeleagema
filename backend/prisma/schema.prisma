@@ -119,6 +119,15 @@ model Product {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Fase 1B etapa 7 — marcador de "peça vendida" (fora do carrinho do site,
+  // ex.: venda presencial ou em outro canal). Null = nunca marcada como
+  // vendida. `soldChannel` é String livre no banco; os valores válidos
+  // ("site" | "mercadolivre" | "other") são validados em código (ver
+  // schemas/product.schema.ts) — sem enum do Postgres pra não exigir
+  // migration nova a cada canal futuro.
+  soldAt      DateTime?
+  soldChannel String?
+
   // Identificação de catálogo gerada por IA (Claude Haiku 4.5) a partir das
   // fotos — triagem visual, NUNCA um laudo gemológico. Tudo nullable e nunca
   // preenchido por script/migration: só o admin, confirmando uma proposta no

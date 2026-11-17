@@ -53,6 +53,27 @@ export const listProductsQuerySchema = z.object({
   sort: z.enum(SORT_VALUES).default("default"),
 });
 
+// Fase 1B etapa 7 — canal de venda registrado ao marcar uma peça como
+// vendida. String livre no banco (Product.soldChannel) — validado aqui, não
+// num enum do Postgres, pra um canal futuro não exigir migration.
+export const soldChannelSchema = z.enum(["site", "mercadolivre", "other"]);
+export type SoldChannel = z.infer<typeof soldChannelSchema>;
+
+// confirm: z.literal(true) — confirmação explícita booleana (diferente do
+// "ENCERRAR"/"PAUSAR TUDO" do Mercado Livre, aqui a ação em si já é dentro
+// do próprio admin do site, sem o mesmo risco de digitar errado por engano).
+export const markSoldBodySchema = z.object({
+  channel: soldChannelSchema,
+  confirm: z.literal(true),
+});
+
+// Corpo opcional de PATCH /:id/deactivate — pauseMlListing (default false)
+// decide se a mesma chamada tenta pausar o anúncio ML "active" encontrado,
+// além de só avisar (ver product.routes.ts).
+export const deactivateProductBodySchema = z.object({
+  pauseMlListing: z.boolean().optional().default(false),
+});
+
 // Lista COMPLETA de ids na nova ordem (sem repetidos).
 export const reorderProductsSchema = z
   .object({ order: z.array(z.string().min(1)).min(1) })

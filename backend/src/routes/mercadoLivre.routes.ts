@@ -14,6 +14,7 @@ import {
   verifyOAuthState,
 } from "../lib/mercadoLivre/auth";
 import { isMercadoLivreConfigured } from "../lib/mercadoLivre/crypto";
+import { logMercadoLivreAttempt } from "../lib/mercadoLivre/log";
 import { validateListing } from "../lib/mercadoLivre/listingValidator";
 import { buildListingDraft, ListingNotReadyError } from "../lib/mercadoLivre/listingBuilder";
 import {
@@ -122,15 +123,6 @@ mercadoLivreRouter.get(
 // uma rede de segurança contra loop/abuso acidental, não um teto pensado
 // para o ritmo normal de um admin clicando manualmente.
 const publishRateLimiter = createIpRateLimiter({ windowMs: 60_000, max: 30 });
-
-// Log estruturado de cada tentativa de publicação/reconciliação/ação de
-// ciclo de vida (pausar/reativar/encerrar/sincronizar, Etapa 6) — peça, modo
-// (ou ação) e resultado, nunca payload completo nem qualquer token/
-// credencial (ver ponto 6 do pedido: "sem dados sensíveis nem tokens em
-// log").
-function logMercadoLivreAttempt(entry: { productId: string; mode: string; result: string }): void {
-  console.info(JSON.stringify({ event: "ml_action_attempt", ...entry, at: new Date().toISOString() }));
-}
 
 function roundBRL(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
