@@ -87,7 +87,8 @@ function makeSimulation(overrides: Partial<MercadoLivreSimulationResult> = {}): 
       photos: ["https://cdn.test/a.jpg"],
       photosOmitted: 0,
       category: { id: "MLB_FIXME", breadcrumb: ["Joias", "Pedras"], verified: false },
-      packageBox: { ok: true, preset: "M", box: { lengthCm: 35, widthCm: 28, heightCm: 20 }, packageWeightGrams: 1150 },
+      packageBox: { ok: true, source: "preset", preset: "M", box: { lengthCm: 35, widthCm: 28, heightCm: 20 }, packageWeightGrams: 1150 },
+      packageBoxSource: "preset",
     },
     price: {
       basePrice: 1200,

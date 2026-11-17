@@ -115,6 +115,13 @@ export interface Product {
   packageLengthCm: string | null;
   packageWidthCm: string | null;
   packageHeightCm: string | null;
+  // Fase 1B etapa 10 — override MANUAL de embalagem só pro anúncio do
+  // Mercado Livre (nomes novos, nunca os `package*` obsoletos acima, que são
+  // do frete nacional do site). "Tudo ou nada": só valem preenchidos juntos.
+  mlPackageOverrideLengthCm?: string | null;
+  mlPackageOverrideWidthCm?: string | null;
+  mlPackageOverrideHeightCm?: string | null;
+  mlPackageOverrideWeightG?: string | null;
   trackStock: boolean;
   stockQty: number | null;
   images: ProductImage[];
@@ -346,11 +353,21 @@ export interface MercadoLivreIssue<Code extends string> {
 
 // Estimativa de caixa/peso de embalagem (Fase 1B etapa 4) — ver
 // backend/src/lib/mercadoLivre/packagePresets.ts. "ok: false" quando a peça
-// excede o maior preset (GG) e precisa de override manual (etapa futura).
+// excede o maior preset (GG) e não tem override manual válido.
 export type MercadoLivrePackagePreset = "P" | "M" | "G" | "GG";
 
+// Fase 1B etapa 10 — `source` distingue override manual (`preset: null`) de
+// preset automático (`preset` sempre preenchido nesse caso).
+export type MercadoLivrePackageBoxSource = "manual" | "preset";
+
 export type MercadoLivrePackageBoxEstimate =
-  | { ok: true; preset: MercadoLivrePackagePreset; box: { lengthCm: number; widthCm: number; heightCm: number }; packageWeightGrams: number }
+  | {
+      ok: true;
+      source: MercadoLivrePackageBoxSource;
+      preset: MercadoLivrePackagePreset | null;
+      box: { lengthCm: number; widthCm: number; heightCm: number };
+      packageWeightGrams: number;
+    }
   | { ok: false; reason: "size_exceeds_limit" | "weight_exceeds_limit" | "both_exceed_limit" };
 
 export interface MercadoLivreListingDraft {
@@ -363,6 +380,7 @@ export interface MercadoLivreListingDraft {
   // categoria real via API — ver backend/src/lib/mercadoLivre/categoryFixture.ts.
   category: { id: string; breadcrumb: string[]; verified: boolean };
   packageBox: MercadoLivrePackageBoxEstimate;
+  packageBoxSource: MercadoLivrePackageBoxSource | null;
 }
 
 export interface MercadoLivrePriceBreakdown {
@@ -414,6 +432,9 @@ export interface MercadoLivrePublishResponse {
   price?: MercadoLivrePriceBreakdown;
   payload?: MercadoLivreItemPayload;
   issues?: MercadoLivreReadinessIssue[];
+  // Fase 1B etapa 10 — só presente em dry-run (ver backend
+  // buildMercadoLivreItemPayloadPreview).
+  packageBoxSource?: MercadoLivrePackageBoxSource | null;
   publishable?: boolean;
   notice?: string | null;
   preview?: { mlItemId: string; permalink: string };

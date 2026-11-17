@@ -89,8 +89,13 @@ const PRESET_ORDER: PackagePresetSize[] = ["P", "M", "G", "GG"];
 
 export type PackageBoxEstimateReason = "size_exceeds_limit" | "weight_exceeds_limit" | "both_exceed_limit";
 
+// Fase 1B etapa 10 — `source` distingue se a caixa veio do override manual
+// da peça ou de um preset automático. `preset` só existe (não-null) quando
+// `source === "preset"` — override manual não tem conceito de preset.
+export type PackageBoxSource = "manual" | "preset";
+
 export type PackageBoxEstimate =
-  | { ok: true; preset: PackagePresetSize; box: PackageBox; packageWeightGrams: number }
+  | { ok: true; source: PackageBoxSource; preset: PackagePresetSize | null; box: PackageBox; packageWeightGrams: number }
   | { ok: false; reason: PackageBoxEstimateReason };
 
 interface Classification {
@@ -106,13 +111,85 @@ function classify(value: number, tierMax: Record<"P" | "M" | "G", number>, hardL
   return { preset: "GG", exceeds: true };
 }
 
-// Função pura: peso + tamanho da peça -> preset de caixa (ou bloqueio). O
-// preset final é o MAIOR exigido entre tamanho e peso avaliados
-// separadamente (ex.: peça leve mas grande ainda precisa da caixa grande) —
-// nunca a média nem só um dos dois. Bloqueia (ok: false) sempre que
-// QUALQUER um dos dois ultrapassar o teto do maior preset (GG): nunca
-// devolve uma caixa "chutada" para uma peça fora da faixa coberta.
-export function estimatePackageBox(weightGrams: number, sizeCm: number, config: PackagePresetsConfig): PackageBoxEstimate {
+// Fase 1B etapa 10 — os 4 campos do override manual (ver schema.prisma
+// Product.mlPackageOverride*), ainda não convertidos/validados. `unknown`
+// porque chegam como Decimal do Prisma, já convertido, ou ausente.
+export interface ManualPackageOverrideInput {
+  lengthCm: unknown;
+  widthCm: unknown;
+  heightCm: unknown;
+  weightG: unknown;
+}
+
+export interface PackageOverrideCeilings {
+  maxDimensionCm: number;
+  maxWeightG: number;
+}
+
+export function getPackageOverrideCeilings(source: {
+  ML_PACKAGE_OVERRIDE_MAX_DIMENSION_CM: number;
+  ML_PACKAGE_OVERRIDE_MAX_WEIGHT_G: number;
+}): PackageOverrideCeilings {
+  return { maxDimensionCm: source.ML_PACKAGE_OVERRIDE_MAX_DIMENSION_CM, maxWeightG: source.ML_PACKAGE_OVERRIDE_MAX_WEIGHT_G };
+}
+
+// Função pura: decide se o override manual é válido e COMPLETO — "tudo ou
+// nada" (ver ponto 2 do pedido). Preenchimento PARCIAL (1-3 dos 4 campos) é
+// tratado como AUSENTE aqui, nunca um erro: o schema Zod
+// (schemas/product.schema.ts) já deveria ter bloqueado isso na gravação,
+// então chegar aqui parcial só pode ser um dado antigo/gravado por fora da
+// API — defensivo, nunca lança. Mesma lógica pros valores fora do teto
+// configurável ou não positivos: tratados como ausentes (cai pro preset
+// automático), nunca bloqueiam a estimativa inteira.
+export function resolveManualPackageOverride(
+  input: ManualPackageOverrideInput,
+  ceilings: PackageOverrideCeilings
+): { box: PackageBox; packageWeightGrams: number } | null {
+  const raw = [input.lengthCm, input.widthCm, input.heightCm, input.weightG];
+  const presentCount = raw.filter((value) => value !== null && value !== undefined).length;
+  if (presentCount !== 4) return null;
+
+  const lengthCm = Number(input.lengthCm);
+  const widthCm = Number(input.widthCm);
+  const heightCm = Number(input.heightCm);
+  const weightG = Number(input.weightG);
+  const values = [lengthCm, widthCm, heightCm, weightG];
+
+  if (values.some((value) => !Number.isFinite(value) || value <= 0)) return null;
+  if (lengthCm > ceilings.maxDimensionCm || widthCm > ceilings.maxDimensionCm || heightCm > ceilings.maxDimensionCm) return null;
+  if (weightG > ceilings.maxWeightG) return null;
+
+  return { box: { lengthCm, widthCm, heightCm }, packageWeightGrams: weightG };
+}
+
+// Função pura: peso + tamanho da peça -> preset de caixa (ou bloqueio) — OU
+// a caixa do override manual, quando completo e válido (ver
+// resolveManualPackageOverride), que tem PRECEDÊNCIA sobre o preset
+// automático e nunca é bloqueado pelos tetos de preset (ML_PACKAGE_MAX_*):
+// é exatamente pra isso que o override existe. `override`/`overrideCeilings`
+// são OPCIONAIS — omitidos (como todo chamador existente antes desta etapa
+// já fazia), o comportamento é IDÊNTICO ao de antes.
+//
+// Sem override (ou override incompleto/inválido): preset final é o MAIOR
+// exigido entre tamanho e peso avaliados separadamente (ex.: peça leve mas
+// grande ainda precisa da caixa grande) — nunca a média nem só um dos dois.
+// Bloqueia (ok: false) sempre que QUALQUER um dos dois ultrapassar o teto do
+// maior preset (GG): nunca devolve uma caixa "chutada" para uma peça fora
+// da faixa coberta.
+export function estimatePackageBox(
+  weightGrams: number,
+  sizeCm: number,
+  config: PackagePresetsConfig,
+  override?: ManualPackageOverrideInput,
+  overrideCeilings?: PackageOverrideCeilings
+): PackageBoxEstimate {
+  if (override && overrideCeilings) {
+    const manual = resolveManualPackageOverride(override, overrideCeilings);
+    if (manual) {
+      return { ok: true, source: "manual", preset: null, box: manual.box, packageWeightGrams: manual.packageWeightGrams };
+    }
+  }
+
   const bySize = classify(sizeCm, SIZE_TIER_MAX_CM, config.maxSizeCm);
   const byWeight = classify(weightGrams, WEIGHT_TIER_MAX_G, config.maxWeightG);
 
@@ -124,6 +201,7 @@ export function estimatePackageBox(weightGrams: number, sizeCm: number, config: 
 
   return {
     ok: true,
+    source: "preset",
     preset,
     box: config.boxes[preset],
     packageWeightGrams: weightGrams + config.weightMarginG,

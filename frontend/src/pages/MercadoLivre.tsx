@@ -546,12 +546,16 @@ function MercadoLivreSimulate({ publishEnabled }: { publishEnabled: boolean }) {
               <div>
                 <dt className="text-xs text-[#64748B]">
                   {t("mercadoLivreAdmin.simulate.draftPackageLabel")}
-                  <span className="ml-1 text-[#B45309]">{t("mercadoLivreAdmin.simulate.draftPackageEstimateTag")}</span>
+                  {simulation.draft.packageBox.ok && simulation.draft.packageBox.source === "manual" ? (
+                    <span className="ml-1 text-[#15803D]">{t("mercadoLivreAdmin.simulate.draftPackageSourceManual")}</span>
+                  ) : (
+                    <span className="ml-1 text-[#B45309]">{t("mercadoLivreAdmin.simulate.draftPackageEstimateTag")}</span>
+                  )}
                 </dt>
                 {simulation.draft.packageBox.ok ? (
                   <dd className="text-[#1A1A1A]">
                     {t("mercadoLivreAdmin.simulate.draftPackageSummary", {
-                      preset: simulation.draft.packageBox.preset,
+                      preset: simulation.draft.packageBox.preset ?? t("mercadoLivreAdmin.simulate.draftPackageSourceManualLabel"),
                       length: simulation.draft.packageBox.box.lengthCm,
                       width: simulation.draft.packageBox.box.widthCm,
                       height: simulation.draft.packageBox.box.heightCm,
@@ -635,6 +639,16 @@ function MercadoLivreSimulate({ publishEnabled }: { publishEnabled: boolean }) {
                 ) : (
                   <p className="rounded-lg border border-[#22C55E] bg-[#F0FDF4] p-3 text-sm text-[#15803D]">
                     {t("mercadoLivreAdmin.publish.publishableYes")}
+                  </p>
+                )}
+                {dryRun.packageBoxSource && (
+                  <p className="text-xs text-[#64748B]">
+                    {t("mercadoLivreAdmin.publish.packageBoxSourceLabel")}{" "}
+                    <span className={dryRun.packageBoxSource === "manual" ? "font-medium text-[#15803D]" : "font-medium text-[#B45309]"}>
+                      {dryRun.packageBoxSource === "manual"
+                        ? t("mercadoLivreAdmin.simulate.draftPackageSourceManualLabel")
+                        : t("mercadoLivreAdmin.publish.packageBoxSourcePreset")}
+                    </span>
                   </p>
                 )}
                 {dryRun.payload && (

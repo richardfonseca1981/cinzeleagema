@@ -423,6 +423,8 @@
       "draftCategoryUnverified": "unverified placeholder — confirm before publishing",
       "draftPackageLabel": "Packaging",
       "draftPackageEstimateTag": "(unverified estimate)",
+      "draftPackageSourceManual": "(manually entered measurement)",
+      "draftPackageSourceManualLabel": "Manual",
       "draftPackageSummary": "Preset {{preset}} — box {{length}}x{{width}}x{{height}}cm, package {{weight}}g",
       "draftPackageBlocked": {
         "size_exceeds_limit": "Item larger than the biggest available box preset — publishing blocked until packaging is set manually.",
@@ -446,6 +448,15 @@
     "banner": {
       "publishDisabled": "Real publishing is off (ML_PUBLISH_ENABLED=false) — only the dry-run preview is available."
     },
+    "packageOverride": {
+      "title": "Packaging for Mercado Livre",
+      "hint": "Optional — only for pieces outside the automatic presets (e.g. large chapels and obelisks). Fill in all 4 fields together, with the already-packaged box measurements.",
+      "lengthCm": "Length (cm)",
+      "widthCm": "Width (cm)",
+      "heightCm": "Height (cm)",
+      "weightG": "Package weight (g)",
+      "partialWarning": "Fill in all 4 fields together (or none) — only some filled in will be rejected on save."
+    },
     "publish": {
       "previewButton": "Publish preview",
       "previewing": "Generating preview...",
@@ -460,6 +471,8 @@
       },
       "publishableYes": "No pending issues — ready for real publishing.",
       "payloadTitle": "POST /items payload",
+      "packageBoxSourceLabel": "Packaging source:",
+      "packageBoxSourcePreset": "Automatic preset",
       "needPreviewHint": "Generate the preview before publishing for real.",
       "confirmTitle": "Confirm real publishing?",
       "confirmMessage": "Piece \"{{title}}\" will be published on Mercado Livre for R$ {{price}}. This action is real.",

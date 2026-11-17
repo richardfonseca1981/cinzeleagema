@@ -86,7 +86,7 @@ describe("buildListingDraft", () => {
 
   it("estima a caixa/peso de embalagem a partir de weightGrams/sizeCm (ver packagePresets.ts)", () => {
     const draft = buildListingDraft(baseProduct({ weightGrams: 500, sizeCm: 10 }));
-    expect(draft.packageBox).toEqual({ ok: true, preset: "P", box: expect.any(Object), packageWeightGrams: 500 + env.ML_PACKAGE_WEIGHT_MARGIN_G });
+    expect(draft.packageBox).toEqual({ ok: true, source: "preset", preset: "P", box: expect.any(Object), packageWeightGrams: 500 + env.ML_PACKAGE_WEIGHT_MARGIN_G });
   });
 
   it("peça fora das faixas de preset (ex.: obelisco de 62cm) gera packageBox ok:false", () => {
@@ -146,6 +146,6 @@ describe("assertReadyToPublish", () => {
 
     const esfera = verify(buildListingDraft(baseProduct({ weightGrams: 6, sizeCm: 1.6 })));
     expect(() => assertReadyToPublish(esfera)).not.toThrow();
-    expect(esfera.packageBox).toEqual({ ok: true, preset: "P", box: expect.any(Object), packageWeightGrams: 6 + env.ML_PACKAGE_WEIGHT_MARGIN_G });
+    expect(esfera.packageBox).toEqual({ ok: true, source: "preset", preset: "P", box: expect.any(Object), packageWeightGrams: 6 + env.ML_PACKAGE_WEIGHT_MARGIN_G });
   });
 });

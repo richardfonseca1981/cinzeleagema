@@ -672,6 +672,155 @@ describe("Product routes", () => {
   });
 });
 
+// Fase 1B etapa 10 — override manual de embalagem pro Mercado Livre
+// (Product.mlPackageOverride*). Regra "tudo ou nada" validada no schema
+// (schemas/product.schema.ts) — ver também lib/mercadoLivre/
+// packagePresets.ts pro comportamento de leitura (resolveManualPackageOverride).
+describe("Override manual de embalagem (Mercado Livre)", () => {
+  function baseBody(overrides: Record<string, unknown> = {}) {
+    return {
+      name: "Obelisco Grande",
+      slug: `obelisco-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      price: 2000,
+      trackStock: false,
+      weightGrams: 3000,
+      sizeCm: 62,
+      categoryId: categoryWithoutSubId,
+      ...overrides,
+    };
+  }
+
+  it("aceita os 4 campos preenchidos juntos e devolve os valores salvos", async () => {
+    const res = await request(app)
+      .post("/api/products")
+      .set("Authorization", `Bearer ${token}`)
+      .send(
+        baseBody({
+          mlPackageOverrideLengthCm: 70,
+          mlPackageOverrideWidthCm: 40,
+          mlPackageOverrideHeightCm: 40,
+          mlPackageOverrideWeightG: 3300,
+        })
+      );
+
+    expect(res.status).toBe(201);
+    expect(Number(res.body.mlPackageOverrideLengthCm)).toBe(70);
+    expect(Number(res.body.mlPackageOverrideWidthCm)).toBe(40);
+    expect(Number(res.body.mlPackageOverrideHeightCm)).toBe(40);
+    expect(Number(res.body.mlPackageOverrideWeightG)).toBe(3300);
+  });
+
+  it("aceita sem nenhum campo (comportamento padrão, sem override)", async () => {
+    const res = await request(app).post("/api/products").set("Authorization", `Bearer ${token}`).send(baseBody());
+    expect(res.status).toBe(201);
+    expect(res.body.mlPackageOverrideLengthCm).toBeNull();
+  });
+
+  it.each([
+    ["só 1 de 4", { mlPackageOverrideLengthCm: 70 }],
+    ["3 de 4 (falta o peso)", { mlPackageOverrideLengthCm: 70, mlPackageOverrideWidthCm: 40, mlPackageOverrideHeightCm: 40 }],
+  ])("rejeita preenchimento parcial (%s) com 400", async (_label, partial) => {
+    const res = await request(app)
+      .post("/api/products")
+      .set("Authorization", `Bearer ${token}`)
+      .send(baseBody(partial));
+    expect(res.status).toBe(400);
+  });
+
+  it("rejeita valor acima do teto configurável de dimensão (400)", async () => {
+    const res = await request(app)
+      .post("/api/products")
+      .set("Authorization", `Bearer ${token}`)
+      .send(
+        baseBody({
+          mlPackageOverrideLengthCm: 99999,
+          mlPackageOverrideWidthCm: 40,
+          mlPackageOverrideHeightCm: 40,
+          mlPackageOverrideWeightG: 3300,
+        })
+      );
+    expect(res.status).toBe(400);
+  });
+
+  it("rejeita valor não positivo (400)", async () => {
+    const res = await request(app)
+      .post("/api/products")
+      .set("Authorization", `Bearer ${token}`)
+      .send(
+        baseBody({
+          mlPackageOverrideLengthCm: 0,
+          mlPackageOverrideWidthCm: 40,
+          mlPackageOverrideHeightCm: 40,
+          mlPackageOverrideWeightG: 3300,
+        })
+      );
+    expect(res.status).toBe(400);
+  });
+
+  it("PATCH também valida tudo-ou-nada (completar um override parcial existente funciona; deixar parcial falha)", async () => {
+    const created = await request(app).post("/api/products").set("Authorization", `Bearer ${token}`).send(baseBody());
+    const id = created.body.id;
+
+    const partial = await request(app)
+      .patch(`/api/products/${id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ mlPackageOverrideLengthCm: 70 });
+    expect(partial.status).toBe(400);
+
+    const complete = await request(app)
+      .patch(`/api/products/${id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        mlPackageOverrideLengthCm: 70,
+        mlPackageOverrideWidthCm: 40,
+        mlPackageOverrideHeightCm: 40,
+        mlPackageOverrideWeightG: 3300,
+      });
+    expect(complete.status).toBe(200);
+    expect(Number(complete.body.mlPackageOverrideWeightG)).toBe(3300);
+  });
+
+  it("GET /simulate/:productId reflete o override: libera a peça bloqueada e marca origem 'manual'", async () => {
+    const withoutOverride = await request(app)
+      .post("/api/products")
+      .set("Authorization", `Bearer ${token}`)
+      .send(baseBody({ name: "Obelisco Sem Override" }));
+    // validateListing exige pelo menos 1 foto (no_photos) — sem isso
+    // "eligible" vem false e a simulação nem monta o draft, o que não é o
+    // que este teste quer verificar (a embalagem, não a elegibilidade).
+    await prisma.productImage.create({
+      data: { productId: withoutOverride.body.id, url: "https://cdn.test/a.jpg", key: `k/${withoutOverride.body.id}`, position: 0, width: 1080, height: 1920 },
+    });
+    const blockedSim = await request(app)
+      .get(`/api/admin/mercadolivre/simulate/${withoutOverride.body.id}`)
+      .set("Authorization", `Bearer ${token}`);
+    expect(blockedSim.body.eligible).toBe(true);
+    expect(blockedSim.body.draft.packageBox.ok).toBe(false);
+    expect(blockedSim.body.draft.packageBoxSource).toBeNull();
+
+    const withOverride = await request(app)
+      .post("/api/products")
+      .set("Authorization", `Bearer ${token}`)
+      .send(
+        baseBody({
+          name: "Obelisco Com Override",
+          mlPackageOverrideLengthCm: 70,
+          mlPackageOverrideWidthCm: 40,
+          mlPackageOverrideHeightCm: 40,
+          mlPackageOverrideWeightG: 3300,
+        })
+      );
+    await prisma.productImage.create({
+      data: { productId: withOverride.body.id, url: "https://cdn.test/b.jpg", key: `k/${withOverride.body.id}`, position: 0, width: 1080, height: 1920 },
+    });
+    const releasedSim = await request(app)
+      .get(`/api/admin/mercadolivre/simulate/${withOverride.body.id}`)
+      .set("Authorization", `Bearer ${token}`);
+    expect(releasedSim.body.draft.packageBox).toMatchObject({ ok: true, source: "manual", box: { lengthCm: 70, widthCm: 40, heightCm: 40 }, packageWeightGrams: 3300 });
+    expect(releasedSim.body.draft.packageBoxSource).toBe("manual");
+  });
+});
+
 describe("Identificação de catálogo por IA — nunca exposta nas rotas públicas", () => {
   it("GET /api/products e GET /api/products/:id (públicas) nunca trazem os campos de identificação, mesmo com dados salvos", async () => {
     const product = await prisma.product.create({

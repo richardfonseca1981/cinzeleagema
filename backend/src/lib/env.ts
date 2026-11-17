@@ -116,6 +116,17 @@ export const envSchema = z.object({
   ML_PACKAGE_BOX_GG_LENGTH_CM: z.coerce.number().positive().optional().default(65),
   ML_PACKAGE_BOX_GG_WIDTH_CM: z.coerce.number().positive().optional().default(50),
   ML_PACKAGE_BOX_GG_HEIGHT_CM: z.coerce.number().positive().optional().default(40),
+  // Fase 1B etapa 10 — tetos do override MANUAL de embalagem por peça (ver
+  // packagePresets.ts resolveManualPackageOverride). Precisam ser MAIORES
+  // que os presets automáticos acima (senão o override nunca ajudaria as
+  // peças que já ficam bloqueadas por eles) — ainda assim um teto, não um
+  // "sem limite": protege contra erro de digitação (ex.: 6200cm por engano).
+  // Valores padrão SUPOSIÇÃO não verificada — nenhuma medida real de caixa
+  // excepcional (obelisco/capela grande) foi confirmada com o cliente ainda,
+  // só escolhidos generosos o bastante pra cobrir os casos conhecidos hoje
+  // do catálogo (ver CONTEXT.md "Mercado Livre — Fase 1B etapa 10").
+  ML_PACKAGE_OVERRIDE_MAX_DIMENSION_CM: z.coerce.number().positive().optional().default(100),
+  ML_PACKAGE_OVERRIDE_MAX_WEIGHT_G: z.coerce.number().positive().optional().default(30000),
 
   // Base da URL pública de produto usada no CSV do script de auditoria do
   // Mercado Livre (ver scripts/auditMercadoLivre.ts, coluna url_publica) —

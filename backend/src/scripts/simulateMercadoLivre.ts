@@ -86,6 +86,10 @@ export interface SimulationCsvRow {
   // colunas de taxa acima.
   caixa_estimada_estimativa_nao_verificada: string;
   peso_pacote_g_estimativa_nao_verificada: string;
+  // Fase 1B etapa 10 — "manual" quando a caixa veio do override da peça
+  // (Product.mlPackageOverride*), "preset" quando veio da estimativa
+  // automática; vazio junto com as duas colunas acima quando bloqueado.
+  origem_caixa: string;
   avisos: string;
 }
 
@@ -102,6 +106,7 @@ const CSV_HEADER: (keyof SimulationCsvRow)[] = [
   "markup_minimo_breakeven",
   "caixa_estimada_estimativa_nao_verificada",
   "peso_pacote_g_estimativa_nao_verificada",
+  "origem_caixa",
   "avisos",
 ];
 
@@ -181,6 +186,7 @@ export function buildSimulationCsvRows(
         markup_minimo_breakeven: "",
         caixa_estimada_estimativa_nao_verificada: "",
         peso_pacote_g_estimativa_nao_verificada: "",
+        origem_caixa: "",
         avisos: appendWarning(["sku_nao_encontrado"], accountWarning),
       };
     }
@@ -200,6 +206,7 @@ export function buildSimulationCsvRows(
         markup_minimo_breakeven: "",
         caixa_estimada_estimativa_nao_verificada: "",
         peso_pacote_g_estimativa_nao_verificada: "",
+        origem_caixa: "",
         avisos: appendWarning(eligibility.blockers.map((blocker) => blocker.code), accountWarning),
       };
     }
@@ -215,10 +222,13 @@ export function buildSimulationCsvRows(
     // verdade nesta fase (as duas checagens são independentes, ver
     // getReadinessIssues). Vazio só quando a peça excede o maior preset
     // (ok: false) — "avisos" já carrega package_requires_manual nesse caso.
+    // preset é null quando a origem é "manual" (ver packagePresets.ts) — cai
+    // pra "manual" no texto nesse caso, nunca "null" literal.
     const caixaEstimada = draft.packageBox.ok
-      ? `${draft.packageBox.preset} (${draft.packageBox.box.lengthCm}x${draft.packageBox.box.widthCm}x${draft.packageBox.box.heightCm}cm)`
+      ? `${draft.packageBox.preset ?? "manual"} (${draft.packageBox.box.lengthCm}x${draft.packageBox.box.widthCm}x${draft.packageBox.box.heightCm}cm)`
       : "";
     const pesoPacoteEstimado = draft.packageBox.ok ? String(draft.packageBox.packageWeightGrams) : "";
+    const origemCaixa = draft.packageBoxSource ?? "";
 
     const priceConfig = {
       markupPct,
@@ -247,6 +257,7 @@ export function buildSimulationCsvRows(
       markup_minimo_breakeven: formatDecimal(minMarkup),
       caixa_estimada_estimativa_nao_verificada: caixaEstimada,
       peso_pacote_g_estimativa_nao_verificada: pesoPacoteEstimado,
+      origem_caixa: origemCaixa,
       avisos: appendWarning(warnings, accountWarning),
     };
   });

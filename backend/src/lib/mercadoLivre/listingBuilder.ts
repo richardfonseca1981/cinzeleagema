@@ -2,7 +2,13 @@ import { env } from "../env";
 import { resolveTitle, resolveBodyText, type CatalogProductContent } from "../catalog/content";
 import { GEMSTONE_CATEGORY_FIXTURE, ML_FIXME_CATEGORY_ID, type MercadoLivreCategoryFixture } from "./categoryFixture";
 import { ML_MAX_PHOTOS, ML_TITLE_MAX_CHARS } from "./listingValidator";
-import { estimatePackageBox, getPackagePresetsConfig, type PackageBoxEstimate } from "./packagePresets";
+import {
+  estimatePackageBox,
+  getPackageOverrideCeilings,
+  getPackagePresetsConfig,
+  type PackageBoxEstimate,
+  type PackageBoxSource,
+} from "./packagePresets";
 
 export interface ListingBuilderImage {
   url: string;
@@ -16,6 +22,14 @@ export interface ListingBuilderInput extends CatalogProductContent {
   images: ListingBuilderImage[];
   weightGrams: unknown; // Decimal do Prisma ou já convertido — idem ListingValidationInput.
   sizeCm: unknown;
+  // Fase 1B etapa 10 — override manual de embalagem (ver schema.prisma
+  // Product.mlPackageOverride*) — opcionais pra não quebrar nenhum chamador/
+  // fixture de teste anterior a esta etapa (ausentes = sem override, mesmo
+  // comportamento de antes).
+  mlPackageOverrideLengthCm?: unknown;
+  mlPackageOverrideWidthCm?: unknown;
+  mlPackageOverrideHeightCm?: unknown;
+  mlPackageOverrideWeightG?: unknown;
 }
 
 export interface MercadoLivreListingDraft {
@@ -30,6 +44,11 @@ export interface MercadoLivreListingDraft {
   // (GG) e precisa de override manual; assertReadyToPublish abaixo bloqueia
   // a publicação nesse caso.
   packageBox: PackageBoxEstimate;
+  // Fase 1B etapa 10 — espelha `packageBox.source` quando `ok: true`, `null`
+  // quando bloqueado. Campo próprio no draft (em vez de só dentro de
+  // packageBox) porque é a origem explicitamente pedida pra aparecer na
+  // simulação/prévia/CSV.
+  packageBoxSource: PackageBoxSource | null;
 }
 
 // Disclosure de tratamento na descrição — exigência de honestidade do
@@ -77,12 +96,20 @@ export function buildListingDraft(product: ListingBuilderInput): MercadoLivreLis
   const packageBox = estimatePackageBox(
     toNumberOrZero(product.weightGrams),
     toNumberOrZero(product.sizeCm),
-    getPackagePresetsConfig(env)
+    getPackagePresetsConfig(env),
+    {
+      lengthCm: product.mlPackageOverrideLengthCm,
+      widthCm: product.mlPackageOverrideWidthCm,
+      heightCm: product.mlPackageOverrideHeightCm,
+      weightG: product.mlPackageOverrideWeightG,
+    },
+    getPackageOverrideCeilings(env)
   );
 
   return {
     title: finalTitle,
     titleTruncated: truncated,
+    packageBoxSource: packageBox.ok ? packageBox.source : null,
     description,
     photos,
     photosOmitted: Math.max(0, orderedImages.length - ML_MAX_PHOTOS),

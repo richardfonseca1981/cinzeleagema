@@ -134,6 +134,10 @@ export interface MercadoLivrePublishPreview {
   // quando a peça já estaria pronta pra publicação real também (categoria
   // confirmada e embalagem dentro da faixa).
   issues: ListingNotReadyCode[];
+  // Fase 1B etapa 10 — espelha draft.packageBoxSource, pro admin ver na
+  // prévia se a caixa do payload acima veio do override manual da peça ou
+  // do preset automático.
+  packageBoxSource: MercadoLivreListingDraft["packageBoxSource"];
 }
 
 // Ajuste pós-etapa-5 (ponto A do cliente): dry-run deve SEMPRE devolver o
@@ -148,7 +152,7 @@ export function buildMercadoLivreItemPayloadPreview(input: BuildMercadoLivreItem
   const draft = prepareDraft(input);
   const issues = getReadinessIssues(draft);
   const payload = assemblePayload(draft, input.product.sku, input.listingPriceBRL, env.ML_LISTING_TYPE_ID);
-  return { payload, issues };
+  return { payload, issues, packageBoxSource: draft.packageBoxSource };
 }
 
 // Montagem pura dos campos, separada das checagens acima de propósito: um

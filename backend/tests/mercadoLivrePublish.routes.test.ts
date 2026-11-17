@@ -27,7 +27,13 @@ const originalCategoryId = GEMSTONE_CATEGORY_FIXTURE.id;
 
 let fakeClient: FakeMercadoLivrePublisherClient;
 
-async function createProduct(overrides: { price?: number | null; sku?: string } = {}) {
+async function createProduct(
+  overrides: {
+    price?: number | null;
+    sku?: string;
+    mlPackageOverride?: { lengthCm: number; widthCm: number; heightCm: number; weightG: number };
+  } = {}
+) {
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const product = await prisma.product.create({
     data: {
@@ -39,6 +45,14 @@ async function createProduct(overrides: { price?: number | null; sku?: string } 
       trackStock: false,
       weightGrams: 850,
       sizeCm: 23,
+      ...(overrides.mlPackageOverride
+        ? {
+            mlPackageOverrideLengthCm: overrides.mlPackageOverride.lengthCm,
+            mlPackageOverrideWidthCm: overrides.mlPackageOverride.widthCm,
+            mlPackageOverrideHeightCm: overrides.mlPackageOverride.heightCm,
+            mlPackageOverrideWeightG: overrides.mlPackageOverride.weightG,
+          }
+        : {}),
     },
   });
   await prisma.productImage.create({
@@ -138,6 +152,29 @@ describe("POST /publish/:productId — dry-run", () => {
     expect(res.body.forcedDryRun).toBe(false);
     const rows = await prisma.mercadoLivreListing.findMany({ where: { productId: product.id } });
     expect(rows).toHaveLength(0);
+  });
+
+  // Fase 1B etapa 10 — a prévia também mostra a origem da caixa.
+  it("mostra packageBoxSource 'preset' por padrão e 'manual' com override completo na peça", async () => {
+    env.ML_PUBLISH_ENABLED = true;
+    await createAccount();
+    const presetProduct = await createProduct();
+
+    const presetRes = await request(app)
+      .post(`/api/admin/mercadolivre/publish/${presetProduct.id}`)
+      .set(auth)
+      .send({ mode: "dry-run", expectedPrice: EXPECTED_LISTING_PRICE });
+    expect(presetRes.body.packageBoxSource).toBe("preset");
+
+    const manualProduct = await createProduct({
+      mlPackageOverride: { lengthCm: 45, widthCm: 35, heightCm: 35, weightG: 1500 },
+    });
+    const manualRes = await request(app)
+      .post(`/api/admin/mercadolivre/publish/${manualProduct.id}`)
+      .set(auth)
+      .send({ mode: "dry-run", expectedPrice: EXPECTED_LISTING_PRICE });
+    expect(manualRes.body.packageBoxSource).toBe("manual");
+    expect(manualRes.body.payload.shipping).toEqual({ dimensions: "45x35x35cm,1500g" });
   });
 
   // Ajuste pós-etapa-5 (ponto A): dry-run NUNCA bloqueia por categoria/

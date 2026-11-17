@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { operationsSchema } from "../lib/imageOperations";
 import { SORT_VALUES } from "../lib/productSort";
+import { env } from "../lib/env";
 
 // Nome, preço e categoria são opcionais (ver CONTEXT.md "campos opcionais") —
 // null é um valor válido e intencional, diferente de ausente (undefined):
@@ -8,7 +9,7 @@ import { SORT_VALUES } from "../lib/productSort";
 // aceita null nela; o frontend sempre manda a chave (nunca omite), então essa
 // é a forma mais estrita que ainda aceita null. "slug" NUNCA vem do cliente —
 // é sempre gerado no backend (ver product.routes.ts) e ignorado se enviado.
-export const createProductSchema = z.object({
+const createProductSchemaObject = z.object({
   name: z.string().trim().min(1).nullable(),
   description: z.string().optional().nullable(),
   categoryId: z.string().min(1).nullable(),
@@ -27,9 +28,56 @@ export const createProductSchema = z.object({
   packageLengthCm: z.coerce.number().positive().optional().nullable(),
   packageWidthCm: z.coerce.number().positive().optional().nullable(),
   packageHeightCm: z.coerce.number().positive().optional().nullable(),
+  // Fase 1B etapa 10 — override MANUAL de embalagem só para o anúncio do
+  // Mercado Livre (nomes novos, nunca reaproveitando os `package*`
+  // obsoletos acima, que são de outro contexto — o frete nacional do site).
+  // `.max()` usa os tetos configuráveis via env (ML_PACKAGE_OVERRIDE_MAX_*,
+  // ver lib/env.ts) — valores padrão documentados ali como SUPOSIÇÃO não
+  // verificada. A regra "tudo ou nada" (os 4 juntos, ou nenhum) é aplicada
+  // pelo `.refine()` em mlPackageOverrideRefine abaixo, não aqui — um
+  // `.object()` sozinho não consegue validar a combinação entre campos.
+  mlPackageOverrideLengthCm: z.coerce.number().positive().max(env.ML_PACKAGE_OVERRIDE_MAX_DIMENSION_CM).optional().nullable(),
+  mlPackageOverrideWidthCm: z.coerce.number().positive().max(env.ML_PACKAGE_OVERRIDE_MAX_DIMENSION_CM).optional().nullable(),
+  mlPackageOverrideHeightCm: z.coerce.number().positive().max(env.ML_PACKAGE_OVERRIDE_MAX_DIMENSION_CM).optional().nullable(),
+  mlPackageOverrideWeightG: z.coerce.number().positive().max(env.ML_PACKAGE_OVERRIDE_MAX_WEIGHT_G).optional().nullable(),
 });
 
-export const updateProductSchema = createProductSchema.partial();
+// "Tudo ou nada": os 4 campos do override manual de embalagem (ver acima)
+// só valem preenchidos JUNTOS — 1 a 3 preenchidos é rejeitado aqui (400),
+// nunca silenciosamente ignorado na gravação (diferente do fallback
+// defensivo em packagePresets.ts resolveManualPackageOverride, que é uma
+// segunda rede de segurança pra dado gravado por fora desta API). Função
+// solta (não um helper genérico envolvendo `.refine()`) de propósito: um
+// wrapper genérico sobre `z.ZodType<...>` faz o TypeScript inferir o tipo
+// do parâmetro errado (a FORMA da constraint, não a do schema real
+// passado) — chamar `.refine()` direto em cada schema concreto evita essa
+// pegadinha de inferência.
+function hasAllOrNoneMlPackageOverride(data: {
+  mlPackageOverrideLengthCm?: number | null;
+  mlPackageOverrideWidthCm?: number | null;
+  mlPackageOverrideHeightCm?: number | null;
+  mlPackageOverrideWeightG?: number | null;
+}): boolean {
+  const values = [
+    data.mlPackageOverrideLengthCm,
+    data.mlPackageOverrideWidthCm,
+    data.mlPackageOverrideHeightCm,
+    data.mlPackageOverrideWeightG,
+  ];
+  const presentCount = values.filter((value) => value !== null && value !== undefined).length;
+  return presentCount === 0 || presentCount === 4;
+}
+
+const ML_PACKAGE_OVERRIDE_REFINE_OPTIONS: { message: string; path: (string | number)[] } = {
+  message:
+    "Embalagem manual para o Mercado Livre: preencha os 4 campos (comprimento, largura, altura e peso do pacote) juntos, ou nenhum deles.",
+  path: ["mlPackageOverrideLengthCm"],
+};
+
+export const createProductSchema = createProductSchemaObject.refine(hasAllOrNoneMlPackageOverride, ML_PACKAGE_OVERRIDE_REFINE_OPTIONS);
+export const updateProductSchema = createProductSchemaObject
+  .partial()
+  .refine(hasAllOrNoneMlPackageOverride, ML_PACKAGE_OVERRIDE_REFINE_OPTIONS);
 
 export const listProductsQuerySchema = z.object({
   active: z

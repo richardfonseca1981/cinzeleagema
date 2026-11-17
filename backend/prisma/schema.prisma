@@ -107,6 +107,21 @@ model Product {
   packageWidthCm  Decimal? @db.Decimal(10, 2)
   packageHeightCm Decimal? @db.Decimal(10, 2)
 
+  // Fase 1B etapa 10 — override MANUAL de embalagem só para o anúncio do
+  // Mercado Livre (nomes novos e específicos, nunca reaproveitando as
+  // colunas obsoletas acima, que são de outro contexto — o frete nacional do
+  // site). Regra "tudo ou nada": só vale com os 4 campos preenchidos (ver
+  // schemas/product.schema.ts refine, e lib/mercadoLivre/packagePresets.ts
+  // resolveManualPackageOverride, que trata preenchimento parcial como
+  // ausente, defensivamente). Pensado pra peças excepcionais que excedem o
+  // maior preset automático (GG) — ex.: obeliscos e capelas grandes — sem
+  // overrideManualPackage, essas peças ficam bloqueadas pra publicação real
+  // (ver listingBuilder.ts assertReadyToPublish, package_requires_manual).
+  mlPackageOverrideLengthCm Decimal? @db.Decimal(10, 2)
+  mlPackageOverrideWidthCm  Decimal? @db.Decimal(10, 2)
+  mlPackageOverrideHeightCm Decimal? @db.Decimal(10, 2)
+  mlPackageOverrideWeightG  Decimal? @db.Decimal(10, 2)
+
   images ProductImage[]
   mercadoLivreListings MercadoLivreListing[]
 

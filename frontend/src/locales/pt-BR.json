@@ -406,6 +406,8 @@
       "draftCategoryUnverified": "placeholder não verificado — confirmar antes de publicar",
       "draftPackageLabel": "Embalagem",
       "draftPackageEstimateTag": "(estimativa não verificada)",
+      "draftPackageSourceManual": "(medida manual informada)",
+      "draftPackageSourceManualLabel": "Manual",
       "draftPackageSummary": "Preset {{preset}} — caixa {{length}}x{{width}}x{{height}}cm, pacote {{weight}}g",
       "draftPackageBlocked": {
         "size_exceeds_limit": "Peça maior que o maior preset de caixa disponível — publicação bloqueada até definir a embalagem manualmente.",
@@ -429,6 +431,15 @@
     "banner": {
       "publishDisabled": "Publicação real desligada (ML_PUBLISH_ENABLED=false) — só a prévia (dry-run) está disponível."
     },
+    "packageOverride": {
+      "title": "Embalagem para Mercado Livre",
+      "hint": "Opcional — só pra peças fora dos presets automáticos (ex.: capelas e obeliscos grandes). Preencha os 4 campos juntos, com as medidas da caixa já embalada.",
+      "lengthCm": "Comprimento (cm)",
+      "widthCm": "Largura (cm)",
+      "heightCm": "Altura (cm)",
+      "weightG": "Peso do pacote (g)",
+      "partialWarning": "Preencha os 4 campos juntos (ou nenhum) — só alguns preenchidos será rejeitado ao salvar."
+    },
     "publish": {
       "previewButton": "Prévia de publicação",
       "previewing": "Gerando prévia...",
@@ -443,6 +454,8 @@
       },
       "publishableYes": "Sem pendências — pronta para publicação real.",
       "payloadTitle": "Payload de POST /items",
+      "packageBoxSourceLabel": "Origem da embalagem:",
+      "packageBoxSourcePreset": "Preset automático",
       "needPreviewHint": "Gere a prévia antes de publicar de verdade.",
       "confirmTitle": "Confirmar publicação real?",
       "confirmMessage": "Peça \"{{title}}\" será publicada no Mercado Livre pelo preço de anúncio R$ {{price}}. Esta ação é real.",

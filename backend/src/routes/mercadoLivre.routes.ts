@@ -204,8 +204,9 @@ mercadoLivreRouter.post(
       // inválido/peça inelegível continuam bloqueando os dois modos.
       let payload: MercadoLivreItemPayload;
       let issues: ReturnType<typeof buildMercadoLivreItemPayloadPreview>["issues"];
+      let packageBoxSource: ReturnType<typeof buildMercadoLivreItemPayloadPreview>["packageBoxSource"];
       try {
-        ({ payload, issues } = buildMercadoLivreItemPayloadPreview({
+        ({ payload, issues, packageBoxSource } = buildMercadoLivreItemPayloadPreview({
           product: product as MercadoLivrePublishableProduct,
           listingPriceBRL,
         }));
@@ -233,6 +234,7 @@ mercadoLivreRouter.post(
         price: priceBreakdown,
         payload,
         issues,
+        packageBoxSource,
         publishable: issues.length === 0,
         notice: issues.length > 0 ? "Prévia — não publicável enquanto houver pendências (ver issues)." : null,
         preview: { mlItemId: preview.id, permalink: preview.permalink },

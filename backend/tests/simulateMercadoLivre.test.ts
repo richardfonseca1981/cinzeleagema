@@ -122,20 +122,41 @@ describe("buildSimulationCsvRows", () => {
     expect(row.avisos).toContain("category_not_verified");
   });
 
-  it("mostra a caixa e o peso de pacote estimados (preset dentro da faixa coberta)", () => {
+  it("mostra a caixa e o peso de pacote estimados (preset dentro da faixa coberta), com origem_caixa 'preset'", () => {
     const product = baseProduct({ price: 1000, weightGrams: 850, sizeCm: 23 });
     const [row] = buildSimulationCsvRows(["AME-001"], [product], 0);
     expect(row.caixa_estimada_estimativa_nao_verificada).toMatch(/^M \(\d+x\d+x\d+cm\)$/);
     expect(row.peso_pacote_g_estimativa_nao_verificada).toBe(String(850 + 300));
+    expect(row.origem_caixa).toBe("preset");
   });
 
-  it("peça fora das faixas de preset (ex.: capela de 16,8kg): caixa/peso ficam vazios e avisos ganha package_requires_manual, SEM esconder category_not_verified", () => {
+  it("peça fora das faixas de preset (ex.: capela de 16,8kg): caixa/peso/origem ficam vazios e avisos ganha package_requires_manual, SEM esconder category_not_verified", () => {
     const product = baseProduct({ price: 1000, weightGrams: 16800, sizeCm: 20 });
     const [row] = buildSimulationCsvRows(["AME-001"], [product], 0);
     expect(row.caixa_estimada_estimativa_nao_verificada).toBe("");
     expect(row.peso_pacote_g_estimativa_nao_verificada).toBe("");
+    expect(row.origem_caixa).toBe("");
     expect(row.avisos).toContain("package_requires_manual");
     expect(row.avisos).toContain("category_not_verified");
+  });
+
+  // Fase 1B etapa 10 — override manual de embalagem (Product.mlPackageOverride*).
+  it("override manual completo libera a capela de 16,8kg: caixa/peso vêm do override, origem_caixa 'manual', sem package_requires_manual", () => {
+    const product = baseProduct({
+      price: 1000,
+      weightGrams: 16800,
+      sizeCm: 20,
+      mlPackageOverrideLengthCm: 45,
+      mlPackageOverrideWidthCm: 35,
+      mlPackageOverrideHeightCm: 35,
+      mlPackageOverrideWeightG: 17200,
+    });
+    const [row] = buildSimulationCsvRows(["AME-001"], [product], 0);
+    expect(row.caixa_estimada_estimativa_nao_verificada).toBe("manual (45x35x35cm)");
+    expect(row.peso_pacote_g_estimativa_nao_verificada).toBe("17200");
+    expect(row.origem_caixa).toBe("manual");
+    expect(row.avisos).not.toContain("package_requires_manual");
+    expect(row.avisos).toContain("category_not_verified"); // independente, continua bloqueando a publicação real
   });
 
   it("markup 0 (sem --markup, sem conta conectada): preço de anúncio igual ao preço base", () => {
@@ -171,7 +192,7 @@ describe("buildSimulationCsvContent", () => {
     const csv = buildSimulationCsvContent(["AME-001"], [baseProduct()], 0);
     const firstLine = csv.slice(1).split("\n")[0];
     expect(firstLine).toBe(
-      "sku,titulo,preco_base,acrescimo,preco_anuncio,comissao_estimativa_nao_verificada,tarifa_fixa_estimativa_nao_verificada,frete_estimado_estimativa_nao_verificada,liquido_estimado,markup_minimo_breakeven,caixa_estimada_estimativa_nao_verificada,peso_pacote_g_estimativa_nao_verificada,avisos"
+      "sku,titulo,preco_base,acrescimo,preco_anuncio,comissao_estimativa_nao_verificada,tarifa_fixa_estimativa_nao_verificada,frete_estimado_estimativa_nao_verificada,liquido_estimado,markup_minimo_breakeven,caixa_estimada_estimativa_nao_verificada,peso_pacote_g_estimativa_nao_verificada,origem_caixa,avisos"
     );
   });
 
