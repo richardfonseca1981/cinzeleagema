@@ -139,6 +139,51 @@ describe("POST /publish/:productId — dry-run", () => {
     const rows = await prisma.mercadoLivreListing.findMany({ where: { productId: product.id } });
     expect(rows).toHaveLength(0);
   });
+
+  // Ajuste pós-etapa-5 (ponto A): dry-run NUNCA bloqueia por categoria/
+  // embalagem ainda não prontas — ao contrário do resto da suíte, este teste
+  // deliberadamente NÃO confirma a categoria no fixture (volta pro estado
+  // real desta fase: verified=false) e usa uma peça fora de qualquer preset
+  // de embalagem, para provar que os DOIS "issues" aparecem sem bloquear.
+  it("funciona mesmo com categoria/embalagem não prontas: devolve payload + issues, publishable:false", async () => {
+    env.ML_PUBLISH_ENABLED = true;
+    GEMSTONE_CATEGORY_FIXTURE.verified = originalCategoryVerified;
+    GEMSTONE_CATEGORY_FIXTURE.id = originalCategoryId;
+    await createAccount();
+    const product = await createProduct();
+    await prisma.product.update({ where: { id: product.id }, data: { sizeCm: 500 } });
+
+    const res = await request(app)
+      .post(`/api/admin/mercadolivre/publish/${product.id}`)
+      .set(auth)
+      .send({ mode: "dry-run", expectedPrice: EXPECTED_LISTING_PRICE });
+
+    expect(res.status).toBe(200);
+    expect(res.body.payload.price).toBe(EXPECTED_LISTING_PRICE);
+    expect(res.body.payload.shipping).toBeUndefined();
+    expect(res.body.issues.sort()).toEqual(["category_not_verified", "package_requires_manual"]);
+    expect(res.body.publishable).toBe(false);
+    expect(res.body.notice).toBeTruthy();
+
+    const rows = await prisma.mercadoLivreListing.findMany({ where: { productId: product.id } });
+    expect(rows).toHaveLength(0);
+  });
+
+  it("peça elegível e dentro do preset: issues vazia e publishable:true, mesmo em dry-run", async () => {
+    env.ML_PUBLISH_ENABLED = true;
+    await createAccount();
+    const product = await createProduct();
+
+    const res = await request(app)
+      .post(`/api/admin/mercadolivre/publish/${product.id}`)
+      .set(auth)
+      .send({ mode: "dry-run", expectedPrice: EXPECTED_LISTING_PRICE });
+
+    expect(res.status).toBe(200);
+    expect(res.body.issues).toEqual([]);
+    expect(res.body.publishable).toBe(true);
+    expect(res.body.notice).toBeNull();
+  });
 });
 
 describe("POST /publish/:productId — validações de preço e confirmação", () => {
@@ -358,5 +403,69 @@ describe("POST /reconcile/:productId", () => {
 
     const row = await prisma.mercadoLivreListing.findFirstOrThrow({ where: { productId: product.id } });
     expect(row.status).toBe("error");
+  });
+
+  // Ajuste pós-etapa-5 (ponto B): mais de um item achado por SKU é ambíguo
+  // demais pra adotar automaticamente — responde 409 com a lista completa
+  // pra decisão manual, sem alterar a linha local.
+  it("mais de um item achado por SKU: 409 com a lista de candidatos, sem adotar nenhum", async () => {
+    env.ML_PUBLISH_ENABLED = true;
+    const account = await createAccount();
+    const product = await createProduct();
+    const listing = await prisma.mercadoLivreListing.create({
+      data: { accountId: account.id, productId: product.id, status: "publishing" },
+    });
+
+    fakeClient.items.set("FAKE-ITEM-DUP-1", {
+      id: "FAKE-ITEM-DUP-1",
+      permalink: "https://produto.mercadolivre.com.br/FAKE-ITEM-DUP-1",
+      status: "active",
+      sellerCustomField: product.sku,
+      description: "",
+    });
+    fakeClient.items.set("FAKE-ITEM-DUP-2", {
+      id: "FAKE-ITEM-DUP-2",
+      permalink: "https://produto.mercadolivre.com.br/FAKE-ITEM-DUP-2",
+      status: "active",
+      sellerCustomField: product.sku,
+      description: "",
+    });
+
+    const res = await request(app).post(`/api/admin/mercadolivre/reconcile/${product.id}`).set(auth);
+
+    expect(res.status).toBe(409);
+    expect(res.body.reconciled).toBe(false);
+    expect(res.body.reason).toBe("ambiguous");
+    expect(res.body.candidates).toHaveLength(2);
+
+    const row = await prisma.mercadoLivreListing.findUniqueOrThrow({ where: { id: listing.id } });
+    expect(row.status).toBe("publishing");
+    expect(row.mlItemId).toBeNull();
+  });
+});
+
+describe("POST /publish/:productId — concorrência (ponto C)", () => {
+  it("duas publicações simultâneas da mesma peça resultam em um único POST /items (lock atômico)", async () => {
+    env.ML_PUBLISH_ENABLED = true;
+    await createAccount();
+    const product = await createProduct();
+
+    const createItemSpy = vi.spyOn(fakeClient, "createItem");
+
+    const send = () =>
+      request(app)
+        .post(`/api/admin/mercadolivre/publish/${product.id}`)
+        .set(auth)
+        .send({ mode: "real", expectedPrice: EXPECTED_LISTING_PRICE, confirm: true });
+
+    const [res1, res2] = await Promise.all([send(), send()]);
+
+    const statuses = [res1.status, res2.status].sort();
+    expect(statuses).toEqual([200, 409]);
+    expect(createItemSpy).toHaveBeenCalledTimes(1);
+
+    const rows = await prisma.mercadoLivreListing.findMany({ where: { productId: product.id } });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].status).toBe("active");
   });
 });

@@ -18,6 +18,7 @@ import { validateListing } from "../lib/mercadoLivre/listingValidator";
 import { buildListingDraft, ListingNotReadyError } from "../lib/mercadoLivre/listingBuilder";
 import {
   buildMercadoLivreItemPayload,
+  buildMercadoLivreItemPayloadPreview,
   MercadoLivrePublishConfigError,
   type MercadoLivreItemPayload,
   type MercadoLivrePublishableProduct,
@@ -192,9 +193,19 @@ mercadoLivreRouter.post(
     const effectiveMode: "dry-run" | "real" = body.mode === "dry-run" || forcedDryRun ? "dry-run" : "real";
 
     if (effectiveMode === "dry-run") {
+      // Ajuste pós-etapa-5 (ponto A): dry-run NUNCA bloqueia por categoria/
+      // embalagem ainda não prontas (ver buildMercadoLivreItemPayloadPreview)
+      // — sempre devolve o payload completo + a lista de pendências
+      // (`issues`), marcado explicitamente como prévia não publicável
+      // enquanto `issues` não estiver vazia. Só config ausente/preço
+      // inválido/peça inelegível continuam bloqueando os dois modos.
       let payload: MercadoLivreItemPayload;
+      let issues: ReturnType<typeof buildMercadoLivreItemPayloadPreview>["issues"];
       try {
-        payload = buildMercadoLivreItemPayload({ product: product as MercadoLivrePublishableProduct, listingPriceBRL });
+        ({ payload, issues } = buildMercadoLivreItemPayloadPreview({
+          product: product as MercadoLivrePublishableProduct,
+          listingPriceBRL,
+        }));
       } catch (err) {
         logPublishAttempt({ productId: product.id, mode: "dry-run", result: "validation_failed" });
         throw toPublishHttpError(err);
@@ -218,6 +229,9 @@ mercadoLivreRouter.post(
         forcedDryRun,
         price: priceBreakdown,
         payload,
+        issues,
+        publishable: issues.length === 0,
+        notice: issues.length > 0 ? "Prévia — não publicável enquanto houver pendências (ver issues)." : null,
         preview: { mlItemId: preview.id, permalink: preview.permalink },
       });
       return;
@@ -235,29 +249,50 @@ mercadoLivreRouter.post(
       throw toPublishHttpError(err);
     }
 
-    const existing = await prisma.mercadoLivreListing.findUnique({
-      where: { accountId_productId: { accountId: account.id, productId: product.id } },
+    // Ajuste pós-etapa-5 (ponto C): checagem de idempotência + gravação de
+    // "publishing" são atômicas sob um advisory lock do Postgres por
+    // accountId+productId (mesma técnica de auth.ts performRefresh) — duas
+    // publicações concorrentes da MESMA peça serializam aqui. A 2ª a obter o
+    // lock sempre vê o resultado já commitado da 1ª (findUnique dentro da
+    // transação, nunca a leitura de fora feita antes do lock) e bloqueia com
+    // 409 ANTES de chamar createItem — nunca duas chamadas a POST /items pra
+    // mesma peça. Diferente de performRefresh, o lock NÃO cobre a chamada de
+    // rede (createItem, abaixo, fora da transação): ela pode ser lenta/
+    // sujeita a timeout, e o status "publishing" já commitado é suficiente
+    // pra barrar outra tentativa concorrente sem precisar segurar o lock (e
+    // o timeout padrão de transação interativa do Prisma) durante o POST.
+    const listing = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${account.id}:${product.id}`}))`;
+
+      const existing = await tx.mercadoLivreListing.findUnique({
+        where: { accountId_productId: { accountId: account.id, productId: product.id } },
+      });
+
+      if (existing && BLOCKING_LISTING_STATUSES.has(existing.status)) {
+        throw new HttpError(
+          409,
+          `Já existe um anúncio para esta peça (status atual: "${existing.status}") — rode a reconciliação ou encerre o anúncio antes de publicar de novo.`
+        );
+      }
+
+      // Grava "publishing" ANTES do POST /items — se a resposta nunca
+      // chegar (timeout/5xx), a linha fica nesse estado em vez de nunca ter
+      // sido registrada, para a reconciliação (findItemsBySku) ter o que
+      // adotar.
+      return existing
+        ? tx.mercadoLivreListing.update({
+            where: { id: existing.id },
+            data: { status: "publishing", categoryId: payload.category_id, lastError: null },
+          })
+        : tx.mercadoLivreListing.create({
+            data: { accountId: account.id, productId: product.id, status: "publishing", categoryId: payload.category_id },
+          });
+    }).catch((err) => {
+      if (err instanceof HttpError) {
+        logPublishAttempt({ productId: product.id, mode: "real", result: "blocked_duplicate" });
+      }
+      throw err;
     });
-
-    if (existing && BLOCKING_LISTING_STATUSES.has(existing.status)) {
-      logPublishAttempt({ productId: product.id, mode: "real", result: "blocked_duplicate" });
-      throw new HttpError(
-        409,
-        `Já existe um anúncio para esta peça (status atual: "${existing.status}") — rode a reconciliação ou encerre o anúncio antes de publicar de novo.`
-      );
-    }
-
-    // Grava "publishing" ANTES do POST /items — se a resposta nunca chegar
-    // (timeout/5xx), a linha fica nesse estado em vez de nunca ter sido
-    // registrada, para a reconciliação (findItemsBySku) ter o que adotar.
-    const listing = existing
-      ? await prisma.mercadoLivreListing.update({
-          where: { id: existing.id },
-          data: { status: "publishing", categoryId: payload.category_id, lastError: null },
-        })
-      : await prisma.mercadoLivreListing.create({
-          data: { accountId: account.id, productId: product.id, status: "publishing", categoryId: payload.category_id },
-        });
 
     const client = getMercadoLivrePublisherClient();
 
@@ -400,9 +435,17 @@ mercadoLivreRouter.post(
       return;
     }
 
-    // Mais de um resultado seria ambíguo (nunca esperado por este fluxo, que
-    // só publica uma peça por vez) — adota o primeiro e segue, sem bloquear:
-    // investigação manual fica para fora do escopo desta fase.
+    // Ajuste pós-etapa-5 (ponto B): mais de um resultado é ambíguo (nunca
+    // esperado por este fluxo, que só publica uma peça por vez) — NUNCA
+    // adota nenhum automaticamente. Devolve a lista completa pra decisão
+    // manual, sem tocar na linha local (fica como estava, pra rodar de novo
+    // depois que o caso for resolvido).
+    if (found.length > 1) {
+      logPublishAttempt({ productId: product.id, mode: "reconcile", result: "ambiguous" });
+      res.status(409).json({ productId: product.id, status: listing.status, reconciled: false, reason: "ambiguous", candidates: found });
+      return;
+    }
+
     const match = found[0];
     await prisma.mercadoLivreListing.update({
       where: { id: listing.id },

@@ -3,7 +3,9 @@ import { validateListing, type ListingValidationInput } from "./listingValidator
 import {
   buildListingDraft,
   assertReadyToPublish,
+  getReadinessIssues,
   ListingNotReadyError,
+  type ListingNotReadyCode,
   type ListingBuilderInput,
   type MercadoLivreListingDraft,
 } from "./listingBuilder";
@@ -84,7 +86,13 @@ export class MercadoLivrePublishConfigError extends Error {
 // cada guarda testável isoladamente (ver tests/mercadoLivrePublisherPayload.test.ts):
 // a categoria placeholder desta fase (ver categoryFixture.ts) SEMPRE
 // bloqueia por último, nunca mascarando os outros três motivos de falha.
-export function buildMercadoLivreItemPayload(input: BuildMercadoLivreItemPayloadInput): MercadoLivreItemPayload {
+// Checagens compartilhadas por buildMercadoLivreItemPayload (modo real) e
+// buildMercadoLivreItemPayloadPreview (modo dry-run, ver ajuste pós-etapa-5
+// ponto A): config ausente, preço inválido e peça inelegível bloqueiam os
+// DOIS modos — sem isso, o payload não teria conteúdo útil pra mostrar de
+// qualquer forma. Só a prontidão de categoria/embalagem (assertReadyToPublish)
+// é exclusiva do modo real, por isso NÃO mora aqui.
+function prepareDraft(input: BuildMercadoLivreItemPayloadInput): MercadoLivreListingDraft {
   const { product, listingPriceBRL } = input;
 
   if (!env.ML_LISTING_TYPE_ID) {
@@ -104,13 +112,43 @@ export function buildMercadoLivreItemPayload(input: BuildMercadoLivreItemPayload
     );
   }
 
+  return buildListingDraft(product);
+}
+
+export function buildMercadoLivreItemPayload(input: BuildMercadoLivreItemPayloadInput): MercadoLivreItemPayload {
+  const draft = prepareDraft(input);
+
   // assertReadyToPublish lança ListingNotReadyError enquanto a categoria for
   // o placeholder não verificado (ver categoryFixture.ts) — hoje SEMPRE,
-  // até a Fase que confirmar o id real via API autenticada.
-  const draft = buildListingDraft(product);
+  // até a Fase que confirmar o id real via API autenticada. Exclusivo do
+  // modo real — ver buildMercadoLivreItemPayloadPreview para o dry-run, que
+  // NUNCA bloqueia por isso.
   assertReadyToPublish(draft);
 
-  return assemblePayload(draft, product.sku, listingPriceBRL, env.ML_LISTING_TYPE_ID);
+  return assemblePayload(draft, input.product.sku, input.listingPriceBRL, env.ML_LISTING_TYPE_ID);
+}
+
+export interface MercadoLivrePublishPreview {
+  payload: MercadoLivreItemPayload;
+  // Mesmos códigos de getReadinessIssues (listingBuilder.ts) — lista vazia
+  // quando a peça já estaria pronta pra publicação real também (categoria
+  // confirmada e embalagem dentro da faixa).
+  issues: ListingNotReadyCode[];
+}
+
+// Ajuste pós-etapa-5 (ponto A do cliente): dry-run deve SEMPRE devolver o
+// payload completo pra revisão — mesmo hoje, com a categoria desta fase
+// ainda não confirmada (ver categoryFixture.ts) — em vez de bloquear igual
+// ao modo real. `issues` carrega os mesmos motivos que bloqueariam o modo
+// real (getReadinessIssues), pra quem chama marcar a resposta como "prévia,
+// não publicável" sempre que a lista não estiver vazia. Config ausente/
+// preço inválido/peça inelegível (ver prepareDraft) continuam bloqueando os
+// dois modos — sem isso o payload não teria conteúdo útil de qualquer forma.
+export function buildMercadoLivreItemPayloadPreview(input: BuildMercadoLivreItemPayloadInput): MercadoLivrePublishPreview {
+  const draft = prepareDraft(input);
+  const issues = getReadinessIssues(draft);
+  const payload = assemblePayload(draft, input.product.sku, input.listingPriceBRL, env.ML_LISTING_TYPE_ID);
+  return { payload, issues };
 }
 
 // Montagem pura dos campos, separada das checagens acima de propósito: um
