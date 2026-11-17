@@ -19,7 +19,9 @@ import { coverImage, mergeUpdatedProduct } from "../lib/productRow";
 import { isMissingKeyFields } from "../lib/activationWarning";
 import { formatAdminPrice, formatAdminSize, formatAdminSku, formatAdminWeight } from "../lib/adminProductFormat";
 import { ConfirmDialog } from "../components/ConfirmDialog";
-import type { Category, Product } from "../types";
+import type { Category, Product, SoldChannel } from "../types";
+
+const SOLD_CHANNEL_LABEL: Record<SoldChannel, string> = { site: "Site", mercadolivre: "Mercado Livre", other: "Outro" };
 
 // Debounce da busca por nome/SKU (ms).
 const SEARCH_DEBOUNCE_MS = 300;
@@ -69,6 +71,16 @@ export function ProductList() {
   const [photoStats, setPhotoStats] = useState<{ total: number; portrait: number } | null>(null);
   const [searchInput, setSearchInput] = useState(state.q);
   const [pendingActivation, setPendingActivation] = useState<Product | null>(null);
+  // Fase 1B etapa 9 — marcar/desmarcar vendida e o aviso de anúncio ML ativo
+  // ao desativar (ver product.routes.ts PATCH /:id/deactivate, warning
+  // "ml_listing_active"). Sem i18n aqui de propósito: esta página inteira já
+  // é só em português (ver CONTEXT.md) — mudar só estes textos deixaria a
+  // tela pela metade bilíngue, mais inconsistente que útil.
+  const [markSoldTarget, setMarkSoldTarget] = useState<Product | null>(null);
+  const [markSoldChannel, setMarkSoldChannel] = useState<SoldChannel>("site");
+  const [markingSold, setMarkingSold] = useState(false);
+  const [deactivateWarning, setDeactivateWarning] = useState<{ productId: string; status: string } | null>(null);
+  const [pausingMlListing, setPausingMlListing] = useState(false);
   const [exporting, setExporting] = useState(false);
   const topRef = useRef<HTMLDivElement>(null);
   // Último valor de busca que ESTE componente escreveu na URL — distingue a
@@ -163,19 +175,95 @@ export function ProductList() {
     topRef.current?.scrollIntoView({ block: "start" });
   }
 
+  function applyUpdatedProduct(updated: Product) {
+    if (state.status === "all") {
+      setData((prev) => (prev ? { ...prev, items: mergeUpdatedProduct(prev.items, updated) } : prev));
+    } else {
+      // Com filtro de status a linha sai desta lista: recarrega a página
+      // (e, se ela esvaziar, a carga acima volta para a anterior).
+      setReloadTick((t) => t + 1);
+    }
+  }
+
   async function handleToggleActive(product: Product) {
     try {
-      const updated = product.active ? await api.deactivateProduct(product.id) : await api.activateProduct(product.id);
-      if (state.status === "all") {
-        setData((prev) => (prev ? { ...prev, items: mergeUpdatedProduct(prev.items, updated) } : prev));
+      if (product.active) {
+        const updated = await api.deactivateProduct(product.id);
+        applyUpdatedProduct(updated);
+        // Fase 1B etapa 9 — anúncio active/paused/publishing no Mercado
+        // Livre: avisa e oferece pausar na mesma hora, mas NUNCA pausa
+        // sozinho (ver backend, ponto 4 do pedido).
+        if (updated.warning === "ml_listing_active" && updated.mlListing) {
+          setDeactivateWarning({ productId: product.id, status: updated.mlListing.status });
+        } else {
+          showToast("success", "Produto desativado");
+        }
       } else {
-        // Com filtro de status a linha sai desta lista: recarrega a página
-        // (e, se ela esvaziar, a carga acima volta para a anterior).
-        setReloadTick((t) => t + 1);
+        const updated = await api.activateProduct(product.id);
+        applyUpdatedProduct(updated);
+        showToast("success", "Produto ativado");
       }
-      showToast("success", updated.active ? "Produto ativado" : "Produto desativado");
     } catch (err) {
       showToast("error", err instanceof ApiError ? err.message : "Não foi possível atualizar o produto");
+    }
+  }
+
+  async function confirmPauseMlListingOnDeactivate() {
+    if (!deactivateWarning) return;
+    setPausingMlListing(true);
+    try {
+      const updated = await api.deactivateProduct(deactivateWarning.productId, { pauseMlListing: true });
+      applyUpdatedProduct(updated);
+      if (updated.warning === "ml_pause_failed") {
+        showToast("error", updated.detail ?? "Não foi possível pausar o anúncio no Mercado Livre");
+      } else {
+        showToast("success", "Produto desativado e anúncio pausado no Mercado Livre");
+      }
+    } catch (err) {
+      showToast("error", err instanceof ApiError ? err.message : "Não foi possível pausar o anúncio no Mercado Livre");
+    } finally {
+      setPausingMlListing(false);
+      setDeactivateWarning(null);
+    }
+  }
+
+  // Marcar vendida: desativa a peça e, se houver anúncio ML "active" e o
+  // canal não for "mercadolivre", tenta pausar na mesma chamada (ver
+  // productStock.routes.ts). Falha ao pausar nunca é silenciosa (207) —
+  // a peça continua vendida, só avisa sobre o anúncio.
+  function handleMarkSoldClick(product: Product) {
+    setMarkSoldTarget(product);
+    setMarkSoldChannel("site");
+  }
+
+  async function confirmMarkSold() {
+    if (!markSoldTarget) return;
+    setMarkingSold(true);
+    try {
+      const updated = await api.markSold(markSoldTarget.id, markSoldChannel);
+      applyUpdatedProduct(updated);
+      if (updated.warning === "ml_pause_failed") {
+        showToast("error", updated.detail ?? "Peça marcada como vendida, mas não foi possível pausar o anúncio no Mercado Livre");
+      } else {
+        showToast("success", "Peça marcada como vendida");
+      }
+    } catch (err) {
+      showToast("error", err instanceof ApiError ? err.message : "Não foi possível marcar a peça como vendida");
+    } finally {
+      setMarkingSold(false);
+      setMarkSoldTarget(null);
+    }
+  }
+
+  // Desfazer um engano — nunca mexe no anúncio ML (fica pausado até uma
+  // reativação manual consciente, ver tela do Mercado Livre).
+  async function handleUnmarkSold(product: Product) {
+    try {
+      const updated = await api.unmarkSold(product.id);
+      applyUpdatedProduct(updated);
+      showToast("success", "Venda desfeita — peça reativada no site");
+    } catch (err) {
+      showToast("error", err instanceof ApiError ? err.message : "Não foi possível desfazer a venda");
     }
   }
 
@@ -437,6 +525,15 @@ export function ProductList() {
                   >
                     Editar
                   </Link>
+                  {product.soldAt ? (
+                    <button onClick={() => handleUnmarkSold(product)} className="mr-3 text-[#64748B] hover:underline">
+                      Desfazer venda
+                    </button>
+                  ) : (
+                    <button onClick={() => handleMarkSoldClick(product)} className="mr-3 text-[#64748B] hover:underline">
+                      Marcar vendida
+                    </button>
+                  )}
                   <button onClick={() => handleActivateClick(product)} className="text-[#64748B] hover:underline">
                     {product.active ? "Desativar" : "Ativar"}
                   </button>
@@ -511,6 +608,15 @@ export function ProductList() {
               <Link to={`/admin/produtos/${product.id}`} state={{ from: listSearch }} className="text-[#5F84BA] hover:underline">
                 Editar
               </Link>
+              {product.soldAt ? (
+                <button onClick={() => handleUnmarkSold(product)} className="text-[#64748B] hover:underline">
+                  Desfazer venda
+                </button>
+              ) : (
+                <button onClick={() => handleMarkSoldClick(product)} className="text-[#64748B] hover:underline">
+                  Marcar vendida
+                </button>
+              )}
               <button onClick={() => handleActivateClick(product)} className="text-[#64748B] hover:underline">
                 {product.active ? "Desativar" : "Ativar"}
               </button>
@@ -528,6 +634,45 @@ export function ProductList() {
         confirmLabel="Ativar mesmo assim"
         onConfirm={confirmPendingActivation}
         onCancel={() => setPendingActivation(null)}
+      />
+
+      <ConfirmDialog
+        open={markSoldTarget !== null}
+        title="Marcar peça como vendida?"
+        message={`"${markSoldTarget?.name || "(sem nome)"}" será desativada e marcada como vendida.`}
+        confirmLabel={markingSold ? "Marcando..." : "Marcar como vendida"}
+        confirmDisabled={markingSold}
+        onConfirm={confirmMarkSold}
+        onCancel={() => setMarkSoldTarget(null)}
+      >
+        <fieldset>
+          <legend className="mb-1 text-xs text-[#64748B]">Canal da venda</legend>
+          <div className="space-y-1">
+            {(Object.keys(SOLD_CHANNEL_LABEL) as SoldChannel[]).map((channel) => (
+              <label key={channel} className="flex items-center gap-2 text-sm text-[#1A1A1A]">
+                <input
+                  type="radio"
+                  name="sold-channel"
+                  value={channel}
+                  checked={markSoldChannel === channel}
+                  onChange={() => setMarkSoldChannel(channel)}
+                />
+                {SOLD_CHANNEL_LABEL[channel]}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      </ConfirmDialog>
+
+      <ConfirmDialog
+        open={deactivateWarning !== null}
+        title="Anúncio ativo no Mercado Livre"
+        message={`Esta peça tem um anúncio em status "${deactivateWarning?.status}" no Mercado Livre. Deseja pausar o anúncio agora também?`}
+        confirmLabel={pausingMlListing ? "Pausando..." : "Pausar anúncio agora"}
+        cancelLabel="Manter anúncio como está"
+        confirmDisabled={pausingMlListing}
+        onConfirm={confirmPauseMlListingOnDeactivate}
+        onCancel={() => setDeactivateWarning(null)}
       />
     </div>
   );

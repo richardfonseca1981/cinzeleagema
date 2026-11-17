@@ -53,10 +53,12 @@ describe("GET /connect", () => {
 });
 
 describe("GET /status e DELETE /disconnect sem conexão", () => {
-  it("status inicial é desconectado", async () => {
+  it("status inicial é desconectado, e inclui publishEnabled/listingTypeConfigured (Etapa 9)", async () => {
     const res = await request(app).get("/api/admin/mercadolivre/status").set(auth);
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ connected: false });
+    expect(res.body).toMatchObject({ connected: false });
+    expect(typeof res.body.publishEnabled).toBe("boolean");
+    expect(typeof res.body.listingTypeConfigured).toBe("boolean");
   });
 
   it("disconnect sem conta conectada não dá erro", async () => {
@@ -119,6 +121,6 @@ describe("GET /callback", () => {
     expect(disconnectRes.status).toBe(204);
 
     const statusAfter = await request(app).get("/api/admin/mercadolivre/status").set(auth);
-    expect(statusAfter.body).toEqual({ connected: false });
+    expect(statusAfter.body).toMatchObject({ connected: false });
   });
 });

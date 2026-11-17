@@ -425,6 +425,107 @@
         "search": "Não foi possível buscar peças",
         "simulate": "Não foi possível simular o anúncio"
       }
+    },
+    "banner": {
+      "publishDisabled": "Publicação real desligada (ML_PUBLISH_ENABLED=false) — só a prévia (dry-run) está disponível."
+    },
+    "publish": {
+      "previewButton": "Prévia de publicação",
+      "previewing": "Gerando prévia...",
+      "publishButton": "Publicar (real)",
+      "publishing": "Publicando...",
+      "previewTitle": "Prévia de publicação (dry-run)",
+      "forcedDryRunNotice": "A publicação real está desligada — esta prévia nunca chama o Mercado Livre de verdade.",
+      "issuesTitle": "Pendências (bloqueiam a publicação real):",
+      "issues": {
+        "category_not_verified": "Categoria do Mercado Livre ainda não confirmada.",
+        "package_requires_manual": "Peça fora das faixas de preset de embalagem — precisa de ajuste manual."
+      },
+      "publishableYes": "Sem pendências — pronta para publicação real.",
+      "payloadTitle": "Payload de POST /items",
+      "needPreviewHint": "Gere a prévia antes de publicar de verdade.",
+      "confirmTitle": "Confirmar publicação real?",
+      "confirmMessage": "Peça \"{{title}}\" será publicada no Mercado Livre pelo preço de anúncio R$ {{price}}. Esta ação é real.",
+      "confirmButton": "Publicar",
+      "descriptionFailedWarning": "Anúncio publicado, mas a descrição estendida falhou: {{detail}}",
+      "errors": {
+        "preview": "Não foi possível gerar a prévia de publicação",
+        "publish": "Não foi possível publicar o anúncio"
+      },
+      "toasts": {
+        "previewed": "Prévia gerada",
+        "published": "Anúncio publicado"
+      }
+    },
+    "listing": {
+      "title": "Anúncio no Mercado Livre",
+      "statusLabel": "Status",
+      "permalinkLabel": "Link do anúncio",
+      "permalinkLink": "Ver no Mercado Livre",
+      "lastErrorLabel": "Último erro",
+      "status": {
+        "active": "Ativo",
+        "paused": "Pausado",
+        "closed": "Encerrado",
+        "publishing": "Publicando",
+        "error": "Erro"
+      },
+      "actions": {
+        "pause": "Pausar",
+        "reactivate": "Reativar",
+        "close": "Encerrar",
+        "sync": "Sincronizar",
+        "retryDescription": "Reenviar descrição",
+        "reconcile": "Reconciliar"
+      },
+      "closeConfirmTitle": "Encerrar anúncio?",
+      "closeConfirmMessage": "Esta ação é IRREVERSÍVEL — o anúncio nunca pode ser reaberto. Digite a palavra de confirmação ENCERRAR abaixo para prosseguir.",
+      "closeTypedLabel": "Confirmação",
+      "closeConfirmButton": "Encerrar",
+      "errors": {
+        "action": "Não foi possível concluir a ação no anúncio"
+      },
+      "toasts": {
+        "actionOk": "Ação concluída: {{status}}"
+      }
+    },
+    "pauseAll": {
+      "button": "Pausar todos os anúncios",
+      "pausing": "Pausando...",
+      "confirmTitle": "Pausar todos os anúncios ativos?",
+      "confirmMessage": "Esta ação pausa TODOS os anúncios ativos da conta de uma vez. Digite a frase de confirmação PAUSAR TUDO abaixo para prosseguir.",
+      "typedLabel": "Confirmação",
+      "confirmButton": "Pausar tudo",
+      "resultTitle": "{{succeeded}}/{{total}} anúncios pausados com sucesso",
+      "resultOk": "Pausado",
+      "resultError": "Erro",
+      "errors": {
+        "pauseAll": "Não foi possível pausar os anúncios"
+      }
+    },
+    "pendencias": {
+      "title": "Pendências",
+      "description": "Peças vendidas com pausa pendente, anúncios presos em publicação e eventos de webhook que precisam de atenção.",
+      "loading": "Carregando pendências...",
+      "errors": {
+        "load": "Não foi possível carregar as pendências",
+        "reprocess": "Não foi possível reprocessar o evento"
+      },
+      "pausePendingTitle": "Pausa pendente",
+      "pausePendingEmpty": "Nenhuma pausa pendente.",
+      "stuckPublishingTitle": "Presos em publicação",
+      "stuckPublishingEmpty": "Nenhum anúncio preso em publicação.",
+      "webhookErrorsTitle": "Eventos de webhook com erro",
+      "webhookErrorsEmpty": "Nenhum evento de webhook com erro.",
+      "reprocessButton": "Reprocessar",
+      "reprocessing": "Reprocessando...",
+      "webhookNotesTitle": "Avisos de webhook",
+      "webhookNotesEmpty": "Nenhum aviso de webhook.",
+      "cancelledOrderHint": "Pedido cancelado após a peça ter sido marcada como vendida — use a ação \"Desfazer venda\" na peça manualmente, se necessário.",
+      "viewProductLink": "Ver peça",
+      "toasts": {
+        "reprocessOk": "Evento reprocessado"
+      }
     }
   }
 }

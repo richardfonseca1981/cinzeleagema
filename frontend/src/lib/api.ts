@@ -12,8 +12,17 @@ import type {
   ColorEnhanceLevel,
   CreateOrderResult,
   IdentificationProposal,
+  MercadoLivreListingActionResult,
+  MercadoLivreListingRecord,
+  MercadoLivrePauseAllResult,
+  MercadoLivrePendencias,
+  MercadoLivrePublishResponse,
+  MercadoLivreReconcileResult,
+  MercadoLivreReprocessResult,
   MercadoLivreStatus,
   MercadoLivreSimulationResult,
+  MercadoLivreSyncResult,
+  MercadoLivreWebhookEventRecord,
   PhotoTreatmentPreviewResult,
   PhotoTreatmentRawPreviewResult,
   Product,
@@ -21,6 +30,7 @@ import type {
   ProductImage,
   ProductListResponse,
   ShippingStatus,
+  SoldChannel,
   TreatmentPreviewRequest,
 } from "../types";
 import type { PostalCodeLookup, ShippingQuoteRequest, ShippingQuoteResult } from "./shipping/types";
@@ -148,11 +158,30 @@ export const api = {
     request<Product>("/api/products", { method: "POST", body: JSON.stringify(data) }),
   updateProduct: (id: string, data: Record<string, unknown>) =>
     request<Product>(`/api/products/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
-  deactivateProduct: (id: string) => request<Product>(`/api/products/${id}/deactivate`, { method: "PATCH" }),
+  // Fase 1B etapa 7/9 — `options.pauseMlListing` tenta pausar, NA MESMA
+  // chamada, um anúncio ML "active" encontrado (ver product.routes.ts). A
+  // resposta é aditiva: todo campo de Product continua no topo do objeto,
+  // mais `mlListing`/`warning`/`detail` quando houver anúncio a reportar.
+  deactivateProduct: (id: string, options?: { pauseMlListing?: boolean }) =>
+    request<Product & { mlListing?: { status: string } | null; warning?: string; detail?: string }>(
+      `/api/products/${id}/deactivate`,
+      { method: "PATCH", body: JSON.stringify(options ?? {}) }
+    ),
   // Exclusão DEFINITIVA (só peça inativa): uma peça por vez, com confirmação no admin.
   deleteProduct: (id: string) =>
     request<{ deleted: true; photosRemoved: number; filesFailed: number }>(`/api/products/${id}`, { method: "DELETE" }),
   activateProduct: (id: string) => request<Product>(`/api/products/${id}/activate`, { method: "PATCH" }),
+
+  // Fase 1B etapa 7 — marcar/desmarcar peça vendida (ver productStock.routes.ts,
+  // montada em /api/admin/products). `markSold` pode devolver 207 (pausa do
+  // anúncio ML falhou) — `request` não trata 207 como erro (está no range
+  // 2xx), então o campo `warning` precisa ser checado por quem chama.
+  markSold: (id: string, channel: SoldChannel) =>
+    request<Product & { mlListing?: { status: string } | null; warning?: string; detail?: string }>(
+      `/api/admin/products/${id}/mark-sold`,
+      { method: "POST", body: JSON.stringify({ channel, confirm: true }) }
+    ),
+  unmarkSold: (id: string) => request<Product>(`/api/admin/products/${id}/unmark-sold`, { method: "POST" }),
 
   reorderImages: (productId: string, order: string[]) =>
     request<ProductImage[]>(`/api/products/${productId}/images/reorder`, {
@@ -236,6 +265,57 @@ export const api = {
     const qs = query.toString();
     return request<MercadoLivreSimulationResult>(`/api/admin/mercadolivre/simulate/${productId}${qs ? `?${qs}` : ""}`);
   },
+
+  // Fase 1B etapa 5/9 — publicar (dry-run sempre disponível; "real" exige
+  // ML_PUBLISH_ENABLED=true no backend E confirm:true aqui). expectedPrice é
+  // o preço de anúncio que o admin VIU na tela (ver simulação acima) — o
+  // backend recalcula e rejeita (409) se tiver mudado.
+  publishMercadoLivreListing: (productId: string, body: { mode: "dry-run" | "real"; expectedPrice: number; confirm?: boolean }) =>
+    request<MercadoLivrePublishResponse>(`/api/admin/mercadolivre/publish/${productId}`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  retryMercadoLivreDescription: (productId: string) =>
+    request<{ productId: string; status: string; mlItemId: string }>(
+      `/api/admin/mercadolivre/publish/${productId}/retry-description`,
+      { method: "POST" }
+    ),
+  reconcileMercadoLivreListing: (productId: string) =>
+    request<MercadoLivreReconcileResult>(`/api/admin/mercadolivre/reconcile/${productId}`, { method: "POST" }),
+
+  // Fase 1B etapa 6/9 — registro local do anúncio (nunca chama a API do
+  // Mercado Livre — ver GET /listings/:productId no backend, diferente de sync).
+  getMercadoLivreListing: (productId: string) =>
+    request<{ listing: MercadoLivreListingRecord | null }>(`/api/admin/mercadolivre/listings/${productId}`),
+  pauseMercadoLivreListing: (productId: string) =>
+    request<MercadoLivreListingActionResult>(`/api/admin/mercadolivre/listings/${productId}/pause`, { method: "POST" }),
+  reactivateMercadoLivreListing: (productId: string) =>
+    request<MercadoLivreListingActionResult>(`/api/admin/mercadolivre/listings/${productId}/reactivate`, { method: "POST" }),
+  // Irreversível — o backend exige a string exata "ENCERRAR" em `confirm`.
+  closeMercadoLivreListing: (productId: string, confirm: string) =>
+    request<MercadoLivreListingActionResult>(`/api/admin/mercadolivre/listings/${productId}/close`, {
+      method: "POST",
+      body: JSON.stringify({ confirm }),
+    }),
+  // Afeta TODOS os anúncios ativos da conta — o backend exige a string exata
+  // "PAUSAR TUDO" em `confirm`.
+  pauseAllMercadoLivreListings: (confirm: string) =>
+    request<MercadoLivrePauseAllResult>("/api/admin/mercadolivre/listings/pause-all", {
+      method: "POST",
+      body: JSON.stringify({ confirm }),
+    }),
+  syncMercadoLivreListing: (productId: string) =>
+    request<MercadoLivreSyncResult>(`/api/admin/mercadolivre/listings/${productId}/sync`, { method: "POST" }),
+
+  // Fase 1B etapa 8/9 — painel "Pendências" + listagem/reprocessamento de
+  // eventos de webhook com erro.
+  getMercadoLivrePendencias: () => request<MercadoLivrePendencias>("/api/admin/mercadolivre/pendencias"),
+  listMercadoLivreWebhookEvents: (status?: "all") =>
+    request<{ items: MercadoLivreWebhookEventRecord[] }>(
+      `/api/admin/mercadolivre/webhook-events${status ? `?status=${status}` : ""}`
+    ),
+  reprocessMercadoLivreWebhookEvent: (id: string) =>
+    request<MercadoLivreReprocessResult>(`/api/admin/mercadolivre/webhook-events/${id}/reprocess`, { method: "POST" }),
 };
 
 // Versão stateless do tratamento por IA, para fotos staged (sem productId/

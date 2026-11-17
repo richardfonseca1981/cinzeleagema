@@ -1,20 +1,35 @@
+import type { ReactNode } from "react";
+
 // Diálogo de confirmação genérico (não-bloqueante): usado quando ativar ou
 // salvar uma peça ativa sem nome/preço/foto (ProductForm e ProductList) —
 // "Ativar mesmo assim" segue adiante, "Cancelar" só fecha, sem alterar nada.
+//
+// `children`/`confirmDisabled` (Fase 1B etapa 9, opcionais e retrocompatíveis
+// — os 3 usos antigos não passam nenhum dos dois e continuam idênticos):
+// `children` renderiza conteúdo extra entre a mensagem e os botões (ex.: um
+// campo "digite ENCERRAR para confirmar", ou um seletor de canal de venda);
+// `confirmDisabled` deixa quem chama desabilitar o botão de confirmar até
+// esse conteúdo extra estar válido (texto digitado bate, opção selecionada).
 export function ConfirmDialog({
   open,
   title,
   message,
   confirmLabel,
+  cancelLabel = "Cancelar",
   onConfirm,
   onCancel,
+  children,
+  confirmDisabled = false,
 }: {
   open: boolean;
   title: string;
   message: string;
   confirmLabel: string;
+  cancelLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
+  children?: ReactNode;
+  confirmDisabled?: boolean;
 }) {
   if (!open) return null;
 
@@ -25,18 +40,20 @@ export function ConfirmDialog({
           {title}
         </h2>
         <p className="mt-3 text-sm text-[#1A1A1A]">{message}</p>
+        {children && <div className="mt-3">{children}</div>}
         <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"
             onClick={onCancel}
             className="rounded-lg border border-[#E2E8F0] px-4 py-2 text-sm hover:bg-[#F8FAFC]"
           >
-            Cancelar
+            {cancelLabel}
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className="rounded-lg bg-[#C78F50] px-4 py-2 text-sm font-medium text-[#010B1A] hover:bg-[#B37D3F]"
+            disabled={confirmDisabled}
+            className="rounded-lg bg-[#C78F50] px-4 py-2 text-sm font-medium text-[#010B1A] hover:bg-[#B37D3F] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {confirmLabel}
           </button>

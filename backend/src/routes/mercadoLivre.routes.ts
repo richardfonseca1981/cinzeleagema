@@ -697,6 +697,78 @@ mercadoLivreRouter.post(
   })
 );
 
+// Fase 1B etapa 9 — ajuste: /status passou a morar AQUI (antes do
+// middleware de 503 abaixo, mesmo motivo das demais rotas desta seção), pois
+// agora também expõe `publishEnabled`/`listingTypeConfigured` — informação
+// que o admin precisa ver (banner "publicação real desligada") mesmo sem
+// nenhuma variável ML_* configurada (o cenário de hoje). `serializeAccount`
+// continua a mesma função (hoisted), reaproveitada por /callback mais abaixo
+// sem mudança.
+mercadoLivreRouter.get(
+  "/status",
+  asyncHandler(async (_req, res) => {
+    const account = await getActiveAccount();
+    res.json({
+      publishEnabled: env.ML_PUBLISH_ENABLED,
+      listingTypeConfigured: Boolean(env.ML_LISTING_TYPE_ID),
+      ...(account ? serializeAccount(account) : { connected: false }),
+    });
+  })
+);
+
+// Leitura pura do registro LOCAL de um anúncio (nunca chama a API do
+// Mercado Livre, ao contrário de /sync) — usada pela tela admin pra mostrar
+// o "cartão do anúncio publicado" sem precisar de uma chamada de rede a cada
+// carregamento de página. `listing: null` tanto na ausência de conta quanto
+// na ausência de registro pra esta peça — a tela trata os dois casos igual
+// ("nenhum anúncio ainda").
+mercadoLivreRouter.get(
+  "/listings/:productId",
+  publishRateLimiter,
+  asyncHandler(async (req, res) => {
+    const account = await getActiveAccount();
+    if (!account) {
+      res.json({ listing: null });
+      return;
+    }
+    const listing = await prisma.mercadoLivreListing.findUnique({
+      where: { accountId_productId: { accountId: account.id, productId: req.params.productId } },
+    });
+    res.json({ listing: listing ?? null });
+  })
+);
+
+// Fase 1B etapa 9 — painel "Pendências" do admin: agrega, numa única
+// chamada, tudo que precisa de atenção manual. "Pausa pendente" é
+// identificada pelo prefixo "pause_pending: " em `lastError` (ver
+// stockSync.ts/productStock.routes.ts, Etapa 7) — decisão deliberada de NÃO
+// criar uma coluna nova só pra isso: o prefixo é inteiramente gerado por
+// nós (zero risco de colisão com uma mensagem de erro de verdade), o filtro
+// Prisma `startsWith` já é uma query limpa (sem SQL cru), e uma coluna
+// dedicada só valeria a pena se também fôssemos rastrear tentativas/motivo
+// estruturado — fora do escopo desta etapa (ver CONTEXT.md).
+mercadoLivreRouter.get(
+  "/pendencias",
+  publishRateLimiter,
+  asyncHandler(async (_req, res) => {
+    const account = await getActiveAccount();
+    const [pausePending, stuckPublishing, webhookErrors, webhookNotes] = await Promise.all([
+      account
+        ? prisma.mercadoLivreListing.findMany({
+            where: { accountId: account.id, lastError: { startsWith: "pause_pending:" } },
+            orderBy: { updatedAt: "desc" },
+          })
+        : Promise.resolve([]),
+      account
+        ? prisma.mercadoLivreListing.findMany({ where: { accountId: account.id, status: "publishing" }, orderBy: { updatedAt: "desc" } })
+        : Promise.resolve([]),
+      prisma.mercadoLivreWebhookEvent.findMany({ where: { lastError: { not: null } }, orderBy: { receivedAt: "desc" }, take: 100 }),
+      prisma.mercadoLivreWebhookEvent.findMany({ where: { note: { not: null } }, orderBy: { receivedAt: "desc" }, take: 100 }),
+    ]);
+    res.json({ pausePending, stuckPublishing, webhookErrors, webhookNotes });
+  })
+);
+
 // Produção hoje não tem nenhuma variável ML_* — o boot do backend não pode
 // depender delas (ver lib/env.ts). A validação só acontece aqui, quando uma
 // rota do Mercado Livre é de fato chamada: sem isso, toda rota responde 503
@@ -709,13 +781,14 @@ mercadoLivreRouter.use((_req, _res, next) => {
   next();
 });
 
-function serializeAccount(account: { mlUserId: string; nickname: string; expiresAt: Date; scope: string }) {
+function serializeAccount(account: { mlUserId: string; nickname: string; expiresAt: Date; scope: string; markupPct: unknown }) {
   return {
     connected: true,
     mlUserId: account.mlUserId,
     nickname: account.nickname,
     expiresAt: account.expiresAt,
     scope: account.scope,
+    markupPct: Number(account.markupPct),
   };
 }
 
@@ -745,14 +818,6 @@ mercadoLivreRouter.get(
     const account = await upsertAccountFromTokens(tokenResponse, user.nickname);
 
     res.json(serializeAccount(account));
-  })
-);
-
-mercadoLivreRouter.get(
-  "/status",
-  asyncHandler(async (_req, res) => {
-    const account = await getActiveAccount();
-    res.json(account ? serializeAccount(account) : { connected: false });
   })
 );
 

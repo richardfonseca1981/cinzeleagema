@@ -13,7 +13,7 @@ describe("boot sem variáveis ML_*", () => {
     vi.resetModules();
   });
 
-  it("app sobe normalmente: /health funciona e rotas ML respondem 503", async () => {
+  it("app sobe normalmente: /health funciona e as rotas ML que dependem de credenciais reais respondem 503", async () => {
     vi.resetModules();
     vi.doMock("../src/lib/env", () => ({
       env: { ...realEnv, ML_APP_ID: "", ML_CLIENT_SECRET: "", ML_REDIRECT_URI: "", ML_TOKEN_ENC_KEY: "" },
@@ -41,13 +41,25 @@ describe("boot sem variáveis ML_*", () => {
     expect(callback.status).toBe(503);
     expect(callback.body).toEqual({ error: "Integração Mercado Livre não configurada" });
 
-    const status = await request(app).get("/api/admin/mercadolivre/status").set(auth);
-    expect(status.status).toBe(503);
-    expect(status.body).toEqual({ error: "Integração Mercado Livre não configurada" });
-
     const disconnect = await request(app).delete("/api/admin/mercadolivre/disconnect").set(auth);
     expect(disconnect.status).toBe(503);
     expect(disconnect.body).toEqual({ error: "Integração Mercado Livre não configurada" });
+  });
+
+  it("GET /status NÃO responde 503 mesmo sem ML_* configurado (Etapa 9 — banner de publishEnabled precisa funcionar sem credenciais)", async () => {
+    vi.resetModules();
+    vi.doMock("../src/lib/env", () => ({
+      env: { ...realEnv, ML_APP_ID: "", ML_CLIENT_SECRET: "", ML_REDIRECT_URI: "", ML_TOKEN_ENC_KEY: "", ML_PUBLISH_ENABLED: false },
+    }));
+
+    const { createApp } = await import("../src/app");
+    const { generateTestToken } = await import("./helpers");
+    const app = createApp();
+    const auth = { Authorization: `Bearer ${generateTestToken({ sub: "admin-sem-ml" })}` };
+
+    const res = await request(app).get("/api/admin/mercadolivre/status").set(auth);
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ connected: false, publishEnabled: false, listingTypeConfigured: false });
   });
 
   it("GET /simulate/:productId NÃO responde 503 mesmo sem ML_* configurado (não depende da API do Mercado Livre)", async () => {
