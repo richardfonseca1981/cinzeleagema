@@ -21,6 +21,7 @@ export function AdminLayout() {
   const isProductsSection = location.pathname.startsWith("/admin/produtos");
   const isCatalogSection = location.pathname.startsWith("/admin/catalogo");
   const isShippingSection = location.pathname.startsWith("/admin/frete");
+  const isMercadoLivreSection = location.pathname.startsWith("/admin/mercadolivre");
   const isUsersSection = location.pathname.startsWith("/admin/usuarios");
 
   return (
@@ -54,6 +55,14 @@ export function AdminLayout() {
             }`}
           >
             Frete
+          </Link>
+          <Link
+            to="/admin/mercadolivre"
+            className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+              isMercadoLivreSection ? "bg-white/15 text-white" : "text-white/80 hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            Mercado Livre
           </Link>
           <Link
             to="/admin/usuarios"

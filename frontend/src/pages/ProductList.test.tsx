@@ -21,6 +21,8 @@ vi.mock("../lib/api", async () => {
       listProducts: vi.fn(),
       activateProduct: vi.fn(),
       deactivateProduct: vi.fn(),
+      markSold: vi.fn(),
+      unmarkSold: vi.fn(),
     },
     exportProductsXlsx: vi.fn(),
   };
@@ -184,5 +186,120 @@ describe("ProductList", () => {
     fireEvent.click(screen.getByRole("button", { name: "Exportar Excel" }));
 
     await screen.findByText("Não foi possível exportar os produtos");
+  });
+
+  // Fase 1B etapa 9 — marcar/desmarcar vendida e o aviso de anúncio ML ao
+  // desativar.
+  describe("Marcar/desfazer venda e aviso de anúncio ML ao desativar", () => {
+    it("marca uma peça como vendida com o canal escolhido", async () => {
+      renderList();
+      const row = (await within(getTable()).findByText("Esmeralda Colombiana")).closest("tr")!;
+      fireEvent.click(within(row).getByRole("button", { name: "Marcar vendida" }));
+
+      const dialog = await screen.findByRole("alertdialog");
+      expect(dialog).toHaveTextContent(/esmeralda colombiana/i);
+
+      fireEvent.click(within(dialog).getByRole("radio", { name: "Mercado Livre" }));
+
+      vi.mocked(api.markSold).mockResolvedValue({ ...fullProduct, soldAt: "2026-11-17T00:00:00.000Z", soldChannel: "mercadolivre", active: false, mlListing: null });
+
+      fireEvent.click(within(dialog).getByRole("button", { name: "Marcar como vendida" }));
+
+      await waitFor(() => expect(api.markSold).toHaveBeenCalledWith(fullProduct.id, "mercadolivre"));
+      await screen.findByText("Peça marcada como vendida");
+    });
+
+    it("canal padrão é site quando o admin não troca a seleção", async () => {
+      renderList();
+      const row = (await within(getTable()).findByText("Esmeralda Colombiana")).closest("tr")!;
+      fireEvent.click(within(row).getByRole("button", { name: "Marcar vendida" }));
+
+      const dialog = await screen.findByRole("alertdialog");
+      vi.mocked(api.markSold).mockResolvedValue({ ...fullProduct, soldAt: "2026-11-17T00:00:00.000Z", soldChannel: "site", active: false, mlListing: null });
+      fireEvent.click(within(dialog).getByRole("button", { name: "Marcar como vendida" }));
+
+      await waitFor(() => expect(api.markSold).toHaveBeenCalledWith(fullProduct.id, "site"));
+    });
+
+    it("mostra aviso quando marcar vendida não consegue pausar o anúncio ML (207)", async () => {
+      renderList();
+      const row = (await within(getTable()).findByText("Esmeralda Colombiana")).closest("tr")!;
+      fireEvent.click(within(row).getByRole("button", { name: "Marcar vendida" }));
+      const dialog = await screen.findByRole("alertdialog");
+
+      vi.mocked(api.markSold).mockResolvedValue({
+        ...fullProduct,
+        soldAt: "2026-11-17T00:00:00.000Z",
+        soldChannel: "site",
+        active: false,
+        mlListing: { status: "active" },
+        warning: "ml_pause_failed",
+        detail: "Falha ao pausar: timeout",
+      });
+
+      fireEvent.click(within(dialog).getByRole("button", { name: "Marcar como vendida" }));
+
+      await screen.findByText(/falha ao pausar: timeout/i);
+    });
+
+    it('mostra "Desfazer venda" para uma peça já vendida, e desfaz sem confirmação', async () => {
+      const soldProduct = makeProduct({ id: "sold-1", name: "Peça Vendida", soldAt: "2026-11-17T00:00:00.000Z", soldChannel: "site", active: false });
+      vi.mocked(api.listProducts).mockResolvedValue({ items: [soldProduct], total: 1, page: 1, pageSize: 20 });
+
+      renderList();
+      const row = (await within(getTable()).findByText("Peça Vendida")).closest("tr")!;
+      expect(within(row).queryByRole("button", { name: "Marcar vendida" })).not.toBeInTheDocument();
+
+      vi.mocked(api.unmarkSold).mockResolvedValue({ ...soldProduct, soldAt: null, soldChannel: null, active: true });
+
+      fireEvent.click(within(row).getByRole("button", { name: "Desfazer venda" }));
+
+      await waitFor(() => expect(api.unmarkSold).toHaveBeenCalledWith("sold-1"));
+      await screen.findByText(/venda desfeita/i);
+    });
+
+    it('desativar com anúncio ML ativo avisa e oferece pausar; confirmando, chama deactivate de novo com pauseMlListing', async () => {
+      renderList();
+      const row = (await within(getTable()).findByText("Esmeralda Colombiana")).closest("tr")!;
+
+      vi.mocked(api.deactivateProduct).mockResolvedValueOnce({
+        ...fullProduct,
+        active: false,
+        mlListing: { status: "active" },
+        warning: "ml_listing_active",
+      });
+
+      fireEvent.click(within(row).getByRole("button", { name: "Desativar" }));
+
+      const dialog = await screen.findByRole("alertdialog");
+      expect(dialog).toHaveTextContent(/anúncio em status "active"/i);
+
+      vi.mocked(api.deactivateProduct).mockResolvedValueOnce({ ...fullProduct, active: false, mlListing: { status: "paused" } });
+
+      fireEvent.click(within(dialog).getByRole("button", { name: "Pausar anúncio agora" }));
+
+      await waitFor(() => expect(api.deactivateProduct).toHaveBeenLastCalledWith(fullProduct.id, { pauseMlListing: true }));
+      await screen.findByText(/anúncio pausado no mercado livre/i);
+    });
+
+    it('desativar com anúncio ML ativo: "Manter anúncio como está" só fecha, sem nova chamada', async () => {
+      renderList();
+      const row = (await within(getTable()).findByText("Esmeralda Colombiana")).closest("tr")!;
+
+      vi.mocked(api.deactivateProduct).mockResolvedValueOnce({
+        ...fullProduct,
+        active: false,
+        mlListing: { status: "paused" },
+        warning: "ml_listing_active",
+      });
+
+      fireEvent.click(within(row).getByRole("button", { name: "Desativar" }));
+      const dialog = await screen.findByRole("alertdialog");
+
+      fireEvent.click(within(dialog).getByRole("button", { name: "Manter anúncio como está" }));
+
+      expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+      expect(api.deactivateProduct).toHaveBeenCalledTimes(1);
+    });
   });
 });

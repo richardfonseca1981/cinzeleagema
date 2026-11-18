@@ -6,6 +6,8 @@ import { ProductOrder } from "./pages/ProductOrder";
 import { ProductForm } from "./pages/ProductForm";
 import { CatalogGenerator } from "./pages/CatalogGenerator";
 import { AdminUsers } from "./pages/AdminUsers";
+import { MercadoLivre } from "./pages/MercadoLivre";
+import { MercadoLivreCallback } from "./pages/MercadoLivreCallback";
 import { Shipping } from "./pages/Shipping";
 import { Catalog } from "./pages/Catalog";
 import { ProductDetail } from "./pages/ProductDetail";
@@ -35,6 +37,10 @@ export default function App() {
               <Route path="/login" element={<Navigate to="/admin" replace />} />
 
               <Route element={<ProtectedRoute />}>
+                {/* Fora do AdminLayout: tela de transição em tela cheia, igual ao Login,
+                    sem sidebar/header — só precisa exigir login (ver CONTEXT.md Fase 0). */}
+                <Route path="/admin/mercadolivre/callback" element={<MercadoLivreCallback />} />
+
                 <Route element={<AdminLayout />}>
                   <Route path="/admin/produtos" element={<ProductList />} />
                   <Route path="/admin/produtos/ordem" element={<ProductOrder />} />
@@ -42,6 +48,7 @@ export default function App() {
                   <Route path="/admin/produtos/:id" element={<ProductForm />} />
                   <Route path="/admin/catalogo" element={<CatalogGenerator />} />
                   <Route path="/admin/frete" element={<Shipping />} />
+                  <Route path="/admin/mercadolivre" element={<MercadoLivre />} />
                   <Route path="/admin/usuarios" element={<AdminUsers />} />
                 </Route>
               </Route>

@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { api, ApiError } from "../lib/api";
 import type { Category, ProductImage } from "../types";
 import { ImageManager, type ImageManagerHandle } from "../components/ImageManager";
@@ -18,6 +19,11 @@ export function ProductForm() {
   const { id } = useParams();
   const isEditing = Boolean(id);
   const navigate = useNavigate();
+  // Só esta seção nova usa i18n (ver mercadoLivreAdmin.packageOverride.* em
+  // locales/) — o resto deste arquivo é só português fixo, como sempre foi;
+  // introduzir t() em tudo só por causa destes 4 campos deixaria a tela
+  // pela metade bilíngue, mais inconsistente que útil.
+  const { t } = useTranslation();
   const location = useLocation();
   const { showToast } = useToast();
   // A lista passa a query string atual (página, busca, filtros) em
@@ -38,6 +44,11 @@ export function ProductForm() {
   const [sizeCm, setSizeCm] = useState("");
   const [trackStock, setTrackStock] = useState(false);
   const [stockQty, setStockQty] = useState("");
+  // Fase 1B etapa 10 — override MANUAL de embalagem só pro Mercado Livre.
+  const [mlPackageLengthCm, setMlPackageLengthCm] = useState("");
+  const [mlPackageWidthCm, setMlPackageWidthCm] = useState("");
+  const [mlPackageHeightCm, setMlPackageHeightCm] = useState("");
+  const [mlPackageWeightG, setMlPackageWeightG] = useState("");
 
   const [saving, setSaving] = useState(false);
   const [savingPhase, setSavingPhase] = useState<"data" | "images" | null>(null);
@@ -71,6 +82,10 @@ export function ProductForm() {
         setSizeCm(String(product.sizeCm));
         setTrackStock(product.trackStock);
         setStockQty(product.stockQty !== null ? String(product.stockQty) : "");
+        setMlPackageLengthCm(product.mlPackageOverrideLengthCm != null ? String(product.mlPackageOverrideLengthCm) : "");
+        setMlPackageWidthCm(product.mlPackageOverrideWidthCm != null ? String(product.mlPackageOverrideWidthCm) : "");
+        setMlPackageHeightCm(product.mlPackageOverrideHeightCm != null ? String(product.mlPackageOverrideHeightCm) : "");
+        setMlPackageWeightG(product.mlPackageOverrideWeightG != null ? String(product.mlPackageOverrideWeightG) : "");
         setImages(product.images ?? []);
         setSaved({ name: product.name, sku: product.sku, active: product.active });
         setProductId(product.id);
@@ -103,8 +118,23 @@ export function ProductForm() {
       sizeCm: sizeCm.trim() !== "" ? Number(sizeCm) : 0,
       trackStock,
       stockQty: trackStock && stockQty !== "" ? Number(stockQty) : null,
+      // "Tudo ou nada" — o backend rejeita (400) se só alguns dos 4 vierem
+      // preenchidos (ver schemas/product.schema.ts); aqui só converte
+      // string -> number|null, sem validar a combinação (feedback do erro
+      // real vem do próprio backend via toast, ver doSave).
+      mlPackageOverrideLengthCm: mlPackageLengthCm.trim() !== "" ? Number(mlPackageLengthCm) : null,
+      mlPackageOverrideWidthCm: mlPackageWidthCm.trim() !== "" ? Number(mlPackageWidthCm) : null,
+      mlPackageOverrideHeightCm: mlPackageHeightCm.trim() !== "" ? Number(mlPackageHeightCm) : null,
+      mlPackageOverrideWeightG: mlPackageWeightG.trim() !== "" ? Number(mlPackageWeightG) : null,
     };
   }
+
+  // Aviso não-bloqueante (o backend quem bloqueia de verdade, 400): avisa o
+  // admin ANTES de salvar que preencher só alguns dos 4 campos vai ser
+  // rejeitado — mais rápido que esperar o toast de erro depois do submit.
+  const mlPackageOverrideValues = [mlPackageLengthCm, mlPackageWidthCm, mlPackageHeightCm, mlPackageWeightG];
+  const mlPackageOverrideFilledCount = mlPackageOverrideValues.filter((v) => v.trim() !== "").length;
+  const mlPackageOverridePartial = mlPackageOverrideFilledCount > 0 && mlPackageOverrideFilledCount < 4;
 
   async function doSave(payload: ReturnType<typeof buildPayload>) {
     setSaving(true);
@@ -336,6 +366,72 @@ export function ProductForm() {
                   </div>
                 )}
               </div>
+            </div>
+
+            <div className="border-t border-[#E2E8F0] pt-4">
+              <h3 className="text-sm font-semibold text-[#1A1A1A]">{t("mercadoLivreAdmin.packageOverride.title")}</h3>
+              <p className="mt-1 text-xs text-[#64748B]">{t("mercadoLivreAdmin.packageOverride.hint")}</p>
+              <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-4">
+                <div>
+                  <label htmlFor="ml-package-length" className={labelClass}>
+                    {t("mercadoLivreAdmin.packageOverride.lengthCm")}
+                  </label>
+                  <input
+                    id="ml-package-length"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={mlPackageLengthCm}
+                    onChange={(e) => setMlPackageLengthCm(e.target.value)}
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="ml-package-width" className={labelClass}>
+                    {t("mercadoLivreAdmin.packageOverride.widthCm")}
+                  </label>
+                  <input
+                    id="ml-package-width"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={mlPackageWidthCm}
+                    onChange={(e) => setMlPackageWidthCm(e.target.value)}
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="ml-package-height" className={labelClass}>
+                    {t("mercadoLivreAdmin.packageOverride.heightCm")}
+                  </label>
+                  <input
+                    id="ml-package-height"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={mlPackageHeightCm}
+                    onChange={(e) => setMlPackageHeightCm(e.target.value)}
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="ml-package-weight" className={labelClass}>
+                    {t("mercadoLivreAdmin.packageOverride.weightG")}
+                  </label>
+                  <input
+                    id="ml-package-weight"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={mlPackageWeightG}
+                    onChange={(e) => setMlPackageWeightG(e.target.value)}
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+              {mlPackageOverridePartial && (
+                <p className="mt-2 text-xs text-[#B45309]">{t("mercadoLivreAdmin.packageOverride.partialWarning")}</p>
+              )}
             </div>
           </div>
         </section>

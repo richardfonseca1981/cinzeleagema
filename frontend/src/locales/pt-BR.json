@@ -350,5 +350,210 @@
       "description": "{{name}} — pedra preciosa à venda na Cinzel e a Gema.",
       "descriptionWithMeasurements": "{{name}} — pedra preciosa à venda na Cinzel e a Gema. Peso e tamanho: {{weightSize}}."
     }
+  },
+  "mercadoLivreAdmin": {
+    "nav": "Mercado Livre",
+    "title": "Mercado Livre",
+    "subtitle": "Conexão da conta do Mercado Livre para leitura de anúncios (Fase 0 — ainda sem publicação).",
+    "status": {
+      "loading": "Verificando conexão...",
+      "connectedTitle": "Conectado",
+      "disconnectedTitle": "Não conectado",
+      "nickname": "Conta",
+      "expiresAt": "Token expira em",
+      "scope": "Permissões"
+    },
+    "connect": "Conectar com o Mercado Livre",
+    "connecting": "Conectando...",
+    "disconnect": "Desconectar",
+    "disconnecting": "Desconectando...",
+    "cancel": "Cancelar",
+    "disconnectConfirm": {
+      "title": "Desconectar do Mercado Livre?",
+      "message": "O token salvo desta conta será removido. Você pode reconectar quando quiser.",
+      "confirm": "Desconectar"
+    },
+    "errors": {
+      "connect": "Não foi possível iniciar a conexão com o Mercado Livre",
+      "status": "Não foi possível carregar o status da conexão com o Mercado Livre",
+      "disconnect": "Não foi possível desconectar a conta do Mercado Livre"
+    },
+    "toasts": {
+      "disconnected": "Conta do Mercado Livre desconectada"
+    },
+    "callback": {
+      "title": "Conectando ao Mercado Livre",
+      "connecting": "Conectando sua conta do Mercado Livre...",
+      "success": "Conta conectada com sucesso!",
+      "successDetail": "Conta \"{{nickname}}\" conectada.",
+      "missingCode": "Link de retorno inválido — parâmetros ausentes.",
+      "genericError": "Não foi possível concluir a conexão com o Mercado Livre.",
+      "backToPanel": "Voltar para o painel",
+      "sessionExpired": "Sua sessão expirou. Faça login novamente e clique em \"Conectar com o Mercado Livre\" para reiniciar a conexão.",
+      "loginAgain": "Fazer login novamente"
+    },
+    "simulate": {
+      "title": "Simulação de anúncio (Fase 1A)",
+      "description": "Monta, valida e precifica um anúncio a partir do catálogo — sem publicar nada e sem precisar de conta conectada.",
+      "searchLabel": "Buscar peça por nome ou SKU",
+      "searchPlaceholder": "Ex.: Esmeralda, ESM-001...",
+      "searchButton": "Buscar",
+      "searching": "Buscando...",
+      "noResults": "Nenhuma peça encontrada.",
+      "paramsTitle": "Parâmetros (opcionais)",
+      "markupPct": "Acréscimo (%)",
+      "commissionPct": "Comissão (%)",
+      "fixedFeeBRL": "Tarifa fixa (R$)",
+      "shippingCostBRL": "Frete (R$)",
+      "estimateNote": "Deixe em branco para usar uma estimativa não verificada (ver auditoria da Fase 1A em CONTEXT.md).",
+      "simulateButton": "Simular anúncio",
+      "simulating": "Simulando...",
+      "notEligibleTitle": "Peça não apta para anúncio",
+      "blockersLabel": "Motivos:",
+      "eligibleTitle": "Rascunho do anúncio",
+      "warningsLabel": "Conferir manualmente:",
+      "draftTitleLabel": "Título",
+      "draftTitleTruncated": "(truncado em 60 caracteres)",
+      "draftDescriptionLabel": "Descrição",
+      "draftPhotosLabel": "Fotos ({{count}})",
+      "draftPhotosOmitted": "{{count}} foto(s) além do limite de 12 não entraram no anúncio.",
+      "draftCategoryLabel": "Categoria",
+      "draftCategoryUnverified": "placeholder não verificado — confirmar antes de publicar",
+      "draftPackageLabel": "Embalagem",
+      "draftPackageEstimateTag": "(estimativa não verificada)",
+      "draftPackageSourceManual": "(medida manual informada)",
+      "draftPackageSourceManualLabel": "Manual",
+      "draftPackageSummary": "Preset {{preset}} — caixa {{length}}x{{width}}x{{height}}cm, pacote {{weight}}g",
+      "draftPackageBlocked": {
+        "size_exceeds_limit": "Peça maior que o maior preset de caixa disponível — publicação bloqueada até definir a embalagem manualmente.",
+        "weight_exceeds_limit": "Peça mais pesada que o maior preset de embalagem disponível — publicação bloqueada até definir a embalagem manualmente.",
+        "both_exceed_limit": "Peça fora da faixa de tamanho E de peso de qualquer preset — publicação bloqueada até definir a embalagem manualmente."
+      },
+      "priceTitle": "Preço sugerido",
+      "priceBasePrice": "Preço base",
+      "priceMarkupAmount": "Acréscimo",
+      "priceListingPrice": "Preço de anúncio",
+      "priceCommissionAmount": "Comissão",
+      "priceFixedFee": "Tarifa fixa",
+      "priceShippingCost": "Frete",
+      "priceNetReceived": "Líquido estimado",
+      "estimateUsedBadge": "estimativa não verificada",
+      "errors": {
+        "search": "Não foi possível buscar peças",
+        "simulate": "Não foi possível simular o anúncio"
+      }
+    },
+    "banner": {
+      "publishDisabled": "Publicação real desligada (ML_PUBLISH_ENABLED=false) — só a prévia (dry-run) está disponível."
+    },
+    "packageOverride": {
+      "title": "Embalagem para Mercado Livre",
+      "hint": "Opcional — só pra peças fora dos presets automáticos (ex.: capelas e obeliscos grandes). Preencha os 4 campos juntos, com as medidas da caixa já embalada.",
+      "lengthCm": "Comprimento (cm)",
+      "widthCm": "Largura (cm)",
+      "heightCm": "Altura (cm)",
+      "weightG": "Peso do pacote (g)",
+      "partialWarning": "Preencha os 4 campos juntos (ou nenhum) — só alguns preenchidos será rejeitado ao salvar."
+    },
+    "publish": {
+      "previewButton": "Prévia de publicação",
+      "previewing": "Gerando prévia...",
+      "publishButton": "Publicar (real)",
+      "publishing": "Publicando...",
+      "previewTitle": "Prévia de publicação (dry-run)",
+      "forcedDryRunNotice": "A publicação real está desligada — esta prévia nunca chama o Mercado Livre de verdade.",
+      "issuesTitle": "Pendências (bloqueiam a publicação real):",
+      "issues": {
+        "category_not_verified": "Categoria do Mercado Livre ainda não confirmada.",
+        "package_requires_manual": "Peça fora das faixas de preset de embalagem — precisa de ajuste manual."
+      },
+      "publishableYes": "Sem pendências — pronta para publicação real.",
+      "payloadTitle": "Payload de POST /items",
+      "packageBoxSourceLabel": "Origem da embalagem:",
+      "packageBoxSourcePreset": "Preset automático",
+      "needPreviewHint": "Gere a prévia antes de publicar de verdade.",
+      "confirmTitle": "Confirmar publicação real?",
+      "confirmMessage": "Peça \"{{title}}\" será publicada no Mercado Livre pelo preço de anúncio R$ {{price}}. Esta ação é real.",
+      "confirmButton": "Publicar",
+      "descriptionFailedWarning": "Anúncio publicado, mas a descrição estendida falhou: {{detail}}",
+      "errors": {
+        "preview": "Não foi possível gerar a prévia de publicação",
+        "publish": "Não foi possível publicar o anúncio"
+      },
+      "toasts": {
+        "previewed": "Prévia gerada",
+        "published": "Anúncio publicado"
+      }
+    },
+    "listing": {
+      "title": "Anúncio no Mercado Livre",
+      "statusLabel": "Status",
+      "permalinkLabel": "Link do anúncio",
+      "permalinkLink": "Ver no Mercado Livre",
+      "lastErrorLabel": "Último erro",
+      "status": {
+        "active": "Ativo",
+        "paused": "Pausado",
+        "closed": "Encerrado",
+        "publishing": "Publicando",
+        "error": "Erro"
+      },
+      "actions": {
+        "pause": "Pausar",
+        "reactivate": "Reativar",
+        "close": "Encerrar",
+        "sync": "Sincronizar",
+        "retryDescription": "Reenviar descrição",
+        "reconcile": "Reconciliar"
+      },
+      "closeConfirmTitle": "Encerrar anúncio?",
+      "closeConfirmMessage": "Esta ação é IRREVERSÍVEL — o anúncio nunca pode ser reaberto. Digite a palavra de confirmação ENCERRAR abaixo para prosseguir.",
+      "closeTypedLabel": "Confirmação",
+      "closeConfirmButton": "Encerrar",
+      "errors": {
+        "action": "Não foi possível concluir a ação no anúncio"
+      },
+      "toasts": {
+        "actionOk": "Ação concluída: {{status}}"
+      }
+    },
+    "pauseAll": {
+      "button": "Pausar todos os anúncios",
+      "pausing": "Pausando...",
+      "confirmTitle": "Pausar todos os anúncios ativos?",
+      "confirmMessage": "Esta ação pausa TODOS os anúncios ativos da conta de uma vez. Digite a frase de confirmação PAUSAR TUDO abaixo para prosseguir.",
+      "typedLabel": "Confirmação",
+      "confirmButton": "Pausar tudo",
+      "resultTitle": "{{succeeded}}/{{total}} anúncios pausados com sucesso",
+      "resultOk": "Pausado",
+      "resultError": "Erro",
+      "errors": {
+        "pauseAll": "Não foi possível pausar os anúncios"
+      }
+    },
+    "pendencias": {
+      "title": "Pendências",
+      "description": "Peças vendidas com pausa pendente, anúncios presos em publicação e eventos de webhook que precisam de atenção.",
+      "loading": "Carregando pendências...",
+      "errors": {
+        "load": "Não foi possível carregar as pendências",
+        "reprocess": "Não foi possível reprocessar o evento"
+      },
+      "pausePendingTitle": "Pausa pendente",
+      "pausePendingEmpty": "Nenhuma pausa pendente.",
+      "stuckPublishingTitle": "Presos em publicação",
+      "stuckPublishingEmpty": "Nenhum anúncio preso em publicação.",
+      "webhookErrorsTitle": "Eventos de webhook com erro",
+      "webhookErrorsEmpty": "Nenhum evento de webhook com erro.",
+      "reprocessButton": "Reprocessar",
+      "reprocessing": "Reprocessando...",
+      "webhookNotesTitle": "Avisos de webhook",
+      "webhookNotesEmpty": "Nenhum aviso de webhook.",
+      "cancelledOrderHint": "Pedido cancelado após a peça ter sido marcada como vendida — use a ação \"Desfazer venda\" na peça manualmente, se necessário.",
+      "viewProductLink": "Ver peça",
+      "toasts": {
+        "reprocessOk": "Evento reprocessado"
+      }
+    }
   }
 }

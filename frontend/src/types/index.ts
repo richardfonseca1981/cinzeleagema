@@ -115,13 +115,26 @@ export interface Product {
   packageLengthCm: string | null;
   packageWidthCm: string | null;
   packageHeightCm: string | null;
+  // Fase 1B etapa 10 — override MANUAL de embalagem só pro anúncio do
+  // Mercado Livre (nomes novos, nunca os `package*` obsoletos acima, que são
+  // do frete nacional do site). "Tudo ou nada": só valem preenchidos juntos.
+  mlPackageOverrideLengthCm?: string | null;
+  mlPackageOverrideWidthCm?: string | null;
+  mlPackageOverrideHeightCm?: string | null;
+  mlPackageOverrideWeightG?: string | null;
   trackStock: boolean;
   stockQty: number | null;
   images: ProductImage[];
   active: boolean;
+  // Fase 1B etapa 7 — marcador de "peça vendida" fora do carrinho do site
+  // (ex.: venda presencial ou por outro canal). soldAt null = nunca marcada.
+  soldAt?: string | null;
+  soldChannel?: SoldChannel | null;
   createdAt: string;
   updatedAt: string;
 }
+
+export type SoldChannel = "site" | "mercadolivre" | "other";
 
 // Identificação de catálogo por IA (triagem visual a partir das fotos, nunca
 // um laudo gemológico) — listas fechadas, mesmas do backend (ver
@@ -297,4 +310,215 @@ export interface CatalogOptionsCategory {
   id: string;
   name: string;
   count: number;
+}
+
+// GET/DELETE /api/admin/mercadolivre/* (Fase 0 — conexão/leitura, sem
+// publicação de anúncio ainda). `connected: false` não traz os demais campos.
+// Fase 1B etapa 9: publishEnabled/listingTypeConfigured sempre presentes,
+// mesmo sem conta conectada e sem nenhuma variável ML_* configurada (ver
+// mercadoLivre.routes.ts GET /status, registrada antes do middleware de
+// 503) — opcionais aqui só pra não quebrar mocks de teste antigos que não
+// os incluem.
+export interface MercadoLivreStatus {
+  connected: boolean;
+  mlUserId?: string;
+  nickname?: string;
+  expiresAt?: string;
+  scope?: string;
+  markupPct?: number;
+  publishEnabled?: boolean;
+  listingTypeConfigured?: boolean;
+}
+
+// GET /api/admin/mercadolivre/simulate/:productId (Fase 1A — só monta,
+// valida e precifica localmente; nenhuma chamada à API do Mercado Livre,
+// funciona mesmo sem conta conectada).
+export type MercadoLivreBlockerCode =
+  | "inactive"
+  | "out_of_stock"
+  | "placeholder_title"
+  | "missing_price"
+  | "placeholder_price"
+  | "missing_weight"
+  | "missing_size"
+  | "no_photos"
+  | "photo_too_small";
+
+export type MercadoLivreWarningCode = "review_photo_branding";
+
+export interface MercadoLivreIssue<Code extends string> {
+  code: Code;
+  message: string;
+}
+
+// Estimativa de caixa/peso de embalagem (Fase 1B etapa 4) — ver
+// backend/src/lib/mercadoLivre/packagePresets.ts. "ok: false" quando a peça
+// excede o maior preset (GG) e não tem override manual válido.
+export type MercadoLivrePackagePreset = "P" | "M" | "G" | "GG";
+
+// Fase 1B etapa 10 — `source` distingue override manual (`preset: null`) de
+// preset automático (`preset` sempre preenchido nesse caso).
+export type MercadoLivrePackageBoxSource = "manual" | "preset";
+
+export type MercadoLivrePackageBoxEstimate =
+  | {
+      ok: true;
+      source: MercadoLivrePackageBoxSource;
+      preset: MercadoLivrePackagePreset | null;
+      box: { lengthCm: number; widthCm: number; heightCm: number };
+      packageWeightGrams: number;
+    }
+  | { ok: false; reason: "size_exceeds_limit" | "weight_exceeds_limit" | "both_exceed_limit" };
+
+export interface MercadoLivreListingDraft {
+  title: string;
+  titleTruncated: boolean;
+  description: string;
+  photos: string[];
+  photosOmitted: number;
+  // id placeholder (não verificado) enquanto a Fase 1B não confirmar a
+  // categoria real via API — ver backend/src/lib/mercadoLivre/categoryFixture.ts.
+  category: { id: string; breadcrumb: string[]; verified: boolean };
+  packageBox: MercadoLivrePackageBoxEstimate;
+  packageBoxSource: MercadoLivrePackageBoxSource | null;
+}
+
+export interface MercadoLivrePriceBreakdown {
+  basePrice: number;
+  markupAmount: number;
+  listingPrice: number;
+  commissionAmount: number;
+  fixedFeeBRL: number;
+  shippingCostBRL: number;
+  netReceived: number;
+  // true quando o respectivo valor NÃO veio da query (caiu no padrão
+  // marcado como estimativa não verificada no backend).
+  estimatesUsed: { commissionPct: boolean; fixedFeeBRL: boolean; shippingCostBRL: boolean };
+}
+
+export interface MercadoLivreSimulationResult {
+  productId: string;
+  eligible: boolean;
+  blockers?: MercadoLivreIssue<MercadoLivreBlockerCode>[];
+  warnings: MercadoLivreIssue<MercadoLivreWarningCode>[];
+  draft?: MercadoLivreListingDraft;
+  price?: MercadoLivrePriceBreakdown;
+}
+
+// Fase 1B etapa 9 — publicação real/prévia (ver backend publisherPayload.ts/
+// mercadoLivre.routes.ts POST /publish/:productId). `issues` só aparece em
+// dry-run (ver buildMercadoLivreItemPayloadPreview) — modo real nunca
+// devolve payload com pendências, ou publica ou bloqueia com erro.
+export type MercadoLivreReadinessIssue = "category_not_verified" | "package_requires_manual";
+
+export interface MercadoLivreItemPayload {
+  title: string;
+  category_id: string;
+  price: number;
+  currency_id: string;
+  available_quantity: number;
+  buying_mode: string;
+  listing_type_id: string;
+  condition: string;
+  pictures: { source: string }[];
+  seller_custom_field?: string;
+  shipping?: { dimensions: string };
+}
+
+export interface MercadoLivrePublishResponse {
+  productId: string;
+  mode: "dry-run" | "real";
+  forcedDryRun?: boolean;
+  price?: MercadoLivrePriceBreakdown;
+  payload?: MercadoLivreItemPayload;
+  issues?: MercadoLivreReadinessIssue[];
+  // Fase 1B etapa 10 — só presente em dry-run (ver backend
+  // buildMercadoLivreItemPayloadPreview).
+  packageBoxSource?: MercadoLivrePackageBoxSource | null;
+  publishable?: boolean;
+  notice?: string | null;
+  preview?: { mlItemId: string; permalink: string };
+  status?: string;
+  mlItemId?: string;
+  permalink?: string;
+  warning?: string;
+  detail?: string;
+}
+
+// GET /api/admin/mercadolivre/listings/:productId — registro LOCAL (nunca
+// chama a API do Mercado Livre, ver ponto de etapa 9). `status` é sempre uma
+// das strings já usadas pelo backend: active/paused/closed/publishing/error.
+export interface MercadoLivreListingRecord {
+  id: string;
+  accountId: string;
+  productId: string;
+  mlItemId: string | null;
+  status: string;
+  permalink: string | null;
+  categoryId: string | null;
+  lastSyncAt: string | null;
+  lastError: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MercadoLivreListingActionResult {
+  productId: string;
+  action?: "pause" | "reactivate" | "close";
+  status: string;
+  mlItemId?: string | null;
+  forcedDryRun?: boolean;
+  notice?: string;
+}
+
+export interface MercadoLivreReconcileResult {
+  productId: string;
+  status: string;
+  reconciled: boolean;
+  reason?: string;
+  mlItemId?: string;
+  permalink?: string;
+  candidates?: unknown[];
+}
+
+export interface MercadoLivrePauseAllResult {
+  total: number;
+  succeeded: number;
+  results: { productId: string; mlItemId: string | null; ok: boolean; error?: string }[];
+}
+
+export interface MercadoLivreSyncResult {
+  productId: string;
+  status: string;
+  mlItemId: string;
+  permalink?: string;
+  synced: boolean;
+}
+
+// Fase 1B etapa 8 (webhook) + 9 (telas admin). `note` é informativo (nunca
+// erro — ver schema.prisma MercadoLivreWebhookEvent); `lastError` é falha
+// técnica elegível pra reprocessar.
+export interface MercadoLivreWebhookEventRecord {
+  id: string;
+  bodyHash: string;
+  resource: string | null;
+  topic: string | null;
+  receivedAt: string;
+  processedAt: string | null;
+  lastError: string | null;
+  note: string | null;
+}
+
+export interface MercadoLivreReprocessResult {
+  ok: boolean;
+  message: string;
+  event: MercadoLivreWebhookEventRecord;
+}
+
+// GET /api/admin/mercadolivre/pendencias — agregador do painel "Pendências".
+export interface MercadoLivrePendencias {
+  pausePending: MercadoLivreListingRecord[];
+  stuckPublishing: MercadoLivreListingRecord[];
+  webhookErrors: MercadoLivreWebhookEventRecord[];
+  webhookNotes: MercadoLivreWebhookEventRecord[];
 }

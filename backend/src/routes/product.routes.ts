@@ -3,7 +3,9 @@ import { prisma } from "../lib/prisma";
 import { requireAuth } from "../middleware/auth";
 import { asyncHandler } from "../utils/asyncHandler";
 import { HttpError } from "../middleware/errorHandler";
-import { createProductSchema, listProductsQuerySchema, updateProductSchema } from "../schemas/product.schema";
+import { createProductSchema, deactivateProductBodySchema, listProductsQuerySchema, updateProductSchema } from "../schemas/product.schema";
+import { getActiveAccount } from "../lib/mercadoLivre/auth";
+import { getMercadoLivrePublisherClient } from "../lib/mercadoLivre/publisherClientRegistry";
 import { isPortrait916 } from "../lib/photoFormat";
 import { filterProductIdsBySearch } from "../lib/productSearch";
 import { Prisma } from "@prisma/client";
@@ -17,7 +19,9 @@ export const productRouter = Router();
 
 // Mesmo formato em TODAS as rotas que devolvem uma peça (a lista do admin
 // troca a linha pela resposta; sem "images" a coluna de foto quebrava).
-const PRODUCT_INCLUDE = { images: { orderBy: { position: "asc" as const } }, category: true, subcategory: true };
+// Exportado para productStock.routes.ts (mark-sold/unmark-sold, Fase 1B
+// etapa 7) reaproveitar o MESMO formato, nunca duplicado.
+export const PRODUCT_INCLUDE = { images: { orderBy: { position: "asc" as const } }, category: true, subcategory: true };
 
 // GET fica público: alimenta o catálogo do site (navegação/filtro por
 // categoria e página de detalhe). Só as rotas que alteram dados exigem login.
@@ -310,16 +314,73 @@ productRouter.post(
   })
 );
 
+// Fase 1B etapa 7 — ajuste de ponto 4: esta rota NÃO pausa o anúncio do
+// Mercado Livre sozinha por padrão — só avisa (`warning: "ml_listing_active"`
+// + `mlListing: { status }`) quando existe um anúncio em status
+// active/paused/publishing. `pauseMlListing: true` (corpo opcional) tenta
+// pausar NA MESMA chamada, mas só quando o status for "active" (o único
+// seguro de pausar sem reconciliação antes — ver stockSync.ts/
+// listingLifecycle.ts): "paused" já está parado (nada a fazer) e
+// "publishing" é ambíguo demais pra mexer automaticamente, mesmo pedindo.
+const DEACTIVATE_ML_WARNING_STATUSES = new Set(["active", "paused", "publishing"]);
+
 productRouter.patch(
   "/:id/deactivate",
   requireAuth,
   asyncHandler(async (req, res) => {
+    const body = deactivateProductBodySchema.parse(req.body ?? {});
+
     const product = await prisma.product.update({
       where: { id: req.params.id },
       data: { active: false },
       include: PRODUCT_INCLUDE,
     });
-    res.json(product);
+
+    const account = await getActiveAccount();
+    const listing = account
+      ? await prisma.mercadoLivreListing.findUnique({
+          where: { accountId_productId: { accountId: account.id, productId: product.id } },
+        })
+      : null;
+
+    if (!listing || !DEACTIVATE_ML_WARNING_STATUSES.has(listing.status)) {
+      res.json(product);
+      return;
+    }
+
+    if (!body.pauseMlListing || listing.status !== "active" || !account) {
+      res.json({ ...product, mlListing: { status: listing.status }, warning: "ml_listing_active" });
+      return;
+    }
+
+    if (!listing.mlItemId) {
+      res.status(207).json({
+        ...product,
+        mlListing: { status: listing.status },
+        warning: "ml_pause_failed",
+        detail: "Anúncio sem mlItemId registrado — rode a reconciliação antes de pausar manualmente.",
+      });
+      return;
+    }
+
+    const client = getMercadoLivrePublisherClient();
+    try {
+      await client.updateItemStatus(account.id, listing.mlItemId, "paused");
+      const updatedListing = await prisma.mercadoLivreListing.update({
+        where: { id: listing.id },
+        data: { status: "paused", lastError: null, lastSyncAt: new Date() },
+      });
+      res.json({ ...product, mlListing: { status: updatedListing.status } });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      await prisma.mercadoLivreListing.update({ where: { id: listing.id }, data: { lastError: `pause_pending: ${message}` } });
+      res.status(207).json({
+        ...product,
+        mlListing: { status: listing.status },
+        warning: "ml_pause_failed",
+        detail: `Peça desativada, mas não foi possível pausar o anúncio no Mercado Livre: ${message}.`,
+      });
+    }
   })
 );
 

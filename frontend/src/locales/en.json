@@ -367,5 +367,210 @@
       "description": "{{name}} — gemstone for sale at Cinzel e a Gema.",
       "descriptionWithMeasurements": "{{name}} — gemstone for sale at Cinzel e a Gema. Weight and size: {{weightSize}}."
     }
+  },
+  "mercadoLivreAdmin": {
+    "nav": "Mercado Livre",
+    "title": "Mercado Livre",
+    "subtitle": "Mercado Livre account connection for reading listings (Phase 0 — no publishing yet).",
+    "status": {
+      "loading": "Checking connection...",
+      "connectedTitle": "Connected",
+      "disconnectedTitle": "Not connected",
+      "nickname": "Account",
+      "expiresAt": "Token expires at",
+      "scope": "Permissions"
+    },
+    "connect": "Connect with Mercado Livre",
+    "connecting": "Connecting...",
+    "disconnect": "Disconnect",
+    "disconnecting": "Disconnecting...",
+    "cancel": "Cancel",
+    "disconnectConfirm": {
+      "title": "Disconnect from Mercado Livre?",
+      "message": "The saved token for this account will be removed. You can reconnect anytime.",
+      "confirm": "Disconnect"
+    },
+    "errors": {
+      "connect": "Could not start the connection with Mercado Livre",
+      "status": "Could not load the Mercado Livre connection status",
+      "disconnect": "Could not disconnect the Mercado Livre account"
+    },
+    "toasts": {
+      "disconnected": "Mercado Livre account disconnected"
+    },
+    "callback": {
+      "title": "Connecting to Mercado Livre",
+      "connecting": "Connecting your Mercado Livre account...",
+      "success": "Account connected successfully!",
+      "successDetail": "Account \"{{nickname}}\" connected.",
+      "missingCode": "Invalid return link — missing parameters.",
+      "genericError": "Could not complete the connection with Mercado Livre.",
+      "backToPanel": "Back to the panel",
+      "sessionExpired": "Your session has expired. Log in again and click \"Connect with Mercado Livre\" to restart the connection.",
+      "loginAgain": "Log in again"
+    },
+    "simulate": {
+      "title": "Listing simulation (Phase 1A)",
+      "description": "Builds, validates and prices a listing from the catalog — nothing is published and no connected account is required.",
+      "searchLabel": "Search a piece by name or SKU",
+      "searchPlaceholder": "E.g.: Emerald, ESM-001...",
+      "searchButton": "Search",
+      "searching": "Searching...",
+      "noResults": "No pieces found.",
+      "paramsTitle": "Parameters (optional)",
+      "markupPct": "Markup (%)",
+      "commissionPct": "Commission (%)",
+      "fixedFeeBRL": "Fixed fee (R$)",
+      "shippingCostBRL": "Shipping (R$)",
+      "estimateNote": "Leave blank to use an unverified estimate (see the Phase 1A audit in CONTEXT.md).",
+      "simulateButton": "Simulate listing",
+      "simulating": "Simulating...",
+      "notEligibleTitle": "Piece not eligible for listing",
+      "blockersLabel": "Reasons:",
+      "eligibleTitle": "Listing draft",
+      "warningsLabel": "Review manually:",
+      "draftTitleLabel": "Title",
+      "draftTitleTruncated": "(truncated at 60 characters)",
+      "draftDescriptionLabel": "Description",
+      "draftPhotosLabel": "Photos ({{count}})",
+      "draftPhotosOmitted": "{{count}} photo(s) beyond the 12-photo limit were left out of the listing.",
+      "draftCategoryLabel": "Category",
+      "draftCategoryUnverified": "unverified placeholder — confirm before publishing",
+      "draftPackageLabel": "Packaging",
+      "draftPackageEstimateTag": "(unverified estimate)",
+      "draftPackageSourceManual": "(manually entered measurement)",
+      "draftPackageSourceManualLabel": "Manual",
+      "draftPackageSummary": "Preset {{preset}} — box {{length}}x{{width}}x{{height}}cm, package {{weight}}g",
+      "draftPackageBlocked": {
+        "size_exceeds_limit": "Item larger than the biggest available box preset — publishing blocked until packaging is set manually.",
+        "weight_exceeds_limit": "Item heavier than the biggest available packaging preset — publishing blocked until packaging is set manually.",
+        "both_exceed_limit": "Item outside both the size AND weight range of any preset — publishing blocked until packaging is set manually."
+      },
+      "priceTitle": "Suggested price",
+      "priceBasePrice": "Base price",
+      "priceMarkupAmount": "Markup",
+      "priceListingPrice": "Listing price",
+      "priceCommissionAmount": "Commission",
+      "priceFixedFee": "Fixed fee",
+      "priceShippingCost": "Shipping",
+      "priceNetReceived": "Estimated net",
+      "estimateUsedBadge": "unverified estimate",
+      "errors": {
+        "search": "Could not search for pieces",
+        "simulate": "Could not simulate the listing"
+      }
+    },
+    "banner": {
+      "publishDisabled": "Real publishing is off (ML_PUBLISH_ENABLED=false) — only the dry-run preview is available."
+    },
+    "packageOverride": {
+      "title": "Packaging for Mercado Livre",
+      "hint": "Optional — only for pieces outside the automatic presets (e.g. large chapels and obelisks). Fill in all 4 fields together, with the already-packaged box measurements.",
+      "lengthCm": "Length (cm)",
+      "widthCm": "Width (cm)",
+      "heightCm": "Height (cm)",
+      "weightG": "Package weight (g)",
+      "partialWarning": "Fill in all 4 fields together (or none) — only some filled in will be rejected on save."
+    },
+    "publish": {
+      "previewButton": "Publish preview",
+      "previewing": "Generating preview...",
+      "publishButton": "Publish (real)",
+      "publishing": "Publishing...",
+      "previewTitle": "Publish preview (dry-run)",
+      "forcedDryRunNotice": "Real publishing is off — this preview never calls the real Mercado Livre API.",
+      "issuesTitle": "Pending issues (block real publishing):",
+      "issues": {
+        "category_not_verified": "Mercado Livre category not confirmed yet.",
+        "package_requires_manual": "Piece outside the packaging preset ranges — needs manual adjustment."
+      },
+      "publishableYes": "No pending issues — ready for real publishing.",
+      "payloadTitle": "POST /items payload",
+      "packageBoxSourceLabel": "Packaging source:",
+      "packageBoxSourcePreset": "Automatic preset",
+      "needPreviewHint": "Generate the preview before publishing for real.",
+      "confirmTitle": "Confirm real publishing?",
+      "confirmMessage": "Piece \"{{title}}\" will be published on Mercado Livre for R$ {{price}}. This action is real.",
+      "confirmButton": "Publish",
+      "descriptionFailedWarning": "Listing published, but the extended description failed: {{detail}}",
+      "errors": {
+        "preview": "Could not generate the publish preview",
+        "publish": "Could not publish the listing"
+      },
+      "toasts": {
+        "previewed": "Preview generated",
+        "published": "Listing published"
+      }
+    },
+    "listing": {
+      "title": "Mercado Livre listing",
+      "statusLabel": "Status",
+      "permalinkLabel": "Listing link",
+      "permalinkLink": "View on Mercado Livre",
+      "lastErrorLabel": "Last error",
+      "status": {
+        "active": "Active",
+        "paused": "Paused",
+        "closed": "Closed",
+        "publishing": "Publishing",
+        "error": "Error"
+      },
+      "actions": {
+        "pause": "Pause",
+        "reactivate": "Reactivate",
+        "close": "Close",
+        "sync": "Sync",
+        "retryDescription": "Resend description",
+        "reconcile": "Reconcile"
+      },
+      "closeConfirmTitle": "Close the listing?",
+      "closeConfirmMessage": "This action is IRREVERSIBLE — the listing can never be reopened. Type the confirmation word ENCERRAR below to proceed.",
+      "closeTypedLabel": "Confirmation",
+      "closeConfirmButton": "Close",
+      "errors": {
+        "action": "Could not complete the listing action"
+      },
+      "toasts": {
+        "actionOk": "Action completed: {{status}}"
+      }
+    },
+    "pauseAll": {
+      "button": "Pause all listings",
+      "pausing": "Pausing...",
+      "confirmTitle": "Pause all active listings?",
+      "confirmMessage": "This action pauses ALL active listings in the account at once. Type the confirmation phrase PAUSAR TUDO below to proceed.",
+      "typedLabel": "Confirmation",
+      "confirmButton": "Pause all",
+      "resultTitle": "{{succeeded}}/{{total}} listings paused successfully",
+      "resultOk": "Paused",
+      "resultError": "Error",
+      "errors": {
+        "pauseAll": "Could not pause the listings"
+      }
+    },
+    "pendencias": {
+      "title": "Pending issues",
+      "description": "Sold pieces with a pending pause, listings stuck publishing, and webhook events that need attention.",
+      "loading": "Loading pending issues...",
+      "errors": {
+        "load": "Could not load pending issues",
+        "reprocess": "Could not reprocess the event"
+      },
+      "pausePendingTitle": "Pending pause",
+      "pausePendingEmpty": "No pending pause.",
+      "stuckPublishingTitle": "Stuck publishing",
+      "stuckPublishingEmpty": "No listing stuck publishing.",
+      "webhookErrorsTitle": "Webhook events with error",
+      "webhookErrorsEmpty": "No webhook event with error.",
+      "reprocessButton": "Reprocess",
+      "reprocessing": "Reprocessing...",
+      "webhookNotesTitle": "Webhook notes",
+      "webhookNotesEmpty": "No webhook notes.",
+      "cancelledOrderHint": "Order cancelled after the piece was marked as sold — use the \"Desfazer venda\" (undo sale) action on the piece manually if needed.",
+      "viewProductLink": "View piece",
+      "toasts": {
+        "reprocessOk": "Event reprocessed"
+      }
+    }
   }
 }
