@@ -3,10 +3,11 @@ import request from "supertest";
 import "./setup";
 import { createApp } from "../src/app";
 import { prisma } from "../src/lib/prisma";
-import { cleanDatabase } from "./helpers";
+import { cleanDatabase, generateTestToken } from "./helpers";
 import { buildPublicSlug } from "../src/lib/publicSlug";
 
 const app = createApp();
+const auth = { Authorization: `Bearer ${generateTestToken({ sub: "admin-sitemap-test" })}` };
 
 let categoryId: string;
 
@@ -53,5 +54,30 @@ describe("GET /api/sitemap.xml", () => {
 
     expect(productLocCount).toBe(1);
     expect(res.text).toContain(buildPublicSlug(eligible.name, eligible.id));
+  });
+
+  // Integração ML Fase 1B etapa 7 (mark-sold) x SEO Rodada 1 (sitemap): marcar
+  // vendida desativa a peça (ver productStock.routes.ts), e o sitemap já
+  // exclui qualquer peça inativa (sitemapEligibility.ts) — este teste fecha o
+  // ciclo passando pela rota REAL de marcar vendida, não só setando
+  // active=false direto no banco.
+  it("peça marcada vendida via POST /mark-sold some do sitemap", async () => {
+    const product = await prisma.product.create({
+      data: { name: "Topázio Vendido", slug: "topazio-vendido", price: 900, categoryId },
+    });
+    const slug = buildPublicSlug(product.name, product.id);
+
+    const before = await request(app).get("/api/sitemap.xml");
+    expect(before.text).toContain(slug);
+
+    const markSold = await request(app)
+      .post(`/api/admin/products/${product.id}/mark-sold`)
+      .set(auth)
+      .send({ confirm: true, channel: "site" });
+    expect(markSold.status).toBe(200);
+
+    const after = await request(app).get("/api/sitemap.xml");
+    expect(after.text).not.toContain(slug);
+    expect(after.text).not.toContain("<loc>https://www.cinzeleagema.com.br/catalogo/topazio");
   });
 });
