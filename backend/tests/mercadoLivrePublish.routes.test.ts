@@ -45,6 +45,12 @@ async function createProduct(
       trackStock: false,
       weightGrams: 850,
       sizeCm: 23,
+      // Título aprovado por padrão — estes testes cobrem o FLUXO de
+      // publicação (idempotência, timeout, reconciliação...), não a
+      // aprovação de título em si (ver mercadoLivreListingBuilderTitle.test.ts
+      // e mercadoLivreTitleSuggestions.routes.test.ts para isso).
+      mlTitle: "Turmalina Paraíba Lapidada",
+      mlTitleApprovedAt: new Date(),
       ...(overrides.mlPackageOverride
         ? {
             mlPackageOverrideLengthCm: overrides.mlPackageOverride.lengthCm,

@@ -122,6 +122,14 @@ const BANNED_TERMS = [
   "cinzel",
 ];
 
+// Exportado para schemas/product.schema.ts validar o mlTitle aprovado
+// manualmente (ver Fase 1B — "título aprovado") com a MESMA lista, em vez de
+// duplicá-la — rejeita na escrita (zod .refine) em vez de limpar em
+// silêncio, diferente de stripBannedTerms (usado só na geração automática).
+export function containsBannedTerm(text: string): boolean {
+  return BANNED_TERMS.some((term) => new RegExp(`\\b${escapeRegExp(term)}\\b`, "i").test(text));
+}
+
 function stripBannedTerms(text: string): string {
   let result = text;
   for (const term of BANNED_TERMS) {
@@ -212,7 +220,12 @@ export const KNOWN_MATERIALS = [
   "cristal de rocha",
 ];
 
-function normalizeForMatch(text: string): string {
+// Exportado para a rota de colisão de título (GET /title-suggestions/:productId,
+// mercadoLivre.routes.ts) comparar a sugestão gerada aqui contra o mlTitle
+// JÁ APROVADO de outras peças, com a MESMA normalização usada internamente
+// pela desduplicação entre peças (nunca duas regras de "mesmo título"
+// divergindo).
+export function normalizeForMatch(text: string): string {
   return text
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
@@ -565,4 +578,16 @@ export function generateTitleSuggestions(products: TitleGenerationInput[]): Titl
   resolveResidualCollisions(rows, weightLabels, "titleB", "titleBLength", "duplicate_title_b");
 
   return rows;
+}
+
+// Usado por listingBuilder.ts (buildListingDraft) como FALLBACK de título
+// quando a peça ainda não tem um mlTitle aprovado — gera a sugestão A pra
+// UMA peça isolada, sem o contexto de desduplicação do catálogo inteiro
+// (essa dedup só importa pra tela de aprovação, ver GET
+// /title-suggestions/:productId em mercadoLivre.routes.ts, que chama
+// generateTitleSuggestions com o catálogo inteiro). Nunca duplica a lógica
+// de montagem do título — só chama generateTitleSuggestions com uma lista
+// de 1 item.
+export function generateSingleTitleSuggestion(product: TitleGenerationInput): TitleSuggestionRow {
+  return generateTitleSuggestions([product])[0];
 }

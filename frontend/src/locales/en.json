@@ -472,6 +472,36 @@
       "weightG": "Package weight (g)",
       "partialWarning": "Fill in all 4 fields together (or none) — only some filled in will be rejected on save."
     },
+    "mlTitle": {
+      "title": "Mercado Livre title",
+      "hint": "Without approval, real publishing uses the automatic suggestion A (marked as not approved) and stays blocked. Approve a title before publishing for real.",
+      "loading": "Loading suggestions...",
+      "fieldLabel": "Listing title",
+      "charCount": "{{count}}/{{max}} characters",
+      "approvedBadge": "Approved",
+      "notApprovedBadge": "Suggested, not approved",
+      "suggestionsTitle": "Suggestions (whole catalog, with deduplication)",
+      "suggestionA": "Suggestion A",
+      "suggestionB": "Suggestion B",
+      "useSuggestion": "Use",
+      "noSuggestionB": "No differentiated suggestion B for this piece.",
+      "collisionWarning": "Collides with the already-approved title of another piece (SKU/ID {{productId}}).",
+      "approveButton": "Approve",
+      "unapproveButton": "Remove approval",
+      "saveButton": "Save title",
+      "saving": "Saving...",
+      "errors": {
+        "loadSuggestions": "Could not load title suggestions",
+        "save": "Could not save the title",
+        "approve": "Could not approve the title",
+        "unapprove": "Could not remove the approval"
+      },
+      "toasts": {
+        "saved": "Title saved",
+        "approved": "Title approved",
+        "unapproved": "Approval removed"
+      }
+    },
     "publish": {
       "previewButton": "Publish preview",
       "previewing": "Generating preview...",
@@ -482,6 +512,7 @@
       "issuesTitle": "Pending issues (block real publishing):",
       "issues": {
         "category_not_verified": "Mercado Livre category not confirmed yet.",
+        "title_not_approved": "Listing title has not been approved yet.",
         "package_requires_manual": "Piece outside the packaging preset ranges — needs manual adjustment."
       },
       "publishableYes": "No pending issues — ready for real publishing.",

@@ -22,6 +22,7 @@ import type {
   MercadoLivreStatus,
   MercadoLivreSimulationResult,
   MercadoLivreSyncResult,
+  MercadoLivreTitleSuggestions,
   MercadoLivreWebhookEventRecord,
   PhotoTreatmentPreviewResult,
   PhotoTreatmentRawPreviewResult,
@@ -189,6 +190,14 @@ export const api = {
       { method: "POST", body: JSON.stringify({ channel, confirm: true }) }
     ),
   unmarkSold: (id: string) => request<Product>(`/api/admin/products/${id}/unmark-sold`, { method: "POST" }),
+
+  // Etapa "título aprovado" — sugestões com contexto do catálogo inteiro
+  // (desduplicação) vêm de mercadoLivre.routes.ts; aprovar/remover aprovação
+  // são ações separadas de editar mlTitle (ver updateProduct).
+  getMlTitleSuggestions: (productId: string) =>
+    request<MercadoLivreTitleSuggestions>(`/api/admin/mercadolivre/title-suggestions/${productId}`),
+  approveMlTitle: (id: string) => request<Product>(`/api/admin/products/${id}/ml-title/approve`, { method: "POST" }),
+  unapproveMlTitle: (id: string) => request<Product>(`/api/admin/products/${id}/ml-title/unapprove`, { method: "POST" }),
 
   reorderImages: (productId: string, order: string[]) =>
     request<ProductImage[]>(`/api/products/${productId}/images/reorder`, {

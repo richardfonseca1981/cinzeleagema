@@ -45,6 +45,11 @@ async function createJourneyProduct() {
       trackStock: false,
       weightGrams: 850,
       sizeCm: 23,
+      // Título aprovado desde o início — esta jornada testa o ciclo de vida
+      // do anúncio (publicar/pausar/reativar/vender/webhook/sync), não a
+      // aprovação de título em si.
+      mlTitle: "Ametista Lapidada Jornada",
+      mlTitleApprovedAt: new Date(),
     },
   });
   await prisma.productImage.create({

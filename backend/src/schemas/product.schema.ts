@@ -2,6 +2,30 @@ import { z } from "zod";
 import { operationsSchema } from "../lib/imageOperations";
 import { SORT_VALUES } from "../lib/productSort";
 import { env } from "../lib/env";
+import { ML_TITLE_MAX_CHARS } from "../lib/mercadoLivre/listingValidator";
+import { containsBannedTerm } from "../lib/mercadoLivre/titleGenerator";
+import { containsContactInfoOrStoreName } from "../lib/mercadoLivre/descriptionSanitizer";
+
+// Título APROVADO para uso real no anúncio do Mercado Livre (ver
+// Product.mlTitle/mlTitleApprovedAt no schema, lib/mercadoLivre/listingBuilder.ts
+// resolveDraftTitle). Validado na ESCRITA (rejeita, nunca limpa em silêncio
+// — diferente de sanitizeTitleText/sanitizeMercadoLivreDescriptionText, que
+// são usados só na GERAÇÃO automática de sugestão): mesmo limite de 60
+// chars do anúncio (ML_TITLE_MAX_CHARS) e as MESMAS listas de termos
+// banidos/contato/nome da loja já usadas pelo gerador de sugestões e pelo
+// sanitizador da descrição, em vez de duas regras divergindo.
+const mlTitleSchema = z
+  .string()
+  .trim()
+  .min(1, "Título não pode ser vazio")
+  .max(ML_TITLE_MAX_CHARS, `Título deve ter no máximo ${ML_TITLE_MAX_CHARS} caracteres`)
+  .refine((v) => !containsBannedTerm(v), {
+    message: "Título não pode conter termos promocionais/de preço ou o nome da loja.",
+  })
+  .refine((v) => !containsContactInfoOrStoreName(v), {
+    message: "Título não pode conter URL, telefone ou o nome da loja.",
+  })
+  .nullable();
 
 // Nome, preço e categoria são opcionais (ver CONTEXT.md "campos opcionais") —
 // null é um valor válido e intencional, diferente de ausente (undefined):
@@ -40,6 +64,12 @@ const createProductSchemaObject = z.object({
   mlPackageOverrideWidthCm: z.coerce.number().positive().max(env.ML_PACKAGE_OVERRIDE_MAX_DIMENSION_CM).optional().nullable(),
   mlPackageOverrideHeightCm: z.coerce.number().positive().max(env.ML_PACKAGE_OVERRIDE_MAX_DIMENSION_CM).optional().nullable(),
   mlPackageOverrideWeightG: z.coerce.number().positive().max(env.ML_PACKAGE_OVERRIDE_MAX_WEIGHT_G).optional().nullable(),
+  // Título aprovado pro Mercado Livre (ver mlTitleSchema acima). Nunca inclui
+  // mlTitleApprovedAt aqui — aprovar é sempre uma ação explícita separada
+  // (POST /:id/ml-title/approve|unapprove, ver productStock.routes.ts);
+  // editar mlTitle por aqui SEMPRE limpa a aprovação anterior (ver
+  // product.routes.ts PATCH /:id).
+  mlTitle: mlTitleSchema.optional(),
 });
 
 // "Tudo ou nada": os 4 campos do override manual de embalagem (ver acima)

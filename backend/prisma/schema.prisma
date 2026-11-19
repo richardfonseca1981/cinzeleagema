@@ -122,6 +122,18 @@ model Product {
   mlPackageOverrideHeightCm Decimal? @db.Decimal(10, 2)
   mlPackageOverrideWeightG  Decimal? @db.Decimal(10, 2)
 
+  // Título APROVADO para uso real no anúncio do Mercado Livre (ver
+  // lib/mercadoLivre/listingBuilder.ts, fonte única de título). Null =
+  // nenhum título aprovado ainda — a prévia/simulação cai para a sugestão A
+  // do titleGenerator, marcada como "sugerido, não aprovado"; a publicação
+  // REAL fica bloqueada (ListingNotReadyCode "title_not_approved") enquanto
+  // mlTitleApprovedAt for null, mesmo com mlTitle preenchido. Editar mlTitle
+  // depois de aprovado limpa mlTitleApprovedAt automaticamente (ver
+  // product.routes.ts) — aprovar é sempre uma ação explícita separada
+  // (POST /:id/ml-title/approve), nunca implícita na edição.
+  mlTitle           String?
+  mlTitleApprovedAt DateTime?
+
   images ProductImage[]
   mercadoLivreListings MercadoLivreListing[]
 

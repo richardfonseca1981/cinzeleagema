@@ -175,6 +175,20 @@ describe("buildSimulationCsvRows", () => {
     expect(rows[0].titulo).not.toBe(rows[1].titulo);
   });
 
+  it("mlTitle aprovado vence a sugestão do lote (fonte única de título)", () => {
+    const product = baseProduct({ mlTitle: "Ametista Uruguaia Peça Única", mlTitleApprovedAt: new Date() });
+    const rows = buildSimulationCsvRows(["AME-001"], [product], 0);
+    expect(rows[0].titulo).toBe("Ametista Uruguaia Peça Única");
+    expect(rows[0].avisos).not.toContain("title_not_approved");
+  });
+
+  it("mlTitle preenchido mas SEM aprovação cai na sugestão do lote, e title_not_approved aparece em avisos", () => {
+    const product = baseProduct({ mlTitle: "Ametista Uruguaia Peça Única", mlTitleApprovedAt: null });
+    const rows = buildSimulationCsvRows(["AME-001"], [product], 0);
+    expect(rows[0].titulo).not.toBe("Ametista Uruguaia Peça Única");
+    expect(rows[0].avisos).toContain("title_not_approved");
+  });
+
   it("preserva a ordem e repetição dos SKUs pedidos (não a ordem dos produtos encontrados)", () => {
     const product = baseProduct({ price: 1000 });
     const rows = buildSimulationCsvRows(["NAO-EXISTE", "AME-001"], [product], 0);

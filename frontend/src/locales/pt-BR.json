@@ -455,6 +455,36 @@
       "weightG": "Peso do pacote (g)",
       "partialWarning": "Preencha os 4 campos juntos (ou nenhum) — só alguns preenchidos será rejeitado ao salvar."
     },
+    "mlTitle": {
+      "title": "Título no Mercado Livre",
+      "hint": "Sem aprovação, a publicação real usa a sugestão A automática (marcada como não aprovada) e fica bloqueada. Aprove um título antes de publicar de verdade.",
+      "loading": "Carregando sugestões...",
+      "fieldLabel": "Título do anúncio",
+      "charCount": "{{count}}/{{max}} caracteres",
+      "approvedBadge": "Aprovado",
+      "notApprovedBadge": "Sugerido, não aprovado",
+      "suggestionsTitle": "Sugestões (catálogo inteiro, com desduplicação)",
+      "suggestionA": "Sugestão A",
+      "suggestionB": "Sugestão B",
+      "useSuggestion": "Usar",
+      "noSuggestionB": "Sem sugestão B diferenciada para esta peça.",
+      "collisionWarning": "Colide com o título já aprovado de outra peça (SKU/ID {{productId}}).",
+      "approveButton": "Aprovar",
+      "unapproveButton": "Remover aprovação",
+      "saveButton": "Salvar título",
+      "saving": "Salvando...",
+      "errors": {
+        "loadSuggestions": "Não foi possível carregar as sugestões de título",
+        "save": "Não foi possível salvar o título",
+        "approve": "Não foi possível aprovar o título",
+        "unapprove": "Não foi possível remover a aprovação"
+      },
+      "toasts": {
+        "saved": "Título salvo",
+        "approved": "Título aprovado",
+        "unapproved": "Aprovação removida"
+      }
+    },
     "publish": {
       "previewButton": "Prévia de publicação",
       "previewing": "Gerando prévia...",
@@ -465,6 +495,7 @@
       "issuesTitle": "Pendências (bloqueiam a publicação real):",
       "issues": {
         "category_not_verified": "Categoria do Mercado Livre ainda não confirmada.",
+        "title_not_approved": "Título do anúncio ainda não foi aprovado.",
         "package_requires_manual": "Peça fora das faixas de preset de embalagem — precisa de ajuste manual."
       },
       "publishableYes": "Sem pendências — pronta para publicação real.",

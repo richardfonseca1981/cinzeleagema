@@ -83,10 +83,12 @@ function makeSimulation(overrides: Partial<MercadoLivreSimulationResult> = {}): 
     draft: {
       title: "Ametista Lapidada",
       titleTruncated: false,
+      titleApproved: true,
       description: "Peça lapidada.",
       photos: ["https://cdn.test/a.jpg"],
       photosOmitted: 0,
       category: { id: "MLB_FIXME", breadcrumb: ["Joias", "Pedras"], verified: false },
+      basePrice: 1200,
       packageBox: { ok: true, source: "preset", preset: "M", box: { lengthCm: 35, widthCm: 28, heightCm: 20 }, packageWeightGrams: 1150 },
       packageBoxSource: "preset",
     },

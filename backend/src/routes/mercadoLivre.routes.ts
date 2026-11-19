@@ -16,7 +16,8 @@ import {
 import { isMercadoLivreConfigured } from "../lib/mercadoLivre/crypto";
 import { logMercadoLivreAttempt } from "../lib/mercadoLivre/log";
 import { validateListing } from "../lib/mercadoLivre/listingValidator";
-import { buildListingDraft, ListingNotReadyError } from "../lib/mercadoLivre/listingBuilder";
+import { generateTitleSuggestions, normalizeForMatch } from "../lib/mercadoLivre/titleGenerator";
+import { buildListingDraft, getReadinessIssues, ListingNotReadyError } from "../lib/mercadoLivre/listingBuilder";
 import {
   buildMercadoLivreItemPayload,
   buildMercadoLivreItemPayloadPreview,
@@ -55,6 +56,53 @@ import { mercadoLivreCloseBodySchema, mercadoLivrePauseAllBodySchema } from "../
 // requireAuth em todas as rotas, como pedido.
 export const mercadoLivreRouter = Router();
 mercadoLivreRouter.use(requireAuth);
+
+// Etapa "título aprovado" — sugestões A/B geradas com o contexto do
+// CATÁLOGO INTEIRO (mesma função usada pelo script generateTitleSuggestions.ts,
+// pra manter a desduplicação entre peças de mesmo nome — ver titleGenerator.ts).
+// Nunca chama a API do Mercado Livre; registrada ANTES do middleware de 503
+// abaixo pelo mesmo motivo do /simulate acima.
+mercadoLivreRouter.get(
+  "/title-suggestions/:productId",
+  asyncHandler(async (req, res) => {
+    const products = await prisma.product.findMany({
+      include: { images: { orderBy: { position: "asc" } } },
+      orderBy: { sortOrder: "asc" },
+    });
+    const target = products.find((p) => p.id === req.params.productId);
+    if (!target) throw new HttpError(404, "Peça não encontrada");
+
+    const row = generateTitleSuggestions(products).find((r) => r.id === target.id)!;
+
+    // Colisão com o mlTitle JÁ APROVADO de OUTRAS peças — a desduplicação
+    // de generateTitleSuggestions só compara sugestões entre si dentro desta
+    // mesma chamada, nunca contra um título que outra peça já tem aprovado.
+    const collisions: Array<{ field: "titleA" | "titleB"; productId: string; mlTitle: string }> = [];
+    for (const other of products) {
+      if (other.id === target.id) continue;
+      const otherTitle = other.mlTitle?.trim();
+      if (!otherTitle) continue;
+      const normalizedOther = normalizeForMatch(otherTitle);
+      if (row.titleA && normalizeForMatch(row.titleA) === normalizedOther) {
+        collisions.push({ field: "titleA", productId: other.id, mlTitle: otherTitle });
+      }
+      if (row.titleB && normalizeForMatch(row.titleB) === normalizedOther) {
+        collisions.push({ field: "titleB", productId: other.id, mlTitle: otherTitle });
+      }
+    }
+
+    res.json({
+      productId: target.id,
+      currentName: row.currentName,
+      titleA: row.titleA,
+      titleALength: row.titleALength,
+      titleB: row.titleB,
+      titleBLength: row.titleBLength,
+      warnings: row.warnings,
+      collisions,
+    });
+  })
+);
 
 // Simulação e auditoria (Fase 1A): nunca chamam a API do Mercado Livre, só
 // montam/validam/precificam localmente a partir do catálogo — por isso
@@ -99,6 +147,10 @@ mercadoLivreRouter.get(
       productId: product.id,
       eligible: true,
       warnings: validation.warnings,
+      // Mesmos códigos de getReadinessIssues (listingBuilder.ts) — inclui
+      // "title_not_approved" enquanto draft.title vier do fallback (ver
+      // resolveDraftTitle), nunca do mlTitle aprovado de verdade.
+      issues: getReadinessIssues(draft),
       draft,
       price: {
         ...price,

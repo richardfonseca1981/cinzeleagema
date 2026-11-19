@@ -244,9 +244,21 @@ export function buildSimulationCsvRows(
       shippingCostBRL: priceConfig.shippingCostBRL,
     });
 
+    // Fonte ÚNICA de título (mesma regra de listingBuilder.ts
+    // resolveDraftTitle): mlTitle aprovado sempre vence. Sem aprovação,
+    // usa titleRow.titleA (não draft.title) de propósito — titleRow vem de
+    // generateTitleSuggestions(products) com o LOTE INTEIRO dos SKUs
+    // pedidos, mantendo a desduplicação por peso entre peças de mesmo nome
+    // (ver teste "reaproveita a desduplicação em lote..."); draft.title
+    // reconstruiria a sugestão isoladamente, sem ver as peças vizinhas do
+    // lote. "avisos" já carrega title_not_approved via getReadinessIssues
+    // quando não há aprovação.
+    const approvedTitle = product.mlTitle?.trim();
+    const titulo = approvedTitle && product.mlTitleApprovedAt ? approvedTitle : titleRow?.titleA ?? "";
+
     return {
       sku,
-      titulo: titleRow?.titleA ?? "",
+      titulo,
       preco_base: formatDecimal(price.basePrice),
       acrescimo: formatDecimal(price.markupAmount),
       preco_anuncio: formatDecimal(price.listingPrice),

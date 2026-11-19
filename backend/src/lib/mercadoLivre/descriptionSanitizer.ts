@@ -78,6 +78,30 @@ function cleanupLines(text: string): string {
     .join("\n");
 }
 
+// Clona a regex antes de testar — as constantes acima usam a flag `g`, cujo
+// `.lastIndex` fica stateful entre chamadas de `.test()` no MESMO objeto
+// (chamadas alternadas poderiam "pular" um match real). Usado só por
+// containsContactInfoOrStoreName abaixo; sanitizeMercadoLivreDescriptionText
+// usa `.replace()`, que não tem esse problema.
+function matchesPattern(pattern: RegExp, text: string): boolean {
+  return new RegExp(pattern.source, pattern.flags).test(text);
+}
+
+// Exportado para schemas/product.schema.ts REJEITAR (zod .refine) um mlTitle
+// que contenha contato/nome da loja, reaproveitando os MESMOS padrões desta
+// sanitização defensiva da descrição — em vez de remover em silêncio
+// (comportamento de sanitizeMercadoLivreDescriptionText), aqui a escrita é
+// bloqueada com erro de validação.
+export function containsContactInfoOrStoreName(text: string): boolean {
+  if (matchesPattern(EMAIL_PATTERN, text)) return true;
+  if (matchesPattern(URL_PATTERN, text)) return true;
+  if (matchesPattern(MENTION_PATTERN, text)) return true;
+  if (matchesPattern(TRIGGER_THEN_PHONE, text)) return true;
+  if (matchesPattern(PHONE_THEN_TRIGGER, text)) return true;
+  if (matchesPattern(BARE_PHONE_PATTERN, text)) return true;
+  return STORE_NAME_TERMS.some((term) => new RegExp(`\\b${escapeRegExp(term)}\\b`, "i").test(text));
+}
+
 export function sanitizeMercadoLivreDescriptionText(text: string): string {
   let result = text;
   // E-mail ANTES de URL: o domínio nu do e-mail ("outraloja.com.br" em

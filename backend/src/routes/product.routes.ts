@@ -278,12 +278,19 @@ productRouter.patch(
     const nameCleared = data.name !== undefined && data.name === null;
     const descriptionCleared = data.description !== undefined && data.description === null;
 
+    // Editar mlTitle SEMPRE limpa a aprovação anterior (mlTitleApprovedAt
+    // nunca é aceito direto no payload — ver mlTitleSchema — só zerado aqui
+    // ou setado pelas rotas dedicadas /ml-title/approve|unapprove). Mesmo
+    // valor reenviado sem mudança nenhuma não derruba a aprovação.
+    const mlTitleChanged = data.mlTitle !== undefined && data.mlTitle !== existing.mlTitle;
+
     const product = await prisma.product.update({
       where: { id: req.params.id },
       data: {
         ...data,
         ...(nameCleared ? { nameEn: null } : {}),
         ...(descriptionCleared ? { descriptionEn: null } : {}),
+        ...(mlTitleChanged ? { mlTitleApprovedAt: null } : {}),
       },
       include: { images: { orderBy: { position: "asc" } }, category: true, subcategory: true },
     });

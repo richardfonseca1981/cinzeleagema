@@ -122,6 +122,11 @@ export interface Product {
   mlPackageOverrideWidthCm?: string | null;
   mlPackageOverrideHeightCm?: string | null;
   mlPackageOverrideWeightG?: string | null;
+  // Título aprovado pro anúncio do Mercado Livre — null = nenhuma aprovação
+  // ainda (a prévia cai pra sugestão A, marcada "sugerido, não aprovado").
+  // Editar mlTitle sempre limpa mlTitleApprovedAt (ver backend).
+  mlTitle?: string | null;
+  mlTitleApprovedAt?: string | null;
   trackStock: boolean;
   stockQty: number | null;
   images: ProductImage[];
@@ -373,14 +378,31 @@ export type MercadoLivrePackageBoxEstimate =
 export interface MercadoLivreListingDraft {
   title: string;
   titleTruncated: boolean;
+  // true só quando title veio de Product.mlTitle aprovado — false = caiu
+  // na sugestão A do titleGenerator (ver backend listingBuilder.ts
+  // resolveDraftTitle); "title_not_approved" aparece em issues enquanto for false.
+  titleApproved: boolean;
   description: string;
   photos: string[];
   photosOmitted: number;
   // id placeholder (não verificado) enquanto a Fase 1B não confirmar a
   // categoria real via API — ver backend/src/lib/mercadoLivre/categoryFixture.ts.
   category: { id: string; breadcrumb: string[]; verified: boolean };
+  basePrice: number;
   packageBox: MercadoLivrePackageBoxEstimate;
   packageBoxSource: MercadoLivrePackageBoxSource | null;
+}
+
+// Etapa "título aprovado" — GET /api/admin/mercadolivre/title-suggestions/:productId.
+export interface MercadoLivreTitleSuggestions {
+  productId: string;
+  currentName: string;
+  titleA: string | null;
+  titleALength: number | null;
+  titleB: string | null;
+  titleBLength: number | null;
+  warnings: MercadoLivreIssue<string>[];
+  collisions: { field: "titleA" | "titleB"; productId: string; mlTitle: string }[];
 }
 
 export interface MercadoLivrePriceBreakdown {
@@ -401,6 +423,7 @@ export interface MercadoLivreSimulationResult {
   eligible: boolean;
   blockers?: MercadoLivreIssue<MercadoLivreBlockerCode>[];
   warnings: MercadoLivreIssue<MercadoLivreWarningCode>[];
+  issues?: MercadoLivreReadinessIssue[];
   draft?: MercadoLivreListingDraft;
   price?: MercadoLivrePriceBreakdown;
 }
@@ -409,7 +432,7 @@ export interface MercadoLivreSimulationResult {
 // mercadoLivre.routes.ts POST /publish/:productId). `issues` só aparece em
 // dry-run (ver buildMercadoLivreItemPayloadPreview) — modo real nunca
 // devolve payload com pendências, ou publica ou bloqueia com erro.
-export type MercadoLivreReadinessIssue = "category_not_verified" | "package_requires_manual";
+export type MercadoLivreReadinessIssue = "category_not_verified" | "title_not_approved" | "package_requires_manual";
 
 export interface MercadoLivreItemPayload {
   title: string;

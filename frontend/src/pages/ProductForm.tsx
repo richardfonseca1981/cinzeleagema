@@ -5,6 +5,7 @@ import { api, ApiError } from "../lib/api";
 import type { Category, ProductImage } from "../types";
 import { ImageManager, type ImageManagerHandle } from "../components/ImageManager";
 import { IdentificationPanel } from "../components/IdentificationPanel";
+import { MlTitlePanel } from "../components/MlTitlePanel";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { useToast } from "../components/Toast";
 import { backToListPath } from "../lib/productListState";
@@ -49,6 +50,11 @@ export function ProductForm() {
   const [mlPackageWidthCm, setMlPackageWidthCm] = useState("");
   const [mlPackageHeightCm, setMlPackageHeightCm] = useState("");
   const [mlPackageWeightG, setMlPackageWeightG] = useState("");
+  // Etapa "título aprovado" — painel autocontido (ver MlTitlePanel.tsx),
+  // salva por rotas próprias; este estado só espelha o que está salvo, pra
+  // reexibir corretamente depois de aprovar/editar sem recarregar a página.
+  const [mlTitle, setMlTitle] = useState<string | null>(null);
+  const [mlTitleApprovedAt, setMlTitleApprovedAt] = useState<string | null>(null);
 
   const [saving, setSaving] = useState(false);
   const [savingPhase, setSavingPhase] = useState<"data" | "images" | null>(null);
@@ -86,6 +92,8 @@ export function ProductForm() {
         setMlPackageWidthCm(product.mlPackageOverrideWidthCm != null ? String(product.mlPackageOverrideWidthCm) : "");
         setMlPackageHeightCm(product.mlPackageOverrideHeightCm != null ? String(product.mlPackageOverrideHeightCm) : "");
         setMlPackageWeightG(product.mlPackageOverrideWeightG != null ? String(product.mlPackageOverrideWeightG) : "");
+        setMlTitle(product.mlTitle ?? null);
+        setMlTitleApprovedAt(product.mlTitleApprovedAt ?? null);
         setImages(product.images ?? []);
         setSaved({ name: product.name, sku: product.sku, active: product.active });
         setProductId(product.id);
@@ -232,6 +240,20 @@ export function ProductForm() {
       {productId && (
         <div className="mb-6">
           <IdentificationPanel productId={productId} productName={name} hasPhotos={images.length > 0} />
+        </div>
+      )}
+
+      {productId && (
+        <div className="mb-6">
+          <MlTitlePanel
+            productId={productId}
+            mlTitle={mlTitle}
+            mlTitleApprovedAt={mlTitleApprovedAt}
+            onChange={({ mlTitle: nextTitle, mlTitleApprovedAt: nextApprovedAt }) => {
+              setMlTitle(nextTitle);
+              setMlTitleApprovedAt(nextApprovedAt);
+            }}
+          />
         </div>
       )}
 

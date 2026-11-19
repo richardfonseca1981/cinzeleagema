@@ -2,6 +2,7 @@ import { env } from "../env";
 import { resolveTitle, resolveBodyText, type CatalogProductContent } from "../catalog/content";
 import { GEMSTONE_CATEGORY_FIXTURE, ML_FIXME_CATEGORY_ID, type MercadoLivreCategoryFixture } from "./categoryFixture";
 import { ML_MAX_PHOTOS, ML_TITLE_MAX_CHARS } from "./listingValidator";
+import { generateSingleTitleSuggestion } from "./titleGenerator";
 import {
   estimatePackageBox,
   getPackageOverrideCeilings,
@@ -10,18 +11,32 @@ import {
   type PackageBoxSource,
 } from "./packagePresets";
 
+// width/height exigidos (nullable, nunca ausentes) desde a etapa "título
+// aprovado" — necessários pra passar a mesma peça direto pro titleGenerator
+// (ver resolveDraftTitle abaixo) sem reconstruir o objeto.
 export interface ListingBuilderImage {
   url: string;
   position: number;
+  width: number | null;
+  height: number | null;
 }
 
 // 'NATURAL' | 'TINGIDA' | 'POSSIVEL_TINGIMENTO' | 'SEM_INDICIO' | null — ver
 // Product.identificationTreatment no schema.
 export interface ListingBuilderInput extends CatalogProductContent {
+  id: string;
   identificationTreatment: string | null;
   images: ListingBuilderImage[];
   weightGrams: unknown; // Decimal do Prisma ou já convertido — idem ListingValidationInput.
   sizeCm: unknown;
+  price: unknown;
+  active: boolean;
+  trackStock: boolean;
+  stockQty: number | null;
+  // Título APROVADO (ver schema.prisma Product.mlTitle/mlTitleApprovedAt) —
+  // fonte única de título do anúncio (ver resolveDraftTitle abaixo).
+  mlTitle: string | null;
+  mlTitleApprovedAt: Date | null;
   // Fase 1B etapa 10 — override manual de embalagem (ver schema.prisma
   // Product.mlPackageOverride*) — opcionais pra não quebrar nenhum chamador/
   // fixture de teste anterior a esta etapa (ausentes = sem override, mesmo
@@ -35,10 +50,21 @@ export interface ListingBuilderInput extends CatalogProductContent {
 export interface MercadoLivreListingDraft {
   title: string;
   titleTruncated: boolean;
+  // true só quando o título veio de Product.mlTitle COM mlTitleApprovedAt
+  // preenchido — false quando caiu no fallback (sugestão A do
+  // titleGenerator, ver resolveDraftTitle). getReadinessIssues/
+  // assertReadyToPublish bloqueiam a publicação real enquanto for false
+  // (code "title_not_approved").
+  titleApproved: boolean;
   description: string;
   photos: string[];
   photosOmitted: number;
   category: MercadoLivreCategoryFixture;
+  // Preço BASE da peça (Product.price, sem markup) — usado só por
+  // getReadinessIssues/assertReadyToPublish pra checar ML_MIN_LISTING_PRICE
+  // (ver lib/env.ts); o preço de ANÚNCIO (com markup) nunca passa por aqui,
+  // continua vindo de fora (ver publisherPayload.ts listingPriceBRL).
+  basePrice: number;
   // Estimativa de caixa/peso de embalagem (Fase 1B etapa 4, ver
   // packagePresets.ts) — `ok: false` quando a peça excede o maior preset
   // (GG) e precisa de override manual; assertReadyToPublish abaixo bloqueia
@@ -49,6 +75,25 @@ export interface MercadoLivreListingDraft {
   // packageBox) porque é a origem explicitamente pedida pra aparecer na
   // simulação/prévia/CSV.
   packageBoxSource: PackageBoxSource | null;
+}
+
+// Fonte ÚNICA de título do anúncio (listingBuilder, publisherPayload, script
+// de simulação e tela do admin — todos passam por buildListingDraft, nunca
+// decidem título por fora): Product.mlTitle só conta como aprovado com
+// mlTitleApprovedAt preenchido; sem isso, cai pra sugestão A do
+// titleGenerator (gerada só com esta peça, sem o contexto de desduplicação
+// do catálogo inteiro — essa dedup é exclusiva da tela de aprovação, ver GET
+// /title-suggestions/:productId). Sem NENHUMA sugestão possível (caso
+// degenerado, titleGenerator não produziu titleA), cai pro nome resolvido
+// puro — nunca string vazia.
+function resolveDraftTitle(product: ListingBuilderInput): { title: string; approved: boolean } {
+  const approvedTitle = product.mlTitle?.trim();
+  if (approvedTitle && product.mlTitleApprovedAt) {
+    return { title: approvedTitle, approved: true };
+  }
+
+  const suggestion = generateSingleTitleSuggestion(product);
+  return { title: suggestion?.titleA ?? resolveTitle(product, "pt"), approved: false };
 }
 
 // Disclosure de tratamento na descrição — exigência de honestidade do
@@ -75,9 +120,16 @@ function toNumberOrZero(value: unknown): number {
 // API do Mercado Livre.
 export function buildListingDraft(product: ListingBuilderInput): MercadoLivreListingDraft {
   const title = resolveTitle(product, "pt");
-  const { value: finalTitle, truncated } = truncateTitle(title);
-
   const body = resolveBodyText(product, "pt", title);
+
+  // Título do ANÚNCIO (diferente de `title` acima, que é só o nome
+  // resolvido do catálogo, usado pela descrição/disclosure) — ver
+  // resolveDraftTitle: mlTitle aprovado > sugestão A do titleGenerator.
+  // truncateTitle aqui é só uma rede de segurança (mlTitle já é validado em
+  // <= 60 chars na escrita, ver schemas/product.schema.ts; a sugestão
+  // gerada também já respeita o limite) — nunca deveria disparar na prática.
+  const { title: draftTitleSource, approved: titleApproved } = resolveDraftTitle(product);
+  const { value: finalTitle, truncated } = truncateTitle(draftTitleSource);
   const disclosure = product.identificationTreatment ? TREATMENT_DISCLOSURE[product.identificationTreatment] : null;
   const descriptionParts = [body?.text, disclosure].filter((part): part is string => Boolean(part?.trim()));
   const description =
@@ -109,11 +161,13 @@ export function buildListingDraft(product: ListingBuilderInput): MercadoLivreLis
   return {
     title: finalTitle,
     titleTruncated: truncated,
+    titleApproved,
     packageBoxSource: packageBox.ok ? packageBox.source : null,
     description,
     photos,
     photosOmitted: Math.max(0, orderedImages.length - ML_MAX_PHOTOS),
     category: GEMSTONE_CATEGORY_FIXTURE,
+    basePrice: toNumberOrZero(product.price),
     packageBox,
   };
 }
@@ -126,7 +180,7 @@ export function buildListingDraft(product: ListingBuilderInput): MercadoLivreLis
 // MOTIVO do bloqueio sem precisar fazer regex na mensagem — útil agora que
 // assertReadyToPublish tem mais de um motivo possível (categoria vs.
 // embalagem, ver abaixo).
-export type ListingNotReadyCode = "category_not_verified" | "package_requires_manual";
+export type ListingNotReadyCode = "category_not_verified" | "title_not_approved" | "package_requires_manual";
 
 export class ListingNotReadyError extends Error {
   constructor(message: string, public readonly code: ListingNotReadyCode | "unknown" = "unknown") {
@@ -145,6 +199,7 @@ export class ListingNotReadyError extends Error {
 export function getReadinessIssues(draft: MercadoLivreListingDraft): ListingNotReadyCode[] {
   const issues: ListingNotReadyCode[] = [];
   if (!draft.category.verified || draft.category.id === ML_FIXME_CATEGORY_ID) issues.push("category_not_verified");
+  if (!draft.titleApproved) issues.push("title_not_approved");
   if (!draft.packageBox.ok) issues.push("package_requires_manual");
   return issues;
 }
@@ -163,6 +218,12 @@ export function assertReadyToPublish(draft: MercadoLivreListingDraft): void {
     throw new ListingNotReadyError(
       `Categoria do Mercado Livre ainda não verificada (placeholder "${draft.category.id}") — publicação bloqueada até confirmar a categoria real via API.`,
       "category_not_verified"
+    );
+  }
+  if (!draft.titleApproved) {
+    throw new ListingNotReadyError(
+      "Título do anúncio ainda não foi aprovado — aprove um mlTitle (ou use a sugestão gerada) antes de publicar de verdade (title_not_approved).",
+      "title_not_approved"
     );
   }
   if (!draft.packageBox.ok) {

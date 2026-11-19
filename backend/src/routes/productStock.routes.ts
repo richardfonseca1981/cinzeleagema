@@ -61,3 +61,41 @@ productStockRouter.post(
     res.json(updated);
   })
 );
+
+// Etapa "título aprovado" — aprovar/remover aprovação são SEMPRE ações
+// explícitas e separadas de editar mlTitle (ver product.routes.ts PATCH
+// /:id, que já limpa mlTitleApprovedAt sozinho quando mlTitle muda). Exige
+// mlTitle preenchido pra aprovar (nunca aprova string vazia/nula) — não há
+// corpo de requisição em nenhuma das duas.
+productStockRouter.post(
+  "/:id/ml-title/approve",
+  asyncHandler(async (req, res) => {
+    const product = await prisma.product.findUnique({ where: { id: req.params.id } });
+    if (!product) throw new HttpError(404, "Produto não encontrado");
+    if (!product.mlTitle?.trim()) {
+      throw new HttpError(400, "Defina um título (mlTitle) antes de aprovar.");
+    }
+
+    const updated = await prisma.product.update({
+      where: { id: product.id },
+      data: { mlTitleApprovedAt: new Date() },
+      include: PRODUCT_INCLUDE,
+    });
+    res.json(updated);
+  })
+);
+
+productStockRouter.post(
+  "/:id/ml-title/unapprove",
+  asyncHandler(async (req, res) => {
+    const product = await prisma.product.findUnique({ where: { id: req.params.id } });
+    if (!product) throw new HttpError(404, "Produto não encontrado");
+
+    const updated = await prisma.product.update({
+      where: { id: product.id },
+      data: { mlTitleApprovedAt: null },
+      include: PRODUCT_INCLUDE,
+    });
+    res.json(updated);
+  })
+);

@@ -10,8 +10,16 @@ import { ML_FIXME_CATEGORY_ID } from "../src/lib/mercadoLivre/categoryFixture";
 import { ML_MAX_PHOTOS, ML_TITLE_MAX_CHARS } from "../src/lib/mercadoLivre/listingValidator";
 
 function baseProduct(overrides: Partial<ListingBuilderInput> = {}): ListingBuilderInput {
+  // mlTitle aprovado por padrão, espelhando o nome — mantém os testes deste
+  // arquivo focados em título/descrição/fotos/embalagem, não na lógica de
+  // fallback do titleGenerator quando NÃO há aprovação (ver
+  // tests/mercadoLivreTitleGenerator.test.ts e mercadoLivreListingBuilderTitle.test.ts
+  // para o fallback em si). Override de `name` sem override de `mlTitle`
+  // mantém os dois sincronizados (ex.: teste de truncamento).
+  const name = overrides.name !== undefined ? overrides.name : "Esmeralda Colombiana 2.3ct";
   return {
-    name: "Esmeralda Colombiana 2.3ct",
+    id: "prod-1",
+    name,
     nameEn: null,
     sku: "ESM-001",
     description: "Peça lapidada, brilho intenso.",
@@ -19,11 +27,17 @@ function baseProduct(overrides: Partial<ListingBuilderInput> = {}): ListingBuild
     identificationPt: null,
     identificationEn: null,
     identificationTreatment: null,
+    price: 1500,
+    active: true,
+    trackStock: false,
+    stockQty: null,
     weightGrams: 500,
     sizeCm: 10,
+    mlTitle: name,
+    mlTitleApprovedAt: new Date("2026-01-01T00:00:00Z"),
     images: [
-      { url: "https://r2.example/esm-1.webp", position: 0 },
-      { url: "https://r2.example/esm-2.webp", position: 1 },
+      { url: "https://r2.example/esm-1.webp", position: 0, width: 1080, height: 1920 },
+      { url: "https://r2.example/esm-2.webp", position: 1, width: 1080, height: 1920 },
     ],
     ...overrides,
   };
@@ -63,8 +77,8 @@ describe("buildListingDraft", () => {
     const draft = buildListingDraft(
       baseProduct({
         images: [
-          { url: "segunda", position: 1 },
-          { url: "primeira", position: 0 },
+          { url: "segunda", position: 1, width: 1080, height: 1920 },
+          { url: "primeira", position: 0, width: 1080, height: 1920 },
         ],
       })
     );
@@ -72,7 +86,7 @@ describe("buildListingDraft", () => {
   });
 
   it(`corta em ${ML_MAX_PHOTOS} fotos e reporta quantas ficaram de fora`, () => {
-    const images = Array.from({ length: 15 }, (_, i) => ({ url: `foto-${i}`, position: i }));
+    const images = Array.from({ length: 15 }, (_, i) => ({ url: `foto-${i}`, position: i, width: 1080, height: 1920 }));
     const draft = buildListingDraft(baseProduct({ images }));
     expect(draft.photos).toHaveLength(ML_MAX_PHOTOS);
     expect(draft.photosOmitted).toBe(3);
