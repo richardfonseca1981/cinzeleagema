@@ -5,7 +5,7 @@ import { api, ApiError } from "../lib/api";
 import type { Product } from "../types";
 import { PublicHeader } from "../components/landing/PublicHeader";
 import { WhatsAppFloatingButton } from "../components/landing/WhatsAppFloatingButton";
-import { Seo } from "../components/Seo";
+import { Seo, SITE_URL } from "../components/Seo";
 import { formatPrice, formatWeightSize, localizeCategoryName, localizeProductName, localizeText } from "../lib/format";
 import { WHATSAPP_HREF, buildPriceInquiryHref } from "../lib/whatsapp";
 import { useCart } from "../lib/cart";
@@ -13,6 +13,7 @@ import { useExchangeRate } from "../lib/exchangeRate";
 import { useToast } from "../components/Toast";
 import { ProductGallery } from "../components/ProductGallery";
 import { galleryItemsFromImages } from "../lib/gallery";
+import { buildBreadcrumbJsonLd, buildProductJsonLd } from "../lib/jsonLd";
 
 export function ProductDetail() {
   const { t, i18n } = useTranslation();
@@ -23,6 +24,7 @@ export function ProductDetail() {
   const exchangeRate = useExchangeRate();
   const [product, setProduct] = useState<Product | null>(null);
   const [canonicalSlug, setCanonicalSlug] = useState<string | null>(null);
+  const [available, setAvailable] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -46,13 +48,14 @@ export function ProductDetail() {
     setNotFound(false);
     api
       .getProductBySlug(slugComId)
-      .then(({ product, canonicalSlug }) => {
+      .then(({ product, canonicalSlug, available }) => {
         if (slugComId.toLowerCase() !== canonicalSlug) {
           navigate(`/catalogo/${canonicalSlug}`, { replace: true });
           return;
         }
         setProduct(product);
         setCanonicalSlug(canonicalSlug);
+        setAvailable(available);
       })
       .catch((err) => {
         if (err instanceof ApiError && err.status === 404) setNotFound(true);
@@ -89,6 +92,29 @@ export function ProductDetail() {
               : t("seo.product.description", { name: displayName })
           }
           path={`/catalogo/${canonicalSlug}`}
+          noindex={!available}
+          jsonLd={[
+            buildBreadcrumbJsonLd([
+              { name: t("seo.breadcrumb.home"), url: SITE_URL },
+              { name: t("seo.breadcrumb.catalog"), url: `${SITE_URL}/catalogo` },
+              { name: displayName, url: `${SITE_URL}/catalogo/${canonicalSlug}` },
+            ]),
+            // Peça indisponível ou sem preço real ("Consulte o valor"): sem
+            // Product JSON-LD, mesma decisão de routes/preview.routes.ts no
+            // backend (nunca inventa nem omite um Offer que o schema exige).
+            ...(available && price !== null
+              ? [
+                  buildProductJsonLd({
+                    name: displayName,
+                    description: displayDescription || null,
+                    sku: product.sku,
+                    price: Number(price),
+                    productImageUrl: galleryItemsFromImages(product.images)[0]?.url ?? `${SITE_URL}/og-default.jpg`,
+                    canonicalUrl: `${SITE_URL}/catalogo/${canonicalSlug}`,
+                  }),
+                ]
+              : []),
+          ]}
         />
       )}
       <PublicHeader />

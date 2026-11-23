@@ -24,7 +24,9 @@ export const PHOTO_MAX_UPLOAD_BYTES = 15 * 1024 * 1024;
 // Proteção contra "bombas" de descompressão (36 MP = 4536×8064 passa folgado).
 export const PHOTO_MAX_INPUT_PIXELS = 120_000_000;
 // Cor de fundo quando a foto tem transparência (não há o que desfocar).
-const TRANSPARENT_BACKGROUND = { r: 241, g: 245, b: 249 };
+// Exportada: reaproveitada por lib/seo/ogImage.ts ao achatar o derivado JPEG
+// de og:image (que não suporta canal alfa).
+export const TRANSPARENT_BACKGROUND = { r: 241, g: 245, b: 249 };
 // O fundo desfocado é calculado numa versão reduzida por este fator.
 const BACKGROUND_SHRINK = 8;
 const BACKGROUND_BLUR_SIGMA = 6;

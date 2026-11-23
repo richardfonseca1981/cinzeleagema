@@ -133,8 +133,12 @@ export const api = {
   // quanto com a URL antiga (cuid puro). `canonicalSlug` é o slug ATUAL
   // (derivado do nome de agora) — ProductDetail redireciona quando o
   // parâmetro da URL não bate com ele (peça renomeada ou link antigo).
+  // `available`: mesma regra de elegibilidade do sitemap (ver
+  // backend/src/lib/sitemapEligibility.ts) — peça vendida/inativa/sem
+  // estoque/placeholder. ProductDetail usa para `noindex` e para decidir se
+  // monta o Product JSON-LD (ver lib/jsonLd.ts).
   getProductBySlug: (slugComId: string) =>
-    request<{ product: Product; canonicalSlug: string }>(`/api/products/by-slug/${slugComId}`),
+    request<{ product: Product; canonicalSlug: string; available: boolean }>(`/api/products/by-slug/${slugComId}`),
 
   createOrder: (data: {
     customerName: string;

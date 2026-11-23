@@ -362,6 +362,10 @@
       "title": "Gemstone catalog — Cinzel e a Gema",
       "description": "Browse the full gemstone catalog from Cinzel e a Gema: weight, size, category and availability for each piece."
     },
+    "breadcrumb": {
+      "home": "Home",
+      "catalog": "Catalog"
+    },
     "product": {
       "titleSuffix": "Cinzel e a Gema",
       "description": "{{name}} — gemstone for sale at Cinzel e a Gema.",
