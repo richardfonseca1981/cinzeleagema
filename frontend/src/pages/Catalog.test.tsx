@@ -192,5 +192,9 @@ describe("Catalog — busca", () => {
     expect(document.querySelector('link[rel="canonical"]')?.getAttribute("href")).toBe(
       "https://www.cinzeleagema.com.br/catalogo"
     );
+
+    const scripts = document.querySelectorAll('script[type="application/ld+json"]');
+    const jsonLd = Array.from(scripts).map((el) => JSON.parse(el.textContent ?? "{}"));
+    expect(jsonLd).toContainEqual(expect.objectContaining({ "@type": "BreadcrumbList" }));
   });
 });

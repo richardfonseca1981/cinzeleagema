@@ -9,10 +9,11 @@ import { Footer } from "../components/landing/Footer";
 import { Hero } from "../components/landing/Hero";
 import { PublicHeader } from "../components/landing/PublicHeader";
 import { QualityPolicyModal } from "../components/landing/QualityPolicyModal";
-import { Seo } from "../components/Seo";
+import { Seo, SITE_URL } from "../components/Seo";
 import { TrustBanner } from "../components/landing/TrustBanner";
 import { WhatsAppFloatingButton } from "../components/landing/WhatsAppFloatingButton";
 import { WHATSAPP_HREF } from "../lib/whatsapp";
+import { buildOrganizationJsonLd, buildWebsiteJsonLd } from "../lib/jsonLd";
 
 const WHATSAPP_NUMBER = import.meta.env.VITE_WHATSAPP_NUMBER;
 const CONTACT_EMAIL = import.meta.env.VITE_CONTACT_EMAIL;
@@ -34,7 +35,12 @@ export function Landing() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#1A1A1A]">
-      <Seo title={t("seo.home.title")} description={t("seo.home.description")} path="/" />
+      <Seo
+        title={t("seo.home.title")}
+        description={t("seo.home.description")}
+        path="/"
+        jsonLd={[buildOrganizationJsonLd(SITE_URL), buildWebsiteJsonLd(SITE_URL)]}
+      />
       <PublicHeader />
       <Hero />
       <FeaturedProducts />

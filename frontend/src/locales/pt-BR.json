@@ -345,6 +345,10 @@
       "title": "Catálogo de pedras preciosas — Cinzel e a Gema",
       "description": "Veja o catálogo completo de pedras preciosas da Cinzel e a Gema: peso, tamanho, categoria e disponibilidade de cada peça."
     },
+    "breadcrumb": {
+      "home": "Home",
+      "catalog": "Catálogo"
+    },
     "product": {
       "titleSuffix": "Cinzel e a Gema",
       "description": "{{name}} — pedra preciosa à venda na Cinzel e a Gema.",

@@ -40,5 +40,10 @@ describe("Landing — SEO", () => {
     expect(document.querySelector('link[rel="canonical"]')?.getAttribute("href")).toBe(
       "https://www.cinzeleagema.com.br/"
     );
+
+    const scripts = document.querySelectorAll('script[type="application/ld+json"]');
+    const jsonLd = Array.from(scripts).map((el) => JSON.parse(el.textContent ?? "{}"));
+    expect(jsonLd).toContainEqual(expect.objectContaining({ "@type": "Organization" }));
+    expect(jsonLd).toContainEqual(expect.objectContaining({ "@type": "WebSite" }));
   });
 });

@@ -80,7 +80,7 @@ afterEach(() => {
 describe("ProductDetail — slug", () => {
   it("carrega a peça pelo slug atual e não redireciona quando a URL já é a canônica", async () => {
     const product = makeProduct({});
-    vi.mocked(api.getProductBySlug).mockResolvedValue({ product, canonicalSlug: "ametista-bruta-a1b2c3" });
+    vi.mocked(api.getProductBySlug).mockResolvedValue({ product, canonicalSlug: "ametista-bruta-a1b2c3", available: true });
 
     renderProductDetail(["/catalogo/ametista-bruta-a1b2c3"]);
 
@@ -91,7 +91,7 @@ describe("ProductDetail — slug", () => {
 
   it("URL antiga (cuid puro): acha a peça e redireciona para o slug atual (compatibilidade de link)", async () => {
     const product = makeProduct({});
-    vi.mocked(api.getProductBySlug).mockResolvedValue({ product, canonicalSlug: "ametista-bruta-a1b2c3" });
+    vi.mocked(api.getProductBySlug).mockResolvedValue({ product, canonicalSlug: "ametista-bruta-a1b2c3", available: true });
 
     renderProductDetail(["/catalogo/cm3x9f8s9f0000t3rggia1b2c3"]);
 
@@ -103,7 +103,7 @@ describe("ProductDetail — slug", () => {
   it("peça renomeada: o slug antigo ainda acha a peça (sufixo do id) e redireciona para o slug novo", async () => {
     const renamed = makeProduct({ name: "Ametista Importada" });
     // O backend já devolveria a peça renomeada; o canonicalSlug reflete o NOME ATUAL.
-    vi.mocked(api.getProductBySlug).mockResolvedValue({ product: renamed, canonicalSlug: "ametista-importada-a1b2c3" });
+    vi.mocked(api.getProductBySlug).mockResolvedValue({ product: renamed, canonicalSlug: "ametista-importada-a1b2c3", available: true });
 
     renderProductDetail(["/catalogo/ametista-bruta-a1b2c3"]);
 
@@ -124,7 +124,7 @@ describe("ProductDetail — slug", () => {
 describe("ProductDetail — SEO", () => {
   it("define title, description e canonical próprios da peça", async () => {
     const product = makeProduct({ name: "Ametista Bruta", weightGrams: "45", sizeCm: "3.2" });
-    vi.mocked(api.getProductBySlug).mockResolvedValue({ product, canonicalSlug: "ametista-bruta-a1b2c3" });
+    vi.mocked(api.getProductBySlug).mockResolvedValue({ product, canonicalSlug: "ametista-bruta-a1b2c3", available: true });
 
     renderProductDetail(["/catalogo/ametista-bruta-a1b2c3"]);
     await screen.findByText("Ametista Bruta");
@@ -139,5 +139,50 @@ describe("ProductDetail — SEO", () => {
     expect(document.querySelector('link[rel="canonical"]')?.getAttribute("href")).toBe(
       "https://www.cinzeleagema.com.br/catalogo/ametista-bruta-a1b2c3"
     );
+
+    expect(document.querySelector('meta[name="robots"]')).toBeNull();
+
+    const scripts = document.querySelectorAll('script[type="application/ld+json"]');
+    const jsonLd = Array.from(scripts).map((el) => JSON.parse(el.textContent ?? "{}"));
+    expect(jsonLd).toContainEqual(expect.objectContaining({ "@type": "BreadcrumbList" }));
+    expect(jsonLd).toContainEqual(
+      expect.objectContaining({ "@type": "Product", name: "Ametista Bruta" })
+    );
+  });
+
+  it("peça indisponível (available=false): noindex e sem Product JSON-LD", async () => {
+    const product = makeProduct({ name: "Peça Vendida" });
+    vi.mocked(api.getProductBySlug).mockResolvedValue({
+      product,
+      canonicalSlug: "peca-vendida-a1b2c3",
+      available: false,
+    });
+
+    renderProductDetail(["/catalogo/peca-vendida-a1b2c3"]);
+    await screen.findByText("Peça Vendida");
+
+    await waitFor(() =>
+      expect(document.querySelector('meta[name="robots"]')?.getAttribute("content")).toBe("noindex, follow")
+    );
+
+    const scripts = document.querySelectorAll('script[type="application/ld+json"]');
+    const jsonLd = Array.from(scripts).map((el) => JSON.parse(el.textContent ?? "{}"));
+    expect(jsonLd).not.toContainEqual(expect.objectContaining({ "@type": "Product" }));
+  });
+
+  it("peça sem preço (\"Consulte o valor\"): sem Product JSON-LD mesmo disponível", async () => {
+    const product = makeProduct({ name: "Esfera de Ágata", price: null });
+    vi.mocked(api.getProductBySlug).mockResolvedValue({
+      product,
+      canonicalSlug: "esfera-de-agata-a1b2c3",
+      available: true,
+    });
+
+    renderProductDetail(["/catalogo/esfera-de-agata-a1b2c3"]);
+    await screen.findByText("Esfera de Ágata");
+
+    const scripts = document.querySelectorAll('script[type="application/ld+json"]');
+    const jsonLd = Array.from(scripts).map((el) => JSON.parse(el.textContent ?? "{}"));
+    expect(jsonLd).not.toContainEqual(expect.objectContaining({ "@type": "Product" }));
   });
 });
