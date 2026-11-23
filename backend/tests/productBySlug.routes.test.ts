@@ -33,6 +33,7 @@ describe("GET /api/products/by-slug/:slugComId", () => {
     expect(res.status).toBe(200);
     expect(res.body.product.id).toBe(product.id);
     expect(res.body.canonicalSlug).toBe(slug);
+    expect(res.body.available).toBe(true);
   });
 
   it("encontra a mesma peça pela URL antiga (cuid puro) — compatibilidade com links já publicados", async () => {
@@ -79,5 +80,28 @@ describe("GET /api/products/by-slug/:slugComId", () => {
     const res = await request(app).get(`/api/products/by-slug/${slug}`);
     expect(res.status).toBe(200);
     expect(res.body.product.active).toBe(false);
+    expect(res.body.available).toBe(false);
+  });
+
+  it("available = false para peça com controle de estoque zerado (mesma regra do sitemap)", async () => {
+    const product = await prisma.product.create({
+      data: { name: "Sem Estoque", slug: "sem-estoque", price: 1500, categoryId, trackStock: true, stockQty: 0 },
+    });
+    const slug = buildPublicSlug(product.name, product.id);
+
+    const res = await request(app).get(`/api/products/by-slug/${slug}`);
+    expect(res.status).toBe(200);
+    expect(res.body.available).toBe(false);
+  });
+
+  it("available = false para preço provisório (<= R$ 1,00, mesma regra do sitemap)", async () => {
+    const product = await prisma.product.create({
+      data: { name: "Preço Provisório", slug: "preco-provisorio", price: 1, categoryId },
+    });
+    const slug = buildPublicSlug(product.name, product.id);
+
+    const res = await request(app).get(`/api/products/by-slug/${slug}`);
+    expect(res.status).toBe(200);
+    expect(res.body.available).toBe(false);
   });
 });

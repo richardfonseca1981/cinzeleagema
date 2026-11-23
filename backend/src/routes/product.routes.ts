@@ -12,6 +12,7 @@ import { translateAndSaveProduct, translateProductInBackground } from "../lib/pr
 import { generateUniqueSlug } from "../lib/productSlug";
 import { buildOrderBy, DEFAULT_ORDER_BY, isSplitSort, splitField, splitOrderBy, splitWindow } from "../lib/productSort";
 import { buildPublicSlug, extractIdSuffix, pickProductBySuffixMatch } from "../lib/publicSlug";
+import { isEligibleForSitemap } from "../lib/sitemapEligibility";
 
 export const productRouter = Router();
 
@@ -190,7 +191,19 @@ productRouter.get(
     });
     const product = pickProductBySuffixMatch(candidates, req.params.slugComId);
     if (!product) throw new HttpError(404, "Produto não encontrado");
-    res.json({ product: omitIdentification(product), canonicalSlug: buildPublicSlug(product.name, product.id) });
+    // `available`: MESMA regra do sitemap (ver sitemapEligibility.ts) — peça
+    // inativa, sem estoque (controle ligado) ou com nome/preço placeholder
+    // não é "available". Consumida pelo frontend (Seo.tsx: noindex quando
+    // false) e por routes/preview.routes.ts (metatags/JSON-LD genéricos
+    // quando false). TODO(feat/mercadolivre-integracao): quando essa branch
+    // trouxer `Product.soldAt`, isEligibleForSitemap deve passar a excluir
+    // peça vendida também — ver CONTEXT.md "SEO — Rodada 2".
+    const available = isEligibleForSitemap(product);
+    res.json({
+      product: omitIdentification(product),
+      canonicalSlug: buildPublicSlug(product.name, product.id),
+      available,
+    });
   })
 );
 
