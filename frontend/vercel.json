@@ -1,6 +1,22 @@
 {
   "rewrites": [
     { "source": "/sitemap.xml", "destination": "https://cinzeleagema-production.up.railway.app/api/sitemap.xml" },
+    { "source": "/api/preview/og-image/:file", "destination": "https://cinzeleagema-production.up.railway.app/api/preview/og-image/:file" },
+    {
+      "source": "/",
+      "has": [{ "type": "header", "key": "user-agent", "value": ".*(facebookexternalhit|Facebot|Twitterbot|WhatsApp|LinkedInBot|Slackbot|TelegramBot|Discordbot|redditbot|Pinterest|SkypeUriPreview|vkShare).*" }],
+      "destination": "https://cinzeleagema-production.up.railway.app/api/preview"
+    },
+    {
+      "source": "/catalogo",
+      "has": [{ "type": "header", "key": "user-agent", "value": ".*(facebookexternalhit|Facebot|Twitterbot|WhatsApp|LinkedInBot|Slackbot|TelegramBot|Discordbot|redditbot|Pinterest|SkypeUriPreview|vkShare).*" }],
+      "destination": "https://cinzeleagema-production.up.railway.app/api/preview/catalogo"
+    },
+    {
+      "source": "/catalogo/:slugComId",
+      "has": [{ "type": "header", "key": "user-agent", "value": ".*(facebookexternalhit|Facebot|Twitterbot|WhatsApp|LinkedInBot|Slackbot|TelegramBot|Discordbot|redditbot|Pinterest|SkypeUriPreview|vkShare).*" }],
+      "destination": "https://cinzeleagema-production.up.railway.app/api/preview/catalogo/:slugComId"
+    },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
