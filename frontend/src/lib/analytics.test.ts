@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { initAnalytics, isAdminPath, shouldLoadAnalytics, trackEvent, trackPageView } from "./analytics";
+import { bootstrapGtag, initAnalytics, isAdminPath, shouldLoadAnalytics, trackEvent, trackPageView } from "./analytics";
 import { captureUtmParams } from "./utm";
 
 afterEach(() => {
@@ -72,6 +72,33 @@ describe("trackPageView / trackEvent — nunca disparam para rota admin", () => 
   it("trackPageView/trackEvent não quebram quando gtag ainda não existe (script não carregado)", () => {
     expect(() => trackPageView("/catalogo", "")).not.toThrow();
     expect(() => trackEvent("search", { search_term: "ametista" })).not.toThrow();
+  });
+});
+
+describe("bootstrapGtag — regressão: dataLayer deve receber `arguments`, nunca um Array", () => {
+  it("todos os itens empilhados pelo bootstrap são o objeto `arguments` de verdade", () => {
+    bootstrapGtag("G-TEST123");
+
+    expect(window.dataLayer).toBeDefined();
+    expect(window.dataLayer!.length).toBeGreaterThan(0);
+    for (const item of window.dataLayer!) {
+      expect(Object.prototype.toString.call(item)).toBe("[object Arguments]");
+      expect(Array.isArray(item)).toBe(false);
+    }
+  });
+
+  it("uma chamada de evento (trackEvent) depois do bootstrap também empilha `arguments`, não um Array", () => {
+    bootstrapGtag("G-TEST123");
+    const itemsBeforeEvent = window.dataLayer!.length;
+
+    trackEvent("whatsapp_click", { origin: "floating_button" });
+
+    expect(window.dataLayer!.length).toBeGreaterThan(itemsBeforeEvent);
+    const lastItem = window.dataLayer![window.dataLayer!.length - 1];
+    expect(Object.prototype.toString.call(lastItem)).toBe("[object Arguments]");
+    expect(Array.isArray(lastItem)).toBe(false);
+    // Confirma que o conteúdo em si está certo (não só o tipo do item).
+    expect(Array.from(lastItem as ArrayLike<unknown>)).toEqual(["event", "whatsapp_click", { origin: "floating_button" }]);
   });
 });
 
