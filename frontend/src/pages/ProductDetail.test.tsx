@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { ProductDetail } from "./ProductDetail";
 import { CartProvider } from "../lib/cart";
@@ -19,7 +19,13 @@ vi.mock("../lib/api", async () => {
   };
 });
 
+vi.mock("../lib/analytics", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../lib/analytics")>();
+  return { ...actual, trackEvent: vi.fn() };
+});
+
 import { api, ApiError } from "../lib/api";
+import { trackEvent } from "../lib/analytics";
 
 function makeProduct(overrides: Partial<Product>): Product {
   return {
@@ -237,5 +243,81 @@ describe("ProductDetail — SEO", () => {
     const scripts = document.querySelectorAll('script[type="application/ld+json"]');
     const jsonLd = Array.from(scripts).map((el) => JSON.parse(el.textContent ?? "{}"));
     expect(jsonLd).not.toContainEqual(expect.objectContaining({ "@type": "Product" }));
+  });
+});
+
+describe("ProductDetail — eventos (GA4)", () => {
+  it("dispara view_item ao carregar a peça, com categoria e preço", async () => {
+    const product = makeProduct({
+      name: "Drusa de Ametista",
+      sku: "SKU-1",
+      price: "610",
+      category: { id: "cat1", name: "Pedras Brutas", slug: "pedras-brutas" },
+    });
+    vi.mocked(api.getProductBySlug).mockResolvedValue({ product, canonicalSlug: "drusa-de-ametista-a1b2c3", available: true });
+
+    renderProductDetail(["/catalogo/drusa-de-ametista-a1b2c3"]);
+    await screen.findByText("Drusa de Ametista");
+
+    await waitFor(() =>
+      expect(trackEvent).toHaveBeenCalledWith("view_item", {
+        item_id: "SKU-1",
+        item_name: "Drusa de Ametista",
+        item_category: "Pedras Brutas",
+        price: 610,
+        currency: "BRL",
+      })
+    );
+  });
+
+  it("peça sem preço: view_item não inclui price/currency", async () => {
+    const product = makeProduct({ name: "Esfera de Ágata", price: null, sku: null });
+    vi.mocked(api.getProductBySlug).mockResolvedValue({ product, canonicalSlug: "esfera-de-agata-a1b2c3", available: true });
+
+    renderProductDetail(["/catalogo/esfera-de-agata-a1b2c3"]);
+    await screen.findByText("Esfera de Ágata");
+
+    await waitFor(() =>
+      expect(trackEvent).toHaveBeenCalledWith("view_item", {
+        item_id: product.id,
+        item_name: "Esfera de Ágata",
+        item_category: null,
+      })
+    );
+  });
+
+  it("dispara add_to_cart ao clicar em Adicionar ao pedido, com a quantidade escolhida", async () => {
+    const product = makeProduct({ name: "Drusa de Ametista", sku: "SKU-1", price: "610" });
+    vi.mocked(api.getProductBySlug).mockResolvedValue({ product, canonicalSlug: "drusa-de-ametista-a1b2c3", available: true });
+
+    renderProductDetail(["/catalogo/drusa-de-ametista-a1b2c3"]);
+    await screen.findByText("Drusa de Ametista");
+    vi.mocked(trackEvent).mockClear(); // descarta o view_item do load, foco no clique
+
+    fireEvent.click(screen.getByText("Adicionar ao pedido"));
+
+    expect(trackEvent).toHaveBeenCalledWith("add_to_cart", {
+      item_id: "SKU-1",
+      item_name: "Drusa de Ametista",
+      price: 610,
+      currency: "BRL",
+      quantity: 1,
+    });
+  });
+
+  it("dispara whatsapp_click (origin: price_inquiry) ao clicar em 'Consultar pelo WhatsApp'", async () => {
+    const product = makeProduct({ name: "Esfera de Ágata", price: null });
+    vi.mocked(api.getProductBySlug).mockResolvedValue({ product, canonicalSlug: "esfera-de-agata-a1b2c3", available: true });
+
+    renderProductDetail(["/catalogo/esfera-de-agata-a1b2c3"]);
+    await screen.findByText("Esfera de Ágata");
+    vi.mocked(trackEvent).mockClear();
+
+    fireEvent.click(screen.getByText("Consultar pelo WhatsApp"));
+
+    expect(trackEvent).toHaveBeenCalledWith("whatsapp_click", {
+      origin: "price_inquiry",
+      page: "/catalogo/esfera-de-agata-a1b2c3",
+    });
   });
 });

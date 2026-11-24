@@ -14,6 +14,7 @@ import { useToast } from "../components/Toast";
 import { ProductGallery } from "../components/ProductGallery";
 import { galleryItemsFromImages } from "../lib/gallery";
 import { buildBreadcrumbJsonLd, buildProductJsonLd, buildProductJsonLdDescription } from "../lib/jsonLd";
+import { trackEvent } from "../lib/analytics";
 
 export function ProductDetail() {
   const { t, i18n } = useTranslation();
@@ -67,6 +68,19 @@ export function ProductDetail() {
       .finally(() => setLoading(false));
   }, [slugComId, location.search, navigate]);
 
+  // view_item uma vez por peça carregada — nunca dado pessoal, só o que já é
+  // público na própria página (ver CONTEXT.md "SEO — Rodada 3: eventos").
+  useEffect(() => {
+    if (!product) return;
+    trackEvent("view_item", {
+      item_id: product.sku ?? product.id,
+      item_name: product.name,
+      item_category: product.category?.name ?? null,
+      ...(product.price !== null ? { price: Number(product.price), currency: "BRL" } : {}),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product?.id]);
+
   function handleAdd() {
     if (!product || price === null) return;
     addItem(
@@ -82,6 +96,13 @@ export function ProductDetail() {
       },
       quantity
     );
+    trackEvent("add_to_cart", {
+      item_id: product.sku ?? product.id,
+      item_name: product.name,
+      price: Number(price),
+      currency: "BRL",
+      quantity,
+    });
     showToast("success", t("productCard.addedToast"));
   }
 
@@ -185,6 +206,7 @@ export function ProductDetail() {
                     href={priceInquiryHref}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={() => trackEvent("whatsapp_click", { origin: "price_inquiry", page: location.pathname })}
                     className="mt-4 inline-block w-full rounded-lg border border-[#C78F50] px-4 py-3 text-center font-semibold text-[#C78F50] transition hover:bg-[#C78F50]/10 sm:w-auto"
                   >
                     {t("productCard.askPrice")}

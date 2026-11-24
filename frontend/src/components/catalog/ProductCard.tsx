@@ -1,8 +1,9 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { Product } from "../../types";
 import { formatPrice, formatWeightSize, localizeProductName } from "../../lib/format";
 import { buildPriceInquiryHref } from "../../lib/whatsapp";
+import { trackEvent } from "../../lib/analytics";
 import { useCart } from "../../lib/cart";
 import { useExchangeRate } from "../../lib/exchangeRate";
 import { useToast } from "../Toast";
@@ -12,6 +13,7 @@ import { buildPublicProductSlug } from "../../lib/productSlug";
 
 export function ProductCard({ product, priority = false }: { product: Product; priority?: boolean }) {
   const { t, i18n } = useTranslation();
+  const location = useLocation();
   const { addItem } = useCart();
   const { showToast } = useToast();
   const exchangeRate = useExchangeRate();
@@ -35,6 +37,13 @@ export function ProductCard({ product, priority = false }: { product: Product; p
       imageUrl: image,
       weightGrams: Number(product.weightGrams),
       sizeCm: Number(product.sizeCm),
+    });
+    trackEvent("add_to_cart", {
+      item_id: product.sku ?? product.id,
+      item_name: product.name,
+      price: Number(price),
+      currency: "BRL",
+      quantity: 1,
     });
     showToast("success", t("productCard.addedToast"));
   }
@@ -73,6 +82,7 @@ export function ProductCard({ product, priority = false }: { product: Product; p
             href={priceInquiryHref}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => trackEvent("whatsapp_click", { origin: "price_inquiry", page: location.pathname })}
             className="mt-auto rounded-lg border border-[#C78F50] px-2 py-2 text-center text-xs font-semibold text-[#C78F50] transition hover:bg-[#C78F50]/10 sm:px-4 sm:text-sm"
           >
             {t("productCard.askPrice")}

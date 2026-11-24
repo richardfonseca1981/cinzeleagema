@@ -23,6 +23,7 @@ import {
 } from "../lib/shipping/summary";
 import type { ShippingQuoteRequest, TechnicalCause } from "../lib/shipping/types";
 import { buildWhatsAppMessage } from "../lib/shipping/whatsappMessage";
+import { trackEvent } from "../lib/analytics";
 import { OrderSummary } from "../components/shipping/OrderSummary";
 import { WhatsAppGroupLink } from "../components/landing/WhatsAppGroupLink";
 import { useExchangeRate, useExchangeRateInfo } from "../lib/exchangeRate";
@@ -116,6 +117,7 @@ export function Checkout() {
       return;
     }
     setPhoneError(false);
+    trackEvent("begin_checkout", { value: totalEstimate, currency: "BRL", num_items: items.length });
     await confirm(normalizedPhone);
   }
 
@@ -196,6 +198,7 @@ export function Checkout() {
     if (delivered) {
       clear();
       setSentVia("fluxiodesk");
+      trackEvent("generate_lead", { method: "fluxiodesk", value: totalEstimate, currency: "BRL" });
     } else {
       if (WHATSAPP_NUMBER) {
         const message = buildWhatsAppMessage({
@@ -209,10 +212,15 @@ export function Checkout() {
           customerPhone: normalizedPhone,
           rateApproximate: isRateApproximate(exchangeRateInfo, Date.now()),
         });
+        // NUNCA whatsapp_click aqui — esse evento é só para o botão flutuante
+        // e "consultar preço" (ver CONTEXT.md "SEO — Rodada 3: conversões").
+        // generate_lead já é a conversão principal deste fallback, disparar
+        // os dois duplicaria a mesma conversão.
         window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
       }
       clear();
       setSentVia("whatsapp");
+      trackEvent("generate_lead", { method: "whatsapp", value: totalEstimate, currency: "BRL" });
     }
 
     setSending(false);
