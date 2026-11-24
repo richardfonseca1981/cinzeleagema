@@ -54,6 +54,24 @@ export interface ProductJsonLdInput {
   canonicalUrl: string;
 }
 
+export interface ProductJsonLdDescriptionInput {
+  name: string;
+  categoryName: string | null;
+  weightSize: string | null;
+}
+
+// MESMA lógica de backend/src/lib/seo/meta.ts buildProductJsonLdDescription
+// (duplicação de propósito, ver topo do arquivo): description do Product
+// JSON-LD é sempre nome + categoria (já localizada pelo chamador) +
+// peso/tamanho, nunca o texto livre de product.description (repete a mesma
+// frase de curadoria em várias peças). Uma linha só, sem quebra.
+export function buildProductJsonLdDescription(input: ProductJsonLdDescriptionInput): string {
+  const parts = [input.name, input.categoryName, input.weightSize].filter(
+    (part): part is string => Boolean(part && part.trim())
+  );
+  return parts.join(" · ").replace(/\s*[\r\n]+\s*/g, " ");
+}
+
 // Só chamada para peça elegível (`available` de api.getProductBySlug) e com
 // preço real (`price !== null` — "Consulte o valor" nunca vira Offer, mesma
 // decisão do backend) — por isso `availability` é sempre InStock e

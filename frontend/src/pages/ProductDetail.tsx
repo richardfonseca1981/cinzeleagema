@@ -13,7 +13,7 @@ import { useExchangeRate } from "../lib/exchangeRate";
 import { useToast } from "../components/Toast";
 import { ProductGallery } from "../components/ProductGallery";
 import { galleryItemsFromImages } from "../lib/gallery";
-import { buildBreadcrumbJsonLd, buildProductJsonLd } from "../lib/jsonLd";
+import { buildBreadcrumbJsonLd, buildProductJsonLd, buildProductJsonLdDescription } from "../lib/jsonLd";
 
 export function ProductDetail() {
   const { t, i18n } = useTranslation();
@@ -106,7 +106,11 @@ export function ProductDetail() {
               ? [
                   buildProductJsonLd({
                     name: displayName,
-                    description: displayDescription || null,
+                    description: buildProductJsonLdDescription({
+                      name: displayName,
+                      categoryName: product.category ? localizeCategoryName(t, product.category.name) : null,
+                      weightSize,
+                    }),
                     sku: product.sku,
                     price: Number(price),
                     productImageUrl: galleryItemsFromImages(product.images)[0]?.url ?? `${SITE_URL}/og-default.jpg`,

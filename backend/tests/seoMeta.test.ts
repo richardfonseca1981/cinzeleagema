@@ -6,11 +6,13 @@ import {
   buildHomeMeta,
   buildOrganizationJsonLd,
   buildProductJsonLd,
+  buildProductJsonLdDescription,
   buildUnavailableProductMeta,
   buildWebsiteJsonLd,
   renderPreviewHtml,
   SITE_NAME,
 } from "../src/lib/seo/meta";
+import { OG_IMAGE_HEIGHT, OG_IMAGE_WIDTH } from "../src/lib/seo/ogImage";
 
 const SITE_URL = "https://www.cinzeleagema.com.br";
 
@@ -19,12 +21,14 @@ describe("buildHomeMeta/buildCatalogMeta", () => {
     const meta = buildHomeMeta(SITE_URL);
     expect(meta.url).toBe(SITE_URL);
     expect(meta.image).toBe(`${SITE_URL}/og-default.jpg`);
+    expect(meta.imageAlt).toBe("Cinzel e a Gema — pedras preciosas");
     expect(meta.noindex).toBe(false);
   });
 
   it("catálogo aponta para /catalogo", () => {
     const meta = buildCatalogMeta(SITE_URL);
     expect(meta.url).toBe(`${SITE_URL}/catalogo`);
+    expect(meta.imageAlt).toBe("Cinzel e a Gema — pedras preciosas");
     expect(meta.noindex).toBe(false);
   });
 });
@@ -41,7 +45,12 @@ describe("buildAvailableProductMeta", () => {
     expect(meta.description).toContain("Drusa de Ametista");
     expect(meta.description).toContain("2,77 kg · 22 cm");
     expect(meta.url).toBe(`${SITE_URL}/catalogo/drusa-de-ametista-8dnvub`);
-    expect(meta.image).toBe(`${SITE_URL}/api/preview/og-image/drusa-de-ametista-8dnvub.jpg`);
+    // Fora de /api de propósito (ver CONTEXT.md "SEO — Rodada 2: og:image
+    // path") — frontend/public/robots.txt bloqueia /api para todos os
+    // agentes, e era essa URL que o Depurador do Facebook acusava como
+    // "imagem corrompida".
+    expect(meta.image).toBe(`${SITE_URL}/og/drusa-de-ametista-8dnvub.jpg`);
+    expect(meta.imageAlt).toBe("Drusa de Ametista");
     expect(meta.noindex).toBe(false);
   });
 
@@ -73,8 +82,40 @@ describe("buildUnavailableProductMeta", () => {
     expect(meta.title).toBe(home.title);
     expect(meta.description).toBe(home.description);
     expect(meta.image).toBe(home.image);
+    expect(meta.imageAlt).toBe(home.imageAlt);
     expect(meta.url).toBe(`${SITE_URL}/catalogo/peca-vendida-abc123`);
     expect(meta.noindex).toBe(true);
+  });
+});
+
+describe("buildProductJsonLdDescription", () => {
+  it("combina nome, categoria e peso/tamanho em uma linha só", () => {
+    const description = buildProductJsonLdDescription({
+      name: "Drusa de Ametista",
+      categoryName: "Pedras Brutas",
+      weightSize: "2,77 kg · 22 cm",
+    });
+    expect(description).toBe("Drusa de Ametista · Pedras Brutas · 2,77 kg · 22 cm");
+  });
+
+  it("omite categoria e peso/tamanho quando ausentes, sem sobrar separador", () => {
+    const description = buildProductJsonLdDescription({
+      name: "Esfera de Ágata",
+      categoryName: null,
+      weightSize: null,
+    });
+    expect(description).toBe("Esfera de Ágata");
+  });
+
+  it("nunca contém o texto padrão de curadoria nem quebra de linha", () => {
+    const description = buildProductJsonLdDescription({
+      name: "Peça\nQuebrada",
+      categoryName: "Categoria\nX",
+      weightSize: "1 kg",
+    });
+    expect(description).not.toContain("\n");
+    expect(description.toLowerCase()).not.toContain("curadoria");
+    expect(description.toLowerCase()).not.toContain("exemplar único");
   });
 });
 
@@ -128,6 +169,11 @@ describe("renderPreviewHtml", () => {
 
     expect(html).toContain(`<title>${SITE_NAME} — Pedras Preciosas</title>`);
     expect(html).toContain('<meta property="og:type" content="website" />');
+    expect(html).toContain(`<meta property="og:image:secure_url" content="${meta.image}" />`);
+    expect(html).toContain('<meta property="og:image:type" content="image/jpeg" />');
+    expect(html).toContain(`<meta property="og:image:width" content="${OG_IMAGE_WIDTH}" />`);
+    expect(html).toContain(`<meta property="og:image:height" content="${OG_IMAGE_HEIGHT}" />`);
+    expect(html).toContain(`<meta property="og:image:alt" content="${meta.imageAlt}" />`);
     expect(html).toContain('<meta name="twitter:card" content="summary_large_image" />');
     expect(html).toContain('"@type":"Organization"');
     expect(html).not.toContain('name="robots"');
@@ -148,6 +194,9 @@ describe("renderPreviewHtml", () => {
     const html = renderPreviewHtml(meta);
     expect(html).not.toContain("<teste>");
     expect(html).toContain("&lt;teste&gt;");
+    // imageAlt usa o mesmo nome da peça (ver buildAvailableProductMeta) —
+    // precisa do mesmo escape, já que também vira atributo HTML.
+    expect(html).toContain('<meta property="og:image:alt" content="Pedra &quot;Especial&quot; &lt;teste&gt;" />');
   });
 
   it("escapa '</script' dentro do JSON-LD para não fechar a tag antes da hora", () => {

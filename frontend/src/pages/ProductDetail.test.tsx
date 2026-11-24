@@ -150,6 +150,31 @@ describe("ProductDetail — SEO", () => {
     );
   });
 
+  it("description do Product JSON-LD usa nome + categoria + peso/tamanho, nunca product.description", async () => {
+    const product = makeProduct({
+      name: "Drusa de Ametista",
+      description: "Curadoria Exclusiva – Exemplar Único.\nTexto repetido em várias peças.",
+      weightGrams: "2770",
+      sizeCm: "22",
+      category: { id: "cat1", name: "Pedras Brutas", slug: "pedras-brutas" },
+    });
+    vi.mocked(api.getProductBySlug).mockResolvedValue({
+      product,
+      canonicalSlug: "drusa-de-ametista-a1b2c3",
+      available: true,
+    });
+
+    renderProductDetail(["/catalogo/drusa-de-ametista-a1b2c3"]);
+    await screen.findByText("Drusa de Ametista");
+
+    await waitFor(() => {
+      const scripts = document.querySelectorAll('script[type="application/ld+json"]');
+      const jsonLd = Array.from(scripts).map((el) => JSON.parse(el.textContent ?? "{}"));
+      const productJsonLd = jsonLd.find((entry) => entry["@type"] === "Product");
+      expect(productJsonLd?.description).toBe("Drusa de Ametista · Pedras Brutas · 2,770kg · 22cm");
+    });
+  });
+
   it("peça indisponível (available=false): noindex e sem Product JSON-LD", async () => {
     const product = makeProduct({ name: "Peça Vendida" });
     vi.mocked(api.getProductBySlug).mockResolvedValue({
