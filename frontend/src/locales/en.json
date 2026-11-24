@@ -387,7 +387,7 @@
     "updatedAt": "Last updated: {{date}}",
     "intro": "This page explains what data the Cinzel e a Gema website collects, why, and how you can control that collection, in line with Brazil's General Data Protection Law (LGPD).",
     "controllerTitle": "Who is the data controller",
-    "controllerBody": "The controller of the data processed on this site is [RAZÃO SOCIAL], CNPJ [CNPJ]. Privacy questions can be sent to [E-MAIL DE CONTATO PARA PRIVACIDADE].",
+    "controllerBody": "The controller of the data processed on this site is Cinzel e a Gema Comércio e Representação Ltda., CNPJ (Brazilian company registry) 68.854.699/0001-90. Privacy questions can be sent to cinzeleagema@gmail.com.",
     "whatWeCollectTitle": "What we collect",
     "whatWeCollectBody": "We use Google Analytics (GA4) to understand how visitors use the site: pages viewed, traffic origin (where you came from — for example a social network or a promotional link), and clicks on elements like the WhatsApp button, the add-to-order button, and the shipping quote. We never collect your full postal code, payment data, or anything that identifies you directly.",
     "consentTitle": "Consent and Google Consent Mode",
@@ -401,8 +401,8 @@
     "cookiesListUtm": "cinzeleagema_utm — stores, only for the current browser session (cleared when you close the tab), which promotional link/campaign you arrived from, so we can measure our promotion correctly.",
     "cookiesListGa": "Google Analytics' own cookies (such as _ga) — only set if you accept measurement in the banner.",
     "rightsTitle": "Your rights (LGPD)",
-    "rightsBody": "You may request, at any time, by emailing [E-MAIL DE CONTATO PARA PRIVACIDADE]: confirmation that we process your data, access to the data processed, correction of incorrect data, and withdrawal of consent — withdrawal can also be done directly through the \"Cookie preferences\" link in the footer, with no need to contact us.",
+    "rightsBody": "You may request, at any time, by emailing cinzeleagema@gmail.com: confirmation that we process your data, access to the data processed, correction of incorrect data, and withdrawal of consent — withdrawal can also be done directly through the \"Cookie preferences\" link in the footer, with no need to contact us.",
     "contactTitle": "Contact",
-    "contactBody": "For any question about this policy, write to [E-MAIL DE CONTATO PARA PRIVACIDADE]."
+    "contactBody": "For any question about this policy, write to cinzeleagema@gmail.com."
   }
 }
