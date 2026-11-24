@@ -13,6 +13,7 @@ import { Cart } from "./pages/Cart";
 import { Checkout } from "./pages/Checkout";
 import { AdminLayout } from "./components/AdminLayout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { RouteTracker } from "./components/RouteTracker";
 import { ToastProvider } from "./components/Toast";
 import { CartProvider } from "./lib/cart";
 import { ExchangeRateProvider } from "./lib/exchangeRate";
@@ -20,6 +21,7 @@ import { ExchangeRateProvider } from "./lib/exchangeRate";
 export default function App() {
   return (
     <BrowserRouter>
+      <RouteTracker />
       <CartProvider>
         <ExchangeRateProvider>
           <ToastProvider>
