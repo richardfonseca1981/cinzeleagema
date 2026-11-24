@@ -5,7 +5,21 @@
 // montado de novo no FRONTEND (frontend/src/lib/jsonLd.ts, duplicação
 // intencional — mesma convenção já usada em lib/publicSlug.ts/productSlug.ts)
 // e injetado via Seo.tsx, porque o Google executa JS e a SPA é a fonte real.
+import { OG_IMAGE_WIDTH, OG_IMAGE_HEIGHT } from "./ogImage";
+
 export const SITE_NAME = "Cinzel e a Gema";
+
+// Alt genérico de og:image para Home/Catálogo (sem peça específica) — mesmo
+// texto nas duas, pedido explícito do produto (ver CONTEXT.md "SEO — Rodada
+// 2: og:image path").
+const GENERIC_IMAGE_ALT = "Cinzel e a Gema — pedras preciosas";
+
+// og-default.jpg (Home/Catálogo/fallback) é gerado em 1200x630 (ver
+// generateOgDefaultImage.ts) e og-image por peça (ogImage.ts) também sai
+// sempre em OG_IMAGE_WIDTH x OG_IMAGE_HEIGHT — por isso width/height do
+// og:image é sempre o mesmo valor fixo em toda a Rodada 2, nunca lido do
+// arquivo em tempo de execução.
+const OG_IMAGE_TYPE = "image/jpeg";
 
 // og:type fica sempre "website" nesta rodada — decisão explícita (ver
 // CONTEXT.md "SEO — Rodada 2"): "product" exigiria manter price/availability
@@ -19,6 +33,7 @@ export interface MetaTags {
   description: string;
   url: string;
   image: string;
+  imageAlt: string;
   noindex: boolean;
 }
 
@@ -45,6 +60,7 @@ export function buildHomeMeta(siteUrl: string): MetaTags {
       "Cinzel e a Gema — curadoria e comercialização de pedras preciosas, com foco em qualidade e procedência.",
     url: siteUrl,
     image: `${siteUrl}/og-default.jpg`,
+    imageAlt: GENERIC_IMAGE_ALT,
     noindex: false,
   };
 }
@@ -56,6 +72,7 @@ export function buildCatalogMeta(siteUrl: string): MetaTags {
       "Veja o catálogo completo de pedras preciosas da Cinzel e a Gema: peso, tamanho, categoria e disponibilidade de cada peça.",
     url: `${siteUrl}/catalogo`,
     image: `${siteUrl}/og-default.jpg`,
+    imageAlt: GENERIC_IMAGE_ALT,
     noindex: false,
   };
 }
@@ -101,7 +118,15 @@ export function buildAvailableProductMeta(siteUrl: string, input: AvailableProdu
     title: `${input.name} — ${SITE_NAME}`,
     description,
     url,
-    image: `${siteUrl}/api/preview/og-image/${input.canonicalSlug}.jpg`,
+    // Fora de /api de propósito: frontend/public/robots.txt bloqueia /api
+    // para todos os agentes (Disallow: /api), e o crawler de prévia social
+    // do Facebook/WhatsApp respeita esse robots.txt ao buscar a IMAGEM do
+    // og:image (requisição separada da do HTML) — com a URL antiga, o
+    // Depurador do Facebook acusava "imagem corrompida" mesmo com o JPEG
+    // válido. Rota antiga /api/preview/og-image/*.jpg continua respondendo
+    // (ver vercel.json) só para não quebrar link já compartilhado.
+    image: `${siteUrl}/og/${input.canonicalSlug}.jpg`,
+    imageAlt: input.name,
     noindex: false,
   };
 }
@@ -162,6 +187,27 @@ export interface ProductJsonLdInput {
   canonicalUrl: string;
 }
 
+export interface ProductJsonLdDescriptionInput {
+  name: string;
+  categoryName: string | null;
+  weightSize: string | null;
+}
+
+// `description` do Product JSON-LD: SEMPRE específica da peça (nome +
+// categoria quando houver + peso/tamanho), NUNCA `product.description` em
+// texto livre — hoje repete o mesmo texto de curadoria ("Curadoria
+// Exclusiva – Exemplar Único") em várias peças, o que não ajuda rich
+// results (Google trata como conteúdo duplicado entre peças diferentes).
+// Uma linha só, sem quebra (daí o replace de \n/\r, defensivo: nome/categoria
+// são texto curto de catálogo, nunca deveriam ter quebra, mas "nunca" não é
+// garantido pelo schema do banco).
+export function buildProductJsonLdDescription(input: ProductJsonLdDescriptionInput): string {
+  const parts = [input.name, input.categoryName, input.weightSize].filter(
+    (part): part is string => Boolean(part && part.trim())
+  );
+  return parts.join(" · ").replace(/\s*[\r\n]+\s*/g, " ");
+}
+
 // Só chamada para peça elegível — por isso `availability` é sempre InStock
 // aqui: a própria elegibilidade (isEligibleForSitemap) já excluiu peça
 // inativa e peça com controle de estoque zerado antes de chegar neste ponto.
@@ -205,6 +251,11 @@ ${meta.noindex ? '    <meta name="robots" content="noindex, follow" />\n' : ""} 
     <meta property="og:description" content="${escapeHtml(meta.description)}" />
     <meta property="og:url" content="${escapeHtml(meta.url)}" />
     <meta property="og:image" content="${escapeHtml(meta.image)}" />
+    <meta property="og:image:secure_url" content="${escapeHtml(meta.image)}" />
+    <meta property="og:image:type" content="${OG_IMAGE_TYPE}" />
+    <meta property="og:image:width" content="${OG_IMAGE_WIDTH}" />
+    <meta property="og:image:height" content="${OG_IMAGE_HEIGHT}" />
+    <meta property="og:image:alt" content="${escapeHtml(meta.imageAlt)}" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="${escapeHtml(meta.title)}" />
     <meta name="twitter:description" content="${escapeHtml(meta.description)}" />

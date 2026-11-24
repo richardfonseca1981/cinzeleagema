@@ -13,6 +13,7 @@ import { prisma } from "../src/lib/prisma";
 import * as r2 from "../src/lib/r2";
 import { cleanDatabase } from "./helpers";
 import { buildPublicSlug } from "../src/lib/publicSlug";
+import { env } from "../src/lib/env";
 
 const mockedGetObject = vi.mocked(r2.getObject);
 
@@ -77,6 +78,16 @@ describe("GET /api/preview/catalogo/:slugComId", () => {
     expect(res.text).toContain('"@type":"Product"');
     expect(res.text).toContain('"price":610');
     expect(res.text).not.toContain('name="robots"');
+    // og:image fora de /api (ver meta.ts buildAvailableProductMeta) — robots.txt
+    // bloqueia /api para todos os agentes, rota antiga nunca mais é usada aqui.
+    expect(res.text).toContain(`<meta property="og:image" content="${env.PUBLIC_SITE_URL}/og/${slug}.jpg" />`);
+    expect(res.text).not.toContain("/api/preview/og-image/");
+    expect(res.text).toContain(`<meta property="og:image:width" content="1200" />`);
+    expect(res.text).toContain(`<meta property="og:image:height" content="630" />`);
+    // description do Product JSON-LD é nome + categoria + peso/tamanho — NUNCA
+    // o texto livre de product.description (não foi setado neste teste de
+    // propósito, para garantir que não é essa a fonte usada).
+    expect(res.text).toContain('"description":"Drusa de Ametista · Homedecor · 2,770kg · 22cm"');
   });
 
   it("peça sem preço (\"Consulte o valor\"): sem Product JSON-LD, mas com breadcrumb", async () => {

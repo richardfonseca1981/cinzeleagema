@@ -13,6 +13,7 @@ import {
   buildHomeMeta,
   buildOrganizationJsonLd,
   buildProductJsonLd,
+  buildProductJsonLdDescription,
   buildUnavailableProductMeta,
   buildWebsiteJsonLd,
   formatWeightSizePt,
@@ -28,7 +29,7 @@ export const previewRouter = Router();
 
 const PREVIEW_CACHE_CONTROL = "public, s-maxage=600, stale-while-revalidate=86400";
 
-const PRODUCT_INCLUDE = { images: { orderBy: { position: "asc" as const } } };
+const PRODUCT_INCLUDE = { images: { orderBy: { position: "asc" as const } }, category: true };
 
 previewRouter.get(
   "/",
@@ -103,7 +104,7 @@ previewRouter.get(
       jsonLd.push(
         buildProductJsonLd({
           name,
-          description: product.description,
+          description: buildProductJsonLdDescription({ name, categoryName: product.category?.name ?? null, weightSize }),
           sku: product.sku,
           price: Number(product.price),
           productImageUrl: cover?.url ?? meta.image,
