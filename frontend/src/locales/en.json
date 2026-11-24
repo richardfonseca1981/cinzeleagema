@@ -111,6 +111,8 @@
     "products": "Products",
     "faq": "FAQ",
     "qualityPolicy": "Quality Policy",
+    "privacyPolicy": "Privacy Policy",
+    "cookiePreferences": "Cookie preferences",
     "copyright": "© {{year}} Cinzel e a Gema. All rights reserved."
   },
   "contactModal": {
@@ -371,5 +373,36 @@
       "description": "{{name}} — gemstone for sale at Cinzel e a Gema.",
       "descriptionWithMeasurements": "{{name}} — gemstone for sale at Cinzel e a Gema. Weight and size: {{weightSize}}."
     }
+  },
+  "consent": {
+    "title": "Cookie preferences",
+    "message": "We use Google Analytics to measure visits and clicks on the site (never your full postal code, payment data, or anything that directly identifies you). You can accept or reject this measurement.",
+    "learnMore": "Learn more",
+    "accept": "Accept",
+    "reject": "Reject"
+  },
+  "privacy": {
+    "metaTitle": "Privacy Policy — Cinzel e a Gema",
+    "pageTitle": "Privacy Policy",
+    "updatedAt": "Last updated: {{date}}",
+    "intro": "This page explains what data the Cinzel e a Gema website collects, why, and how you can control that collection, in line with Brazil's General Data Protection Law (LGPD).",
+    "controllerTitle": "Who is the data controller",
+    "controllerBody": "The controller of the data processed on this site is [RAZÃO SOCIAL], CNPJ [CNPJ]. Privacy questions can be sent to [E-MAIL DE CONTATO PARA PRIVACIDADE].",
+    "whatWeCollectTitle": "What we collect",
+    "whatWeCollectBody": "We use Google Analytics (GA4) to understand how visitors use the site: pages viewed, traffic origin (where you came from — for example a social network or a promotional link), and clicks on elements like the WhatsApp button, the add-to-order button, and the shipping quote. We never collect your full postal code, payment data, or anything that identifies you directly.",
+    "consentTitle": "Consent and Google Consent Mode",
+    "consentBody": "When you arrive on the site, you see a banner asking whether you accept or reject this measurement. While you haven't answered, or if you choose \"Reject\", we use Google Consent Mode: no analytics cookie is set and no individual measurement happens. Google Analytics still receives aggregated, cookie-less signals to estimate overall traffic volume through statistical modeling — without being able to tell who you are or follow your browsing across visits. On a site with Cinzel e a Gema's traffic volume, this modeling is noticeably less precise than cookie-based measurement: it may fail to capture small traffic spikes correctly.",
+    "revokeTitle": "How to review your choice",
+    "revokeBody": "You can change your mind at any time by clicking \"Cookie preferences\" in the site footer, which reopens the banner and lets you accept or reject again.",
+    "cookiesTitle": "Cookies and local storage used on this site",
+    "cookiesListConsent": "cinzeleagema_consent — stores your consent choice (accept/reject) and the date of that choice.",
+    "cookiesListLocale": "cinzeleagema_locale — stores your chosen language (Portuguese or English).",
+    "cookiesListCart": "cinzeleagema_cart and cinzeleagema_shipping — store your in-progress order and shipping data, so you don't lose your progress if the page reloads.",
+    "cookiesListUtm": "cinzeleagema_utm — stores, only for the current browser session (cleared when you close the tab), which promotional link/campaign you arrived from, so we can measure our promotion correctly.",
+    "cookiesListGa": "Google Analytics' own cookies (such as _ga) — only set if you accept measurement in the banner.",
+    "rightsTitle": "Your rights (LGPD)",
+    "rightsBody": "You may request, at any time, by emailing [E-MAIL DE CONTATO PARA PRIVACIDADE]: confirmation that we process your data, access to the data processed, correction of incorrect data, and withdrawal of consent — withdrawal can also be done directly through the \"Cookie preferences\" link in the footer, with no need to contact us.",
+    "contactTitle": "Contact",
+    "contactBody": "For any question about this policy, write to [E-MAIL DE CONTATO PARA PRIVACIDADE]."
   }
 }

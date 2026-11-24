@@ -57,6 +57,17 @@ export function initAnalytics(): void {
   window.gtag("config", GA_MEASUREMENT_ID, { send_page_view: false });
 }
 
+// Chamada pelo ConsentProvider (ver lib/consent.tsx) quando o visitante
+// aceita/rejeita, ou quando já havia uma escolha salva — nunca impede o
+// gtag de rodar, só controla se ele pode usar cookie/identificador (ver
+// página /privacidade). No-op se o script nem chegou a carregar (dev/test,
+// ou sem VITE_GA_MEASUREMENT_ID).
+export function updateConsent(granted: boolean): void {
+  if (!window.gtag) return;
+  const value = granted ? "granted" : "denied";
+  window.gtag("consent", "update", { analytics_storage: value, ad_storage: value });
+}
+
 function buildPageLocation(pathname: string, search: string): string {
   return `${window.location.origin}${pathname}${search}`;
 }
