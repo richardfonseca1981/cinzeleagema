@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { ProductDetail } from "./ProductDetail";
 import { CartProvider } from "../lib/cart";
+import { ConsentProvider } from "../lib/consent";
 import { ExchangeRateProvider } from "../lib/exchangeRate";
 import { ToastProvider } from "../components/Toast";
 import type { Product } from "../types";
@@ -69,16 +70,18 @@ function LocationDisplay() {
 function renderProductDetail(initialEntries: string[]) {
   return render(
     <MemoryRouter initialEntries={initialEntries}>
-      <CartProvider>
-        <ExchangeRateProvider>
-          <ToastProvider>
-            <Routes>
-              <Route path="/catalogo/:slugComId" element={<ProductDetail />} />
-            </Routes>
-            <LocationDisplay />
-          </ToastProvider>
-        </ExchangeRateProvider>
-      </CartProvider>
+      <ConsentProvider>
+        <CartProvider>
+          <ExchangeRateProvider>
+            <ToastProvider>
+              <Routes>
+                <Route path="/catalogo/:slugComId" element={<ProductDetail />} />
+              </Routes>
+              <LocationDisplay />
+            </ToastProvider>
+          </ExchangeRateProvider>
+        </CartProvider>
+      </ConsentProvider>
     </MemoryRouter>
   );
 }

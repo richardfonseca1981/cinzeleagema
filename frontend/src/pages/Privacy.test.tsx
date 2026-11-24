@@ -4,19 +4,22 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { Privacy } from "./Privacy";
 import { CartProvider } from "../lib/cart";
+import { ConsentProvider } from "../lib/consent";
 import { ExchangeRateProvider } from "../lib/exchangeRate";
 import { ToastProvider } from "../components/Toast";
 
 function renderPrivacy() {
   return render(
     <MemoryRouter initialEntries={["/privacidade"]}>
-      <CartProvider>
-        <ExchangeRateProvider>
-          <ToastProvider>
-            <Privacy />
-          </ToastProvider>
-        </ExchangeRateProvider>
-      </CartProvider>
+      <ConsentProvider>
+        <CartProvider>
+          <ExchangeRateProvider>
+            <ToastProvider>
+              <Privacy />
+            </ToastProvider>
+          </ExchangeRateProvider>
+        </CartProvider>
+      </ConsentProvider>
     </MemoryRouter>
   );
 }
@@ -34,5 +37,11 @@ describe("Privacy", () => {
     expect(screen.getByText("O que coletamos")).toBeInTheDocument();
     expect(screen.getByText("Consentimento e Google Consent Mode")).toBeInTheDocument();
     expect(screen.getByText("Seus direitos (LGPD)")).toBeInTheDocument();
+  });
+
+  it("mostra o link 'Preferências de cookies' (reabre o banner), também nesta página", async () => {
+    renderPrivacy();
+    await screen.findByRole("heading", { level: 1, name: "Política de Privacidade" });
+    expect(screen.getByRole("button", { name: "Preferências de cookies" })).toBeInTheDocument();
   });
 });

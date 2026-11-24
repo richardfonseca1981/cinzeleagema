@@ -5,6 +5,7 @@ import { MemoryRouter } from "react-router-dom";
 import "../i18n";
 import { Checkout } from "./Checkout";
 import { CartProvider } from "../lib/cart";
+import { ConsentProvider } from "../lib/consent";
 import { ExchangeRateProvider } from "../lib/exchangeRate";
 import { ToastProvider } from "../components/Toast";
 import { cartSignature } from "../lib/shipping/cartSignature";
@@ -75,13 +76,15 @@ function seedCartAndFreshShipping() {
 function renderCheckout() {
   return render(
     <MemoryRouter initialEntries={["/finalizar"]}>
-      <CartProvider>
-        <ExchangeRateProvider>
-          <ToastProvider>
-            <Checkout />
-          </ToastProvider>
-        </ExchangeRateProvider>
-      </CartProvider>
+      <ConsentProvider>
+        <CartProvider>
+          <ExchangeRateProvider>
+            <ToastProvider>
+              <Checkout />
+            </ToastProvider>
+          </ExchangeRateProvider>
+        </CartProvider>
+      </ConsentProvider>
     </MemoryRouter>
   );
 }

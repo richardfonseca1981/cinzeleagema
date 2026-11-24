@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { Catalog } from "./Catalog";
 import { CartProvider } from "../lib/cart";
+import { ConsentProvider } from "../lib/consent";
 import { ExchangeRateProvider } from "../lib/exchangeRate";
 import { ToastProvider } from "../components/Toast";
 import type { Product } from "../types";
@@ -68,14 +69,16 @@ function LocationDisplay() {
 function renderCatalog(initialEntries: string[] = ["/catalogo"]) {
   return render(
     <MemoryRouter initialEntries={initialEntries}>
-      <CartProvider>
-        <ExchangeRateProvider>
-          <ToastProvider>
-            <Catalog />
-            <LocationDisplay />
-          </ToastProvider>
-        </ExchangeRateProvider>
-      </CartProvider>
+      <ConsentProvider>
+        <CartProvider>
+          <ExchangeRateProvider>
+            <ToastProvider>
+              <Catalog />
+              <LocationDisplay />
+            </ToastProvider>
+          </ExchangeRateProvider>
+        </CartProvider>
+      </ConsentProvider>
     </MemoryRouter>
   );
 }
