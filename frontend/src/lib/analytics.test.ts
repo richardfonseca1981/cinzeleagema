@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { initAnalytics, isAdminPath, shouldLoadAnalytics, trackEvent, trackPageView } from "./analytics";
+import { captureUtmParams } from "./utm";
 
 afterEach(() => {
   delete window.gtag;
   delete window.dataLayer;
+  sessionStorage.clear();
   vi.restoreAllMocks();
 });
 
@@ -70,5 +72,31 @@ describe("trackPageView / trackEvent — nunca disparam para rota admin", () => 
   it("trackPageView/trackEvent não quebram quando gtag ainda não existe (script não carregado)", () => {
     expect(() => trackPageView("/catalogo", "")).not.toThrow();
     expect(() => trackEvent("search", { search_term: "ametista" })).not.toThrow();
+  });
+});
+
+describe("trackPageView — fallback de utm_* (ver lib/utm.ts)", () => {
+  it("sem utm_* na URL atual, completa o page_location com a campanha guardada no bootstrap", () => {
+    captureUtmParams("?utm_source=instagram&utm_medium=social");
+    const gtagSpy = vi.fn();
+    window.gtag = gtagSpy;
+
+    trackPageView("/catalogo/drusa-de-ametista-abc123", "");
+
+    const [, , params] = gtagSpy.mock.calls[0];
+    expect(params.page_location).toContain("utm_source=instagram");
+    expect(params.page_location).toContain("utm_medium=social");
+  });
+
+  it("com utm_* próprio na URL atual, não mistura com uma campanha antiga guardada", () => {
+    captureUtmParams("?utm_source=instagram");
+    const gtagSpy = vi.fn();
+    window.gtag = gtagSpy;
+
+    trackPageView("/catalogo", "?utm_source=whatsapp");
+
+    const [, , params] = gtagSpy.mock.calls[0];
+    expect(params.page_location).toContain("utm_source=whatsapp");
+    expect(params.page_location).not.toContain("instagram");
   });
 });

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api, ApiError } from "../lib/api";
 import type { Product } from "../types";
@@ -18,6 +18,7 @@ import { buildBreadcrumbJsonLd, buildProductJsonLd, buildProductJsonLdDescriptio
 export function ProductDetail() {
   const { t, i18n } = useTranslation();
   const { slugComId } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const { addItem } = useCart();
   const { showToast } = useToast();
@@ -50,7 +51,10 @@ export function ProductDetail() {
       .getProductBySlug(slugComId)
       .then(({ product, canonicalSlug, available }) => {
         if (slugComId.toLowerCase() !== canonicalSlug) {
-          navigate(`/catalogo/${canonicalSlug}`, { replace: true });
+          // Preserva a query string (ex.: utm_* de um link compartilhado,
+          // ver lib/utm.ts) — sem isso, o redirect pro slug canônico apagava
+          // a atribuição de campanha antes do primeiro page_view correto.
+          navigate(`/catalogo/${canonicalSlug}${location.search}`, { replace: true });
           return;
         }
         setProduct(product);
@@ -61,7 +65,7 @@ export function ProductDetail() {
         if (err instanceof ApiError && err.status === 404) setNotFound(true);
       })
       .finally(() => setLoading(false));
-  }, [slugComId, navigate]);
+  }, [slugComId, location.search, navigate]);
 
   function handleAdd() {
     if (!product || price === null) return;

@@ -52,7 +52,12 @@ function makeProduct(overrides: Partial<Product>): Product {
 
 function LocationDisplay() {
   const location = useLocation();
-  return <div data-testid="location-display">{location.pathname}</div>;
+  return (
+    <div data-testid="location-display">
+      {location.pathname}
+      {location.search}
+    </div>
+  );
 }
 
 function renderProductDetail(initialEntries: string[]) {
@@ -110,6 +115,29 @@ describe("ProductDetail — slug", () => {
     await waitFor(() =>
       expect(screen.getByTestId("location-display")).toHaveTextContent("/catalogo/ametista-importada-a1b2c3")
     );
+  });
+
+  it("redirect pro slug canônico preserva utm_* da URL (ver lib/utm.ts)", async () => {
+    const renamed = makeProduct({ name: "Ametista Importada" });
+    vi.mocked(api.getProductBySlug).mockResolvedValue({ product: renamed, canonicalSlug: "ametista-importada-a1b2c3", available: true });
+
+    renderProductDetail(["/catalogo/ametista-bruta-a1b2c3?utm_source=instagram&utm_medium=social"]);
+
+    await waitFor(() =>
+      expect(screen.getByTestId("location-display")).toHaveTextContent(
+        "/catalogo/ametista-importada-a1b2c3?utm_source=instagram&utm_medium=social"
+      )
+    );
+  });
+
+  it("URL já canônica com utm_*: não redireciona e a query string permanece intacta", async () => {
+    const product = makeProduct({});
+    vi.mocked(api.getProductBySlug).mockResolvedValue({ product, canonicalSlug: "ametista-bruta-a1b2c3", available: true });
+
+    renderProductDetail(["/catalogo/ametista-bruta-a1b2c3?utm_source=whatsapp"]);
+
+    await screen.findByText("Ametista Bruta");
+    expect(screen.getByTestId("location-display")).toHaveTextContent("/catalogo/ametista-bruta-a1b2c3?utm_source=whatsapp");
   });
 
   it("peça não encontrada (404) mostra a mensagem de não encontrada", async () => {

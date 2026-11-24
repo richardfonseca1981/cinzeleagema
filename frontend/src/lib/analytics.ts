@@ -3,6 +3,8 @@
 // send_page_view:false, por que /admin nunca é medido, por que o
 // consentimento começa negado). Sem lib externa (react-ga4 etc.), mesma
 // convenção já usada no resto do SEO (ver components/Seo.tsx).
+import { withUtmFallback } from "./utm";
+
 declare global {
   interface Window {
     dataLayer?: unknown[];
@@ -59,12 +61,16 @@ function buildPageLocation(pathname: string, search: string): string {
   return `${window.location.origin}${pathname}${search}`;
 }
 
-// page_view manual (ver initAnalytics) — nunca para rota admin.
+// page_view manual (ver initAnalytics) — nunca para rota admin. Quando a URL
+// atual não tem utm_* (redirect de slug canônico, filtro do catálogo etc.,
+// ver lib/utm.ts), completa com a cópia capturada no primeiro load da
+// sessão, pra não perder a atribuição de campanha.
 export function trackPageView(pathname: string, search: string): void {
   if (!window.gtag || isAdminPath(pathname)) return;
+  const effectiveSearch = withUtmFallback(search);
   window.gtag("event", "page_view", {
     page_path: pathname,
-    page_location: buildPageLocation(pathname, search),
+    page_location: buildPageLocation(pathname, effectiveSearch),
     page_title: document.title,
   });
 }
