@@ -111,6 +111,8 @@
     "products": "Produtos",
     "faq": "FAQ",
     "qualityPolicy": "Política de Qualidade",
+    "privacyPolicy": "Política de Privacidade",
+    "cookiePreferences": "Preferências de cookies",
     "copyright": "© {{year}} Cinzel e a Gema. Todos os direitos reservados."
   },
   "contactModal": {
@@ -354,5 +356,36 @@
       "description": "{{name}} — pedra preciosa à venda na Cinzel e a Gema.",
       "descriptionWithMeasurements": "{{name}} — pedra preciosa à venda na Cinzel e a Gema. Peso e tamanho: {{weightSize}}."
     }
+  },
+  "consent": {
+    "title": "Preferências de cookies",
+    "message": "Usamos o Google Analytics para medir visitas e cliques no site (nunca CEP completo, dados de pagamento ou qualquer dado que te identifique diretamente). Você pode aceitar ou rejeitar essa medição.",
+    "learnMore": "Saiba mais",
+    "accept": "Aceitar",
+    "reject": "Rejeitar"
+  },
+  "privacy": {
+    "metaTitle": "Política de Privacidade — Cinzel e a Gema",
+    "pageTitle": "Política de Privacidade",
+    "updatedAt": "Última atualização: {{date}}",
+    "intro": "Esta página explica quais dados o site da Cinzel e a Gema coleta, para quê e como você pode controlar essa coleta, em conformidade com a Lei Geral de Proteção de Dados (LGPD).",
+    "controllerTitle": "Quem é o controlador dos dados",
+    "controllerBody": "O controlador dos dados tratados neste site é Cinzel e a Gema Comércio e Representação Ltda., CNPJ 68.854.699/0001-90. Dúvidas sobre privacidade podem ser enviadas para cinzeleagema@gmail.com.",
+    "whatWeCollectTitle": "O que coletamos",
+    "whatWeCollectBody": "Usamos o Google Analytics (GA4) para entender como os visitantes usam o site: páginas vistas, origem do tráfego (de onde você veio — por exemplo uma rede social ou um link de divulgação) e cliques em elementos como o botão de WhatsApp, o botão de adicionar ao pedido e a cotação de frete. Nunca coletamos o CEP completo, dados de pagamento, nem qualquer informação que identifique você diretamente.",
+    "consentTitle": "Consentimento e Google Consent Mode",
+    "consentBody": "Ao chegar no site, você vê um banner perguntando se aceita ou rejeita essa medição. Enquanto você não responder, ou se escolher \"Rejeitar\", usamos o Google Consent Mode: nenhum cookie de analytics é gravado e nenhuma medição individual é feita. O Google Analytics ainda recebe sinais agregados e sem identificação (chamados de pings sem cookie) para estimar, por modelagem estatística, o volume geral de visitas — sem conseguir saber quem é você nem seguir sua navegação entre visitas. Em um site com o volume de tráfego da Cinzel e a Gema, essa modelagem é bem menos precisa do que a medição com cookie: ela pode não captar corretamente picos pequenos de tráfego.",
+    "revokeTitle": "Como revisar sua escolha",
+    "revokeBody": "Você pode mudar de ideia a qualquer momento clicando em \"Preferências de cookies\" no rodapé do site, que reabre o banner e permite aceitar ou rejeitar de novo.",
+    "cookiesTitle": "Cookies e armazenamento local usados neste site",
+    "cookiesListConsent": "cinzeleagema_consent — guarda sua escolha de consentimento (aceitar/rejeitar) e a data da escolha.",
+    "cookiesListLocale": "cinzeleagema_locale — guarda o idioma escolhido (português ou inglês).",
+    "cookiesListCart": "cinzeleagema_cart e cinzeleagema_shipping — guardam o pedido e os dados de frete em andamento, para você não perder o progresso ao recarregar a página.",
+    "cookiesListUtm": "cinzeleagema_utm — guarda, só durante a sessão no seu navegador (apagado ao fechar a aba), de qual link/campanha de divulgação você veio, para medirmos a divulgação corretamente.",
+    "cookiesListGa": "Cookies do próprio Google Analytics (como _ga) — só são gravados se você aceitar a medição no banner.",
+    "rightsTitle": "Seus direitos (LGPD)",
+    "rightsBody": "Você pode solicitar, a qualquer momento, pelo e-mail cinzeleagema@gmail.com: confirmação de que tratamos seus dados, acesso aos dados tratados, correção de dados incorretos, e revogação do consentimento — a revogação também pode ser feita diretamente pelo link \"Preferências de cookies\" no rodapé, sem precisar nos contatar.",
+    "contactTitle": "Contato",
+    "contactBody": "Para qualquer dúvida sobre esta política, escreva para cinzeleagema@gmail.com."
   }
 }

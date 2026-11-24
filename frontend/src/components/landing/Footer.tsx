@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { FacebookIcon, InstagramIcon, LinkedinIcon, MailIcon, MapPinIcon, WhatsAppIcon } from "./icons";
 import { WhatsAppGroupLink } from "./WhatsAppGroupLink";
+import { useConsent } from "../../lib/consent";
 
 export function Footer({
   whatsappHref,
@@ -15,6 +16,7 @@ export function Footer({
   onOpenQualityPolicy: () => void;
 }) {
   const { t } = useTranslation();
+  const { reopen } = useConsent();
   const year = new Date().getFullYear();
 
   return (
@@ -76,6 +78,12 @@ export function Footer({
               <li>
                 <button type="button" onClick={onOpenQualityPolicy} className="hover:text-white">
                   {t("footer.qualityPolicy")}
+                </button>
+              </li>
+              <li><Link to="/privacidade" className="hover:text-white">{t("footer.privacyPolicy")}</Link></li>
+              <li>
+                <button type="button" onClick={reopen} className="hover:text-white">
+                  {t("footer.cookiePreferences")}
                 </button>
               </li>
             </ul>

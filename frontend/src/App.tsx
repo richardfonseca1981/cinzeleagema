@@ -11,46 +11,55 @@ import { Catalog } from "./pages/Catalog";
 import { ProductDetail } from "./pages/ProductDetail";
 import { Cart } from "./pages/Cart";
 import { Checkout } from "./pages/Checkout";
+import { Privacy } from "./pages/Privacy";
 import { AdminLayout } from "./components/AdminLayout";
+import { ConsentBanner } from "./components/ConsentBanner";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { RouteTracker } from "./components/RouteTracker";
 import { ToastProvider } from "./components/Toast";
 import { CartProvider } from "./lib/cart";
+import { ConsentProvider } from "./lib/consent";
 import { ExchangeRateProvider } from "./lib/exchangeRate";
 
 export default function App() {
   return (
     <BrowserRouter>
-      <CartProvider>
-        <ExchangeRateProvider>
-          <ToastProvider>
-            <Routes>
-              <Route path="/" element={<Landing />} />
+      <RouteTracker />
+      <ConsentProvider>
+        <CartProvider>
+          <ExchangeRateProvider>
+            <ToastProvider>
+              <Routes>
+                <Route path="/" element={<Landing />} />
 
-              <Route path="/catalogo" element={<Catalog />} />
-              <Route path="/catalogo/:slugComId" element={<ProductDetail />} />
-              <Route path="/carrinho" element={<Cart />} />
-              <Route path="/finalizar" element={<Checkout />} />
+                <Route path="/catalogo" element={<Catalog />} />
+                <Route path="/catalogo/:slugComId" element={<ProductDetail />} />
+                <Route path="/carrinho" element={<Cart />} />
+                <Route path="/finalizar" element={<Checkout />} />
+                <Route path="/privacidade" element={<Privacy />} />
 
-              <Route path="/admin" element={<Login />} />
-              <Route path="/login" element={<Navigate to="/admin" replace />} />
+                <Route path="/admin" element={<Login />} />
+                <Route path="/login" element={<Navigate to="/admin" replace />} />
 
-              <Route element={<ProtectedRoute />}>
-                <Route element={<AdminLayout />}>
-                  <Route path="/admin/produtos" element={<ProductList />} />
-                  <Route path="/admin/produtos/ordem" element={<ProductOrder />} />
-                  <Route path="/admin/produtos/novo" element={<ProductForm />} />
-                  <Route path="/admin/produtos/:id" element={<ProductForm />} />
-                  <Route path="/admin/catalogo" element={<CatalogGenerator />} />
-                  <Route path="/admin/frete" element={<Shipping />} />
-                  <Route path="/admin/usuarios" element={<AdminUsers />} />
+                <Route element={<ProtectedRoute />}>
+                  <Route element={<AdminLayout />}>
+                    <Route path="/admin/produtos" element={<ProductList />} />
+                    <Route path="/admin/produtos/ordem" element={<ProductOrder />} />
+                    <Route path="/admin/produtos/novo" element={<ProductForm />} />
+                    <Route path="/admin/produtos/:id" element={<ProductForm />} />
+                    <Route path="/admin/catalogo" element={<CatalogGenerator />} />
+                    <Route path="/admin/frete" element={<Shipping />} />
+                    <Route path="/admin/usuarios" element={<AdminUsers />} />
+                  </Route>
                 </Route>
-              </Route>
 
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </ToastProvider>
-        </ExchangeRateProvider>
-      </CartProvider>
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+              <ConsentBanner />
+            </ToastProvider>
+          </ExchangeRateProvider>
+        </CartProvider>
+      </ConsentProvider>
     </BrowserRouter>
   );
 }

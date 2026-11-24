@@ -2,6 +2,7 @@ import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import ptBR from "./locales/pt-BR.json";
 import en from "./locales/en.json";
+import { trackEvent } from "./lib/analytics";
 
 export const SUPPORTED_LANGUAGES = ["pt-BR", "en"] as const;
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
@@ -42,6 +43,9 @@ export function setLanguage(lang: SupportedLanguage) {
   } catch {
     // localStorage indisponível — a troca de idioma funciona, só não persiste
   }
+  // Ponto único de troca de idioma (ver LanguageSwitcher.tsx) — nunca disparado
+  // na carga inicial (getInitialLanguage), só numa troca real do visitante.
+  trackEvent("language_change", { language: lang });
 }
 
 export default i18n;

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api, ApiError } from "../lib/api";
 import type { Product } from "../types";
@@ -14,10 +14,12 @@ import { useToast } from "../components/Toast";
 import { ProductGallery } from "../components/ProductGallery";
 import { galleryItemsFromImages } from "../lib/gallery";
 import { buildBreadcrumbJsonLd, buildProductJsonLd, buildProductJsonLdDescription } from "../lib/jsonLd";
+import { trackEvent } from "../lib/analytics";
 
 export function ProductDetail() {
   const { t, i18n } = useTranslation();
   const { slugComId } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const { addItem } = useCart();
   const { showToast } = useToast();
@@ -50,7 +52,10 @@ export function ProductDetail() {
       .getProductBySlug(slugComId)
       .then(({ product, canonicalSlug, available }) => {
         if (slugComId.toLowerCase() !== canonicalSlug) {
-          navigate(`/catalogo/${canonicalSlug}`, { replace: true });
+          // Preserva a query string (ex.: utm_* de um link compartilhado,
+          // ver lib/utm.ts) — sem isso, o redirect pro slug canônico apagava
+          // a atribuição de campanha antes do primeiro page_view correto.
+          navigate(`/catalogo/${canonicalSlug}${location.search}`, { replace: true });
           return;
         }
         setProduct(product);
@@ -61,7 +66,20 @@ export function ProductDetail() {
         if (err instanceof ApiError && err.status === 404) setNotFound(true);
       })
       .finally(() => setLoading(false));
-  }, [slugComId, navigate]);
+  }, [slugComId, location.search, navigate]);
+
+  // view_item uma vez por peça carregada — nunca dado pessoal, só o que já é
+  // público na própria página (ver CONTEXT.md "SEO — Rodada 3: eventos").
+  useEffect(() => {
+    if (!product) return;
+    trackEvent("view_item", {
+      item_id: product.sku ?? product.id,
+      item_name: product.name,
+      item_category: product.category?.name ?? null,
+      ...(product.price !== null ? { price: Number(product.price), currency: "BRL" } : {}),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product?.id]);
 
   function handleAdd() {
     if (!product || price === null) return;
@@ -78,6 +96,13 @@ export function ProductDetail() {
       },
       quantity
     );
+    trackEvent("add_to_cart", {
+      item_id: product.sku ?? product.id,
+      item_name: product.name,
+      price: Number(price),
+      currency: "BRL",
+      quantity,
+    });
     showToast("success", t("productCard.addedToast"));
   }
 
@@ -181,6 +206,7 @@ export function ProductDetail() {
                     href={priceInquiryHref}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={() => trackEvent("whatsapp_click", { origin: "price_inquiry", page: location.pathname })}
                     className="mt-4 inline-block w-full rounded-lg border border-[#C78F50] px-4 py-3 text-center font-semibold text-[#C78F50] transition hover:bg-[#C78F50]/10 sm:w-auto"
                   >
                     {t("productCard.askPrice")}

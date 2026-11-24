@@ -1,8 +1,11 @@
 import { useTranslation } from "react-i18next";
+import { useLocation } from "react-router-dom";
 import { WhatsAppIcon } from "./icons";
+import { trackEvent } from "../../lib/analytics";
 
 export function WhatsAppFloatingButton({ whatsappHref }: { whatsappHref: string | null }) {
   const { t } = useTranslation();
+  const location = useLocation();
 
   if (!whatsappHref) return null;
 
@@ -12,6 +15,7 @@ export function WhatsAppFloatingButton({ whatsappHref }: { whatsappHref: string 
       target="_blank"
       rel="noopener noreferrer"
       aria-label={t("whatsapp.ariaLabel")}
+      onClick={() => trackEvent("whatsapp_click", { origin: "floating_button", page: location.pathname })}
       className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg transition hover:scale-105"
     >
       <WhatsAppIcon className="h-7 w-7" />

@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { Catalog } from "./Catalog";
 import { CartProvider } from "../lib/cart";
+import { ConsentProvider } from "../lib/consent";
 import { ExchangeRateProvider } from "../lib/exchangeRate";
 import { ToastProvider } from "../components/Toast";
 import type { Product } from "../types";
@@ -20,7 +21,13 @@ vi.mock("../lib/api", async () => {
   };
 });
 
+vi.mock("../lib/analytics", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../lib/analytics")>();
+  return { ...actual, trackEvent: vi.fn() };
+});
+
 import { api } from "../lib/api";
+import { trackEvent } from "../lib/analytics";
 
 function makeProduct(overrides: Partial<Product>): Product {
   return {
@@ -62,14 +69,16 @@ function LocationDisplay() {
 function renderCatalog(initialEntries: string[] = ["/catalogo"]) {
   return render(
     <MemoryRouter initialEntries={initialEntries}>
-      <CartProvider>
-        <ExchangeRateProvider>
-          <ToastProvider>
-            <Catalog />
-            <LocationDisplay />
-          </ToastProvider>
-        </ExchangeRateProvider>
-      </CartProvider>
+      <ConsentProvider>
+        <CartProvider>
+          <ExchangeRateProvider>
+            <ToastProvider>
+              <Catalog />
+              <LocationDisplay />
+            </ToastProvider>
+          </ExchangeRateProvider>
+        </CartProvider>
+      </ConsentProvider>
     </MemoryRouter>
   );
 }
@@ -196,5 +205,48 @@ describe("Catalog — busca", () => {
     const scripts = document.querySelectorAll('script[type="application/ld+json"]');
     const jsonLd = Array.from(scripts).map((el) => JSON.parse(el.textContent ?? "{}"));
     expect(jsonLd).toContainEqual(expect.objectContaining({ "@type": "BreadcrumbList" }));
+  });
+});
+
+describe("Catalog — eventos (GA4)", () => {
+  it("submeter a busca dispara 'search' com o termo", async () => {
+    renderCatalog();
+    await screen.findByText("Ametista Grande");
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Pesquisar peças" }), { target: { value: "topazio" } });
+    fireEvent.submit(screen.getByRole("search"));
+
+    expect(trackEvent).toHaveBeenCalledWith("search", { search_term: "topazio" });
+  });
+
+  it("limpar a busca (termo vazio) NÃO dispara 'search'", async () => {
+    renderCatalog(["/catalogo?q=ametista"]);
+    await screen.findByText("Ametista Grande");
+    vi.mocked(trackEvent).mockClear();
+
+    fireEvent.click(screen.getByRole("button", { name: "Limpar busca" }));
+
+    expect(trackEvent).not.toHaveBeenCalledWith("search", expect.anything());
+  });
+
+  it("selecionar categoria dispara 'catalog_filter' com filter_type 'category'", async () => {
+    vi.mocked(api.listCategories).mockResolvedValue([
+      { id: "cat1", name: "Pedras Brutas", slug: "pedras-brutas", subcategories: [] },
+    ]);
+    renderCatalog();
+    await screen.findByText("Ametista Grande");
+
+    fireEvent.click(await screen.findByText("Pedras Brutas"));
+
+    expect(trackEvent).toHaveBeenCalledWith("catalog_filter", { filter_type: "category", value: "cat1" });
+  });
+
+  it("trocar a ordenação dispara 'catalog_filter' com filter_type 'sort'", async () => {
+    renderCatalog();
+    await screen.findByText("Ametista Grande");
+
+    fireEvent.change(screen.getByLabelText("Ordenar por"), { target: { value: "price_asc" } });
+
+    expect(trackEvent).toHaveBeenCalledWith("catalog_filter", { filter_type: "sort", value: "price_asc" });
   });
 });

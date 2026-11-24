@@ -6,6 +6,7 @@ import type { Category, Product } from "../types";
 import { PublicHeader } from "../components/landing/PublicHeader";
 import { Seo, SITE_URL } from "../components/Seo";
 import { buildBreadcrumbJsonLd } from "../lib/jsonLd";
+import { trackEvent } from "../lib/analytics";
 import { WhatsAppFloatingButton } from "../components/landing/WhatsAppFloatingButton";
 import { CategoryNav } from "../components/catalog/CategoryNav";
 import { ProductCard } from "../components/catalog/ProductCard";
@@ -146,10 +147,12 @@ export function Catalog() {
   }
 
   function handleSelectCategory(id: string) {
+    trackEvent("catalog_filter", { filter_type: "category", value: id || "all" });
     setFilters({ categoryId: id, sort, q });
   }
 
   function handleSelectSubcategory(catId: string, subId: string) {
+    trackEvent("catalog_filter", { filter_type: "subcategory", value: subId });
     if (catId === categoryId && subId === subcategoryId) {
       setFilters({ categoryId: catId, sort, q });
     } else {
@@ -158,12 +161,15 @@ export function Catalog() {
   }
 
   function handleSortChange(next: CatalogSort) {
+    trackEvent("catalog_filter", { filter_type: "sort", value: next });
     setFilters({ categoryId, subcategoryId, sort: next, q });
   }
 
   function handleSearchSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setFilters({ categoryId, subcategoryId, sort, q: searchDraft.trim().slice(0, SEARCH_MAX_LENGTH) });
+    const term = searchDraft.trim().slice(0, SEARCH_MAX_LENGTH);
+    if (term) trackEvent("search", { search_term: term });
+    setFilters({ categoryId, subcategoryId, sort, q: term });
   }
 
   // Esvaziar o campo por qualquer meio (backspace, selecionar tudo e apagar,

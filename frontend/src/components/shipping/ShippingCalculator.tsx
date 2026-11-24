@@ -1,6 +1,7 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { CartItem } from "../../types";
+import { trackEvent } from "../../lib/analytics";
 import { describeIssue, type ShippingAction, type ShippingIssue } from "../../lib/shipping/errors";
 import { deliveryRangeText, optionLabel } from "../../lib/shipping/options";
 import { formatCents, toDisplayCents } from "../../lib/shipping/money";
@@ -49,7 +50,7 @@ export function ShippingCalculator({ controller: c, items, exchangeRate, onClose
   const arrangedAfterFailure = c.summary.kind === "arrange" && c.summary.reason === "technical_choice";
 
   function runAction(action: ShippingAction) {
-    if (action === "retry") void c.calculate();
+    if (action === "retry") handleCalculateClick();
     else if (action === "checkPostalCode") postalRef.current?.focus();
     else if (action === "reviewCart") document.getElementById("cart-items")?.scrollIntoView({ block: "start" });
     else if (c.chooseArrange()) onCloseArranged();
@@ -130,6 +131,30 @@ export function ShippingCalculator({ controller: c, items, exchangeRate, onClose
   const state = c.quoteState;
   const result = c.result;
 
+  // shipping_quote disparado só depois de um clique em "Calcular" (nunca ao
+  // restaurar uma cotação já salva no carrinho/localStorage) — pendingTrackRef
+  // marca a intenção no clique, o efeito dispara quando o resultado chega.
+  // Nunca inclui CEP completo (ver CONTEXT.md "SEO — Rodada 3: eventos"), só
+  // país e cidade/estado (do lookup ViaCEP) e o preço mais barato cotado.
+  const pendingTrackRef = useRef(false);
+  useEffect(() => {
+    if (!pendingTrackRef.current || state.status === "loading") return;
+    pendingTrackRef.current = false;
+    if (state.status === "success" && result && !result.unavailable && result.options.length > 0) {
+      trackEvent("shipping_quote", {
+        country: c.country,
+        city: c.place?.city ?? null,
+        state: c.place?.state ?? null,
+        cheapest_price_brl: Math.min(...result.options.map((option) => option.priceBRL)),
+      });
+    }
+  }, [state.status, result, c.country, c.place]);
+
+  function handleCalculateClick() {
+    pendingTrackRef.current = true;
+    void c.calculate();
+  }
+
   return (
     <section aria-labelledby="shipping-title" className="mt-6 rounded-lg border border-[#E2E8F0] bg-white p-4" data-testid="shipping-calculator">
       <h2 id="shipping-title" className="text-base font-semibold text-[#1A1A1A]">
@@ -191,7 +216,7 @@ export function ShippingCalculator({ controller: c, items, exchangeRate, onClose
 
       <button
         type="button"
-        onClick={() => void c.calculate()}
+        onClick={handleCalculateClick}
         disabled={c.isLoading || cooling || items.length === 0}
         className="mt-4 w-full rounded-lg bg-[#C78F50] px-4 py-2.5 text-sm font-semibold text-[#010B1A] transition hover:bg-[#B37D3F] disabled:opacity-50 sm:w-auto"
       >
