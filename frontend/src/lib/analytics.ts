@@ -30,6 +30,37 @@ export function shouldLoadAnalytics(input: { prod: boolean; measurementId: strin
 
 let initialized = false;
 
+// Separado de initAnalytics só pra ser testável sem depender de
+// import.meta.env.PROD (ver analytics.test.ts) — a checagem de "deve
+// carregar" fica inteira em initAnalytics/shouldLoadAnalytics.
+//
+// IMPORTANTE: o gtag.js da Google só processa itens do dataLayer que sejam
+// o objeto `arguments` DE VERDADE (`Object.prototype.toString.call(item)
+// === "[object Arguments]"`) — NUNCA reescrever o stub como
+// `(...args) => dataLayer.push(args)`. Rest params produzem um Array de
+// verdade (`Array.isArray(args) === true`), e o gtag.js ignora
+// silenciosamente qualquer item que não seja `arguments`, sem lançar erro:
+// foi assim que esse bug passou despercebido em produção — o script
+// carregava normalmente, mas nenhum hit saía. Mesma forma do snippet
+// oficial do Google (função tradicional, sem rest params nem arrow
+// function, usando o `arguments` implícito).
+export function bootstrapGtag(measurementId: string): void {
+  window.dataLayer = window.dataLayer ?? [];
+  window.gtag = function gtag() {
+    window.dataLayer!.push(arguments);
+  };
+
+  window.gtag("consent", "default", { analytics_storage: "denied", ad_storage: "denied" });
+
+  const script = document.createElement("script");
+  script.async = true;
+  script.src = `https://www.googletagmanager.com/gtag/js?id=${measurementId}`;
+  document.head.appendChild(script);
+
+  window.gtag("js", new Date());
+  window.gtag("config", measurementId, { send_page_view: false });
+}
+
 // Carrega o gtag.js e registra o Consent Mode v2 ANTES de qualquer config —
 // analytics_storage/ad_storage começam NEGADOS; só viram "granted" depois do
 // aceite no banner (ver lib/consent.tsx updateConsent). send_page_view:false
@@ -40,21 +71,7 @@ export function initAnalytics(): void {
   if (initialized) return;
   if (!shouldLoadAnalytics({ prod: import.meta.env.PROD, measurementId: GA_MEASUREMENT_ID })) return;
   initialized = true;
-
-  window.dataLayer = window.dataLayer ?? [];
-  window.gtag = function gtag(...args: unknown[]) {
-    window.dataLayer!.push(args);
-  };
-
-  window.gtag("consent", "default", { analytics_storage: "denied", ad_storage: "denied" });
-
-  const script = document.createElement("script");
-  script.async = true;
-  script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`;
-  document.head.appendChild(script);
-
-  window.gtag("js", new Date());
-  window.gtag("config", GA_MEASUREMENT_ID, { send_page_view: false });
+  bootstrapGtag(GA_MEASUREMENT_ID!);
 }
 
 // Chamada pelo ConsentProvider (ver lib/consent.tsx) quando o visitante
