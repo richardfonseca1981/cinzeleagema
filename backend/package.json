@@ -26,7 +26,8 @@
     "generate:og-default": "tsx src/scripts/generateOgDefaultImage.ts",
     "catalog:sample": "tsx src/scripts/generateSampleCatalog.ts",
     "catalog:investigate-name-dup": "tsx src/scripts/investigateNameDuplication.ts",
-    "feed:audit": "tsx src/scripts/auditProductFeed.ts"
+    "feed:audit": "tsx src/scripts/auditProductFeed.ts",
+    "restore:categories": "tsx src/scripts/restoreCategories.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
