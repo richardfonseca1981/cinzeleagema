@@ -31,27 +31,40 @@ export const createProductSchema = z.object({
 
 export const updateProductSchema = createProductSchema.partial();
 
-export const listProductsQuerySchema = z.object({
-  active: z
-    .enum(["true", "false"])
-    .optional()
-    .transform((v) => (v === undefined ? undefined : v === "true")),
-  categoryId: z.string().min(1).optional(),
-  subcategoryId: z.string().min(1).optional(),
-  // Busca (painel admin): contém, sem diferenciar maiúsculas de minúsculas,
-  // em name e sku. Vazio/só espaços = sem busca (comportamento anterior).
-  q: z
-    .string()
-    .trim()
-    .max(100)
-    .optional()
-    .transform((v) => (v ? v : undefined)),
-  page: z.coerce.number().int().positive().default(1),
-  pageSize: z.coerce.number().int().positive().max(100).default(20),
-  // Ordenação do catálogo público (ver lib/productSort.ts); valor fora da
-  // lista é 400 (ZodError, tratado em errorHandler.ts).
-  sort: z.enum(SORT_VALUES).default("default"),
-});
+export const listProductsQuerySchema = z
+  .object({
+    active: z
+      .enum(["true", "false"])
+      .optional()
+      .transform((v) => (v === undefined ? undefined : v === "true")),
+    categoryId: z.string().min(1).optional(),
+    subcategoryId: z.string().min(1).optional(),
+    // Peça SEM categoria (categoryId IS NULL) — usado pela tela de
+    // categorização do admin (visão padrão "Sem categoria"); o catálogo
+    // público nunca manda isto. Mutuamente exclusivo com categoryId/
+    // subcategoryId (não faz sentido pedir os dois).
+    uncategorized: z
+      .enum(["true"])
+      .optional()
+      .transform((v) => v === "true"),
+    // Busca (painel admin): contém, sem diferenciar maiúsculas de minúsculas,
+    // em name e sku. Vazio/só espaços = sem busca (comportamento anterior).
+    q: z
+      .string()
+      .trim()
+      .max(100)
+      .optional()
+      .transform((v) => (v ? v : undefined)),
+    page: z.coerce.number().int().positive().default(1),
+    pageSize: z.coerce.number().int().positive().max(100).default(20),
+    // Ordenação do catálogo público (ver lib/productSort.ts); valor fora da
+    // lista é 400 (ZodError, tratado em errorHandler.ts).
+    sort: z.enum(SORT_VALUES).default("default"),
+  })
+  .refine((v) => !(v.uncategorized && (v.categoryId || v.subcategoryId)), {
+    message: "uncategorized não pode ser combinado com categoryId/subcategoryId",
+    path: ["uncategorized"],
+  });
 
 // Lista COMPLETA de ids na nova ordem (sem repetidos).
 export const reorderProductsSchema = z
