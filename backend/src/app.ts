@@ -21,6 +21,7 @@ import { sitemapRouter } from "./routes/sitemap.routes";
 import { previewRouter } from "./routes/preview.routes";
 import { feedRouter } from "./routes/feed.routes";
 import { categoryAdminRouter } from "./routes/categoryAdmin.routes";
+import { productBulkCategoryRouter } from "./routes/productBulkCategory.routes";
 
 export function createApp() {
   const app = express();
@@ -42,6 +43,7 @@ export function createApp() {
   app.use("/api/admin/products", productExportRouter);
   app.use("/api/admin/products", productOrderRouter);
   app.use("/api/admin/products", productIdentificationRouter);
+  app.use("/api/admin/products", productBulkCategoryRouter);
   app.use("/api/shipping", shippingRouter);
   app.use("/api/admin/shipping", shippingAdminRouter);
   app.use("/api/admin/catalog", catalogJobRouter);

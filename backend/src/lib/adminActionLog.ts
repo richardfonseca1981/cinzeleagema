@@ -19,10 +19,10 @@ export async function recordAdminAction(
   client: PrismaOrTx,
   actor: AdminActor,
   action: string,
-  payload: Prisma.InputJsonValue
+  payload: Record<string, unknown>
 ): Promise<void> {
   await client.adminActionLog.create({
-    data: { adminId: actor.id, adminUsername: actor.username, action, payload },
+    data: { adminId: actor.id, adminUsername: actor.username, action, payload: payload as unknown as Prisma.InputJsonValue },
   });
 }
 

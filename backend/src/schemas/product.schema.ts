@@ -62,6 +62,31 @@ export const reorderImagesSchema = z.object({
   order: z.array(z.string().min(1)).min(1),
 });
 
+// Item de PATCH /api/admin/products/bulk-category: destino POR peça (não
+// obrigatoriamente o mesmo destino para todas — "mover N peças para a mesma
+// categoria" é só o caso mais comum, o shape já aceita destinos
+// heterogêneos, usado também pelo /undo e pelo script restore:categories).
+// subcategoryId sem categoryId não faz sentido (peça não pode ter
+// subcategoria sem categoria).
+const bulkCategoryItemSchema = z
+  .object({
+    id: z.string().min(1),
+    categoryId: z.string().min(1).nullable(),
+    subcategoryId: z.string().min(1).nullable(),
+  })
+  .refine((item) => !(item.subcategoryId && !item.categoryId), {
+    message: "subcategoryId exige categoryId",
+    path: ["subcategoryId"],
+  });
+
+// Limite de 500 — folga confortável acima das ~200 peças reais do catálogo
+// (ver CONTEXT.md), mas ainda um teto explícito (nenhum endpoint em lote do
+// projeto fica sem um, ver MAX_QUERY_LENGTH/MAX_PAGE_PARAM no restante do
+// código).
+export const bulkCategorySchema = z.object({
+  items: z.array(bulkCategoryItemSchema).min(1).max(500),
+});
+
 // Nível fechado — qualquer outro valor é rejeitado (mesmo enum do parâmetro
 // "level" da operação enhance_color, ver lib/imageOperations.ts).
 const colorEnhanceLevelSchema = z.enum(["leve", "medio", "forte"]);
