@@ -1,5 +1,6 @@
 import { resolveBodyText, resolveTitle } from "../catalog/content";
 import { buildPublicSlug } from "../publicSlug";
+import { formatWeightSizePt } from "../seo/meta";
 import { escapeXml } from "../xml";
 import { evaluateFeedEligibility, type FeedEligibilityInput } from "./feedEligibility";
 import { GOOGLE_PRODUCT_CATEGORY_BY_CATEGORY_SLUG } from "./googleProductCategoryMap";
@@ -24,6 +25,7 @@ export interface FeedSubcategory {
 
 export interface FeedProduct extends FeedEligibilityInput {
   weightGrams: unknown; // Decimal do Prisma ou já convertido — 0 = "não informado".
+  sizeCm: unknown; // Decimal do Prisma ou já convertido — 0 = "não informado".
   category: FeedCategory | null;
   subcategory: FeedSubcategory | null;
 }
@@ -37,6 +39,7 @@ export interface FeedItem {
   additionalImageLinks: string[];
   priceBRL: number;
   weightKg: number | null;
+  productLengthCm: number | null;
   productType: string | null;
   googleProductCategory: string | null;
   customLabel0: string | null;
@@ -46,20 +49,47 @@ function truncate(value: string, maxLength: number): string {
   return value.length > maxLength ? value.slice(0, maxLength) : value;
 }
 
+// Mesmo formato de tamanho já usado no site (frontend/src/lib/format.ts
+// formatWeightSize / backend/src/lib/seo/meta.ts formatWeightSizePt): número
+// + "cm" SEM espaço entre os dois, separador decimal pt-BR. Duplicado de
+// propósito aqui (mesma convenção de publicSlug.ts/productSlug.ts — nunca
+// importar essa formatação entre camadas) porque o título do feed precisa só
+// do tamanho (a descrição usa formatWeightSizePt, que já combina peso+tamanho).
+function formatSizeCmPt(cm: number): string {
+  return `${cm.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}cm`;
+}
+
+// Acrescenta a medida ao título quando houver `sizeCm` real (> 0) — "Título –
+// 10cm". Sem medida, devolve o título como veio (nunca inventa "– 0cm").
+function appendSizeToTitle(title: string, sizeCmNumber: number): string {
+  return sizeCmNumber > 0 ? `${title} – ${formatSizeCmPt(sizeCmNumber)}` : title;
+}
+
+// Primeira linha da descrição: nome + peso/tamanho REAIS (formatWeightSizePt
+// já combina os dois com " · ", omitindo o que for 0 — nunca inventa dado
+// que a peça não tem). Sem peso nem tamanho, a linha é só o nome (nada a
+// acrescentar).
+function buildDescriptionLeadLine(baseTitle: string, weightGramsNumber: number, sizeCmNumber: number): string {
+  const weightSize = formatWeightSizePt(weightGramsNumber, sizeCmNumber);
+  return weightSize ? `${baseTitle} – ${weightSize}` : baseTitle;
+}
+
 // Única função que decide o CONTEÚDO de um item do feed a partir de uma
 // peça já elegível (ver evaluateFeedEligibility) — nunca filtra de novo
 // aqui, só transforma. Chamador garante que só passa peças elegíveis
 // (buildFeedItems abaixo faz esse filtro).
 export function buildFeedItem(product: FeedProduct, siteUrl: string): FeedItem {
   const base = siteUrl.replace(/\/+$/, "");
-  const title = resolveTitle(product, "pt");
-  const body = resolveBodyText(product, "pt", title);
+  const baseTitle = resolveTitle(product, "pt");
+  const body = resolveBodyText(product, "pt", baseTitle);
   const slug = buildPublicSlug(product.name, product.id);
 
   const [cover, ...rest] = product.images;
 
   const weightGramsNumber = Number(product.weightGrams);
   const weightKg = weightGramsNumber > 0 ? weightGramsNumber / 1000 : null;
+  const sizeCmNumber = Number(product.sizeCm);
+  const title = appendSizeToTitle(baseTitle, sizeCmNumber);
 
   const categorySlug = product.category?.slug ?? null;
   const categoryMapping = categorySlug ? GOOGLE_PRODUCT_CATEGORY_BY_CATEGORY_SLUG[categorySlug] ?? null : null;
@@ -70,15 +100,27 @@ export function buildFeedItem(product: FeedProduct, siteUrl: string): FeedItem {
       : product.category.name
     : null;
 
+  // Linha inicial com os dados reais (nome + peso/tamanho), seguida do texto
+  // já resolvido (identificação ou description própria) — sem corpo próprio
+  // (`body` null), a descrição é só a linha inicial, nunca repete o nome de
+  // novo como "corpo".
+  const leadLine = buildDescriptionLeadLine(baseTitle, weightGramsNumber, sizeCmNumber);
+  const description = body?.text ? `${leadLine}\n\n${body.text}` : leadLine;
+
   return {
     id: product.id,
     title: truncate(title, 150),
-    description: truncate(body?.text ?? title, 5000),
+    description: truncate(description, 5000),
     link: `${base}/catalogo/${slug}`,
     imageLink: cover.url,
     additionalImageLinks: rest.slice(0, MAX_ADDITIONAL_IMAGES).map((image) => image.url),
     priceBRL: Number(product.price),
     weightKg,
+    // `Product.sizeCm` é UMA medida só (não há length/width/height
+    // separados no schema — ver CONTEXT.md) — mapeada só para
+    // `product_length` (nunca inventa product_width/product_height sem
+    // dado real, ver render abaixo).
+    productLengthCm: sizeCmNumber > 0 ? sizeCmNumber : null,
     productType,
     googleProductCategory: categoryMapping?.path ?? null,
     customLabel0: categorySlug,
@@ -113,6 +155,15 @@ function renderItemXml(item: FeedItem): string {
     ...(item.productType ? [`    <g:product_type>${escapeXml(item.productType)}</g:product_type>`] : []),
     ...(item.customLabel0 ? [`    <g:custom_label_0>${escapeXml(item.customLabel0)}</g:custom_label_0>`] : []),
     ...(item.weightKg !== null ? [`    <g:shipping_weight>${item.weightKg.toFixed(3)} kg</g:shipping_weight>`] : []),
+    // product_length/product_weight (atributos do Google, confirmados na
+    // especificação oficial — support.google.com/merchants/answer/11018531,
+    // formato "número espaço unidade") medem a peça em si, diferente de
+    // shipping_weight (pensado pra cotação de frete) — mas como só há um
+    // peso real cadastrado, o mesmo valor serve aos dois sem inventar nada.
+    // product_width/product_height NUNCA são emitidos: o schema só guarda
+    // uma medida (sizeCm), não há dado real pra eles.
+    ...(item.productLengthCm !== null ? [`    <g:product_length>${item.productLengthCm.toFixed(1)} cm</g:product_length>`] : []),
+    ...(item.weightKg !== null ? [`    <g:product_weight>${item.weightKg.toFixed(3)} kg</g:product_weight>`] : []),
     "  </item>",
   ];
 

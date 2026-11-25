@@ -16,6 +16,7 @@ function product(overrides: Partial<FeedProduct> = {}): FeedProduct {
     trackStock: false,
     stockQty: null,
     weightGrams: 0,
+    sizeCm: 0,
     images: [{ url: "https://pub-r2.example.com/foto1.webp" }],
     category: { slug: "pedras-brutas", name: "Pedras Brutas" },
     subcategory: null,
@@ -50,6 +51,51 @@ describe("buildFeedItem", () => {
     expect(item.additionalImageLinks).toHaveLength(10);
   });
 
+  it("com sizeCm > 0, acrescenta a medida ao final do título no formato já usado no site ('– 10cm')", () => {
+    const item = buildFeedItem(product({ name: "Ametista Bruta", sizeCm: 10 }), SITE_URL);
+    expect(item.title).toBe("Ametista Bruta – 10cm");
+  });
+
+  it("sem sizeCm (0 = não informado), mantém o título atual sem sufixo", () => {
+    const item = buildFeedItem(product({ name: "Ametista Bruta", sizeCm: 0 }), SITE_URL);
+    expect(item.title).toBe("Ametista Bruta");
+  });
+
+  it("medida com casa decimal usa vírgula (pt-BR), mesma convenção do site", () => {
+    const item = buildFeedItem(product({ name: "Citrino", sizeCm: 12.5 }), SITE_URL);
+    expect(item.title).toBe("Citrino – 12,5cm");
+  });
+
+  it("título + medida respeita o limite de 150 caracteres do Google", () => {
+    const longName = "A".repeat(145);
+    const item = buildFeedItem(product({ name: longName, sizeCm: 10 }), SITE_URL);
+    expect(item.title.length).toBeLessThanOrEqual(150);
+  });
+
+  it("descrição começa com nome + peso/tamanho reais, mesmo quando o título já tem o sufixo de medida", () => {
+    const item = buildFeedItem(
+      product({ name: "Ametista Bruta", sizeCm: 10, weightGrams: 250, description: "Peça rara, lapidação exclusiva.", identificationPt: null }),
+      SITE_URL
+    );
+    expect(item.description.startsWith("Ametista Bruta – 250g · 10cm\n\n")).toBe(true);
+    expect(item.description).toContain("Peça rara, lapidação exclusiva.");
+  });
+
+  it("sem peso nem tamanho, a linha inicial da descrição é só o nome (não inventa '· 0cm')", () => {
+    const item = buildFeedItem(product({ name: "Ametista Bruta", weightGrams: 0, sizeCm: 0, description: "Texto próprio." }), SITE_URL);
+    expect(item.description.startsWith("Ametista Bruta\n\n")).toBe(true);
+    expect(item.description).not.toContain("0cm");
+    expect(item.description).not.toContain("0g");
+  });
+
+  it("sem description/identificação própria (body null), a descrição é só a linha inicial — não duplica o nome", () => {
+    const item = buildFeedItem(
+      product({ name: "Ametista Bruta", sizeCm: 10, weightGrams: 250, description: null, identificationPt: null }),
+      SITE_URL
+    );
+    expect(item.description).toBe("Ametista Bruta – 250g · 10cm");
+  });
+
   it("preço formatado como número decimal + ' BRL'", () => {
     const item = buildFeedItem(product({ price: 1234 }), SITE_URL);
     expect(item.priceBRL).toBe(1234);
@@ -59,6 +105,12 @@ describe("buildFeedItem", () => {
     expect(buildFeedItem(product({ weightGrams: 250 }), SITE_URL).weightKg).toBeCloseTo(0.25);
     expect(buildFeedItem(product({ weightGrams: 0 }), SITE_URL).weightKg).toBeNull();
   });
+
+  it("productLengthCm vem de sizeCm > 0; sizeCm 0 ('não informado') vira null — nunca inventa product_width/product_height", () => {
+    expect(buildFeedItem(product({ sizeCm: 10 }), SITE_URL).productLengthCm).toBe(10);
+    expect(buildFeedItem(product({ sizeCm: 0 }), SITE_URL).productLengthCm).toBeNull();
+  });
+
 
   it("product_type combina categoria e subcategoria; sem subcategoria usa só a categoria", () => {
     const withSub = buildFeedItem(
@@ -123,6 +175,22 @@ describe("renderGoogleFeedXml", () => {
     expect(xml).toContain("<g:condition>new</g:condition>");
     expect(xml).toContain("<g:identifier_exists>false</g:identifier_exists>");
     expect(xml).toContain("<g:brand>Cinzel e a Gema</g:brand>");
+  });
+
+  it("product_length/product_weight aparecem no formato oficial 'número espaço unidade' quando há dado real", () => {
+    const items = buildFeedItems([product({ sizeCm: 10, weightGrams: 250 })], SITE_URL);
+    const xml = renderGoogleFeedXml(items, SITE_URL);
+
+    expect(xml).toContain("<g:product_length>10.0 cm</g:product_length>");
+    expect(xml).toContain("<g:product_weight>0.250 kg</g:product_weight>");
+  });
+
+  it("sem sizeCm/weightGrams (0 = não informado), product_length/product_weight ficam de fora do XML", () => {
+    const items = buildFeedItems([product({ sizeCm: 0, weightGrams: 0 })], SITE_URL);
+    const xml = renderGoogleFeedXml(items, SITE_URL);
+
+    expect(xml).not.toContain("product_length");
+    expect(xml).not.toContain("product_weight");
   });
 
   it("escapa caracteres especiais em título/descrição (& < > \" ')", () => {
