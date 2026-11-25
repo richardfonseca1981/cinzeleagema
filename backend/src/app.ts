@@ -20,6 +20,7 @@ import { catalogJobRouter } from "./routes/catalogJob.routes";
 import { sitemapRouter } from "./routes/sitemap.routes";
 import { previewRouter } from "./routes/preview.routes";
 import { feedRouter } from "./routes/feed.routes";
+import { categoryAdminRouter } from "./routes/categoryAdmin.routes";
 
 export function createApp() {
   const app = express();
@@ -44,6 +45,7 @@ export function createApp() {
   app.use("/api/shipping", shippingRouter);
   app.use("/api/admin/shipping", shippingAdminRouter);
   app.use("/api/admin/catalog", catalogJobRouter);
+  app.use("/api/admin/categories", categoryAdminRouter);
   app.use("/api/products", productRouter);
   app.use("/api/orders", orderRouter);
   app.use("/api/products/:productId/images", imageRouter);
