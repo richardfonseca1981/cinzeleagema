@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useCallback, useContext, useState } from "react";
+import { createContext, ReactNode, useCallback, useContext, useRef, useState } from "react";
 
 type ToastType = "success" | "error" | "warning";
 
@@ -14,11 +14,19 @@ interface ToastItem {
   action?: ToastAction;
 }
 
+interface ShowToastOptions {
+  // Sobrescreve a duração padrão — usado quando o toast protege uma ação em
+  // lote grande (ex.: mover várias peças de uma vez): tempo maior dá chance
+  // real de clicar em "Desfazer" antes de sumir. Ver ProductCategorization.tsx.
+  durationMs?: number;
+}
+
 interface ToastContextValue {
   // `action` é opcional (ex.: "Desfazer" depois de mover peças em lote) —
-  // toast com ação fica visível mais tempo (ver DURATION_MS abaixo), pra dar
-  // tempo real de clicar.
-  showToast: (type: ToastType, message: string, action?: ToastAction) => void;
+  // toast com ação fica visível mais tempo por padrão (ver
+  // WITH_ACTION_DURATION_MS), e `options.durationMs` permite esticar ainda
+  // mais quando o próprio chamador sabe que a ação afeta muita coisa.
+  showToast: (type: ToastType, message: string, action?: ToastAction, options?: ShowToastOptions) => void;
 }
 
 const DEFAULT_DURATION_MS = 4000;
@@ -34,22 +42,57 @@ const TOAST_STYLES: Record<ToastType, string> = {
 
 let nextId = 0;
 
+// Um temporizador por toast — guarda o que falta pra sumir pra poder pausar
+// (mouse em cima) e retomar do ponto exato em vez de reiniciar do zero.
+interface TimerState {
+  timeoutId: ReturnType<typeof setTimeout> | null;
+  expiresAt: number;
+  remainingMs: number;
+}
+
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const timersRef = useRef<Map<number, TimerState>>(new Map());
 
-  const showToast = useCallback((type: ToastType, message: string, action?: ToastAction) => {
-    const id = nextId++;
-    setToasts((prev) => [...prev, { id, type, message, action }]);
-    setTimeout(
-      () => {
-        setToasts((prev) => prev.filter((t) => t.id !== id));
-      },
-      action ? WITH_ACTION_DURATION_MS : DEFAULT_DURATION_MS
-    );
+  const dismiss = useCallback((id: number) => {
+    const timer = timersRef.current.get(id);
+    if (timer?.timeoutId) clearTimeout(timer.timeoutId);
+    timersRef.current.delete(id);
+    setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  function dismiss(id: number) {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
+  const scheduleDismiss = useCallback(
+    (id: number, ms: number) => {
+      const timeoutId = setTimeout(() => dismiss(id), ms);
+      timersRef.current.set(id, { timeoutId, expiresAt: Date.now() + ms, remainingMs: ms });
+    },
+    [dismiss]
+  );
+
+  const showToast = useCallback(
+    (type: ToastType, message: string, action?: ToastAction, options?: ShowToastOptions) => {
+      const id = nextId++;
+      const duration = options?.durationMs ?? (action ? WITH_ACTION_DURATION_MS : DEFAULT_DURATION_MS);
+      setToasts((prev) => [...prev, { id, type, message, action }]);
+      scheduleDismiss(id, duration);
+    },
+    [scheduleDismiss]
+  );
+
+  // Passar o mouse por cima pausa a contagem — sem isso, mirar o clique no
+  // "Desfazer" de uma movimentação grande podia perder a janela de tempo bem
+  // na hora de decidir.
+  function pause(id: number) {
+    const timer = timersRef.current.get(id);
+    if (!timer || timer.timeoutId === null) return;
+    clearTimeout(timer.timeoutId);
+    timersRef.current.set(id, { timeoutId: null, expiresAt: timer.expiresAt, remainingMs: Math.max(timer.expiresAt - Date.now(), 0) });
+  }
+
+  function resume(id: number) {
+    const timer = timersRef.current.get(id);
+    if (!timer || timer.timeoutId !== null) return;
+    scheduleDismiss(id, timer.remainingMs);
   }
 
   return (
@@ -62,6 +105,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         {toasts.map((toast) => (
           <div
             key={toast.id}
+            onMouseEnter={() => pause(toast.id)}
+            onMouseLeave={() => resume(toast.id)}
             className={`flex items-center justify-between gap-3 rounded-lg border px-4 py-3 text-sm font-medium shadow-md ${TOAST_STYLES[toast.type]}`}
           >
             <span>{toast.message}</span>
