@@ -3,6 +3,7 @@ import {
   buildBulkMoveItems,
   deselectIds,
   fetchAllMatchingProductIds,
+  idsToMoveOnDrop,
   selectAllMatching,
   selectRange,
   toggleSelection,
@@ -82,6 +83,20 @@ describe("buildBulkMoveItems", () => {
 
   it("destino 'Sem categoria' é categoryId/subcategoryId null", () => {
     expect(buildBulkMoveItems(["p1"], null, null)).toEqual([{ id: "p1", categoryId: null, subcategoryId: null }]);
+  });
+});
+
+describe("idsToMoveOnDrop", () => {
+  it("peça arrastada que JÁ estava selecionada: move a seleção inteira", () => {
+    expect(idsToMoveOnDrop("p2", ["p1", "p2", "p3"])).toEqual(["p1", "p2", "p3"]);
+  });
+
+  it("peça arrastada que NÃO estava selecionada: move só ela, sem alterar a seleção de quem não foi arrastado", () => {
+    expect(idsToMoveOnDrop("p9", ["p1", "p2"])).toEqual(["p9"]);
+  });
+
+  it("sem nenhuma seleção, arrastar uma peça move só ela", () => {
+    expect(idsToMoveOnDrop("p1", [])).toEqual(["p1"]);
   });
 });
 

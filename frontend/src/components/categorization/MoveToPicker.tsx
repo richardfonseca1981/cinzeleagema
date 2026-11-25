@@ -25,6 +25,13 @@ export function flattenDestinations(tree: CategoryTree): MoveDestination[] {
   return options;
 }
 
+// Id estável de destino — usado tanto pelo <DndContext> (droppable na árvore,
+// ver CategoryTree.tsx) quanto pela página pra achar de volta o MoveDestination
+// a partir do id onde a peça foi soltada (ver ProductCategorization.tsx).
+export function destinationDropId(destination: Pick<MoveDestination, "categoryId" | "subcategoryId">): string {
+  return `category-drop:${destination.categoryId ?? "none"}:${destination.subcategoryId ?? "none"}`;
+}
+
 function normalize(value: string): string {
   return value.toLowerCase().trim();
 }

@@ -1,4 +1,6 @@
+import { useDroppable } from "@dnd-kit/core";
 import type { CategoryTree } from "../../types";
+import { destinationDropId } from "./MoveToPicker";
 
 // Filtro de navegação da fila (clicar num nó da árvore = ver as peças
 // daquele grupo na grade) — diferente do DESTINO de "Mover para…"
@@ -20,10 +22,39 @@ export function sameBrowseFilter(a: BrowseFilter, b: BrowseFilter): boolean {
 const nodeBase = "flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm transition";
 const nodeActive = "bg-[#C78F50]/15 font-semibold text-[#8A5A26]";
 const nodeInactive = "text-[#1A1A1A] hover:bg-[#F8FAFC]";
+const nodeDropTarget = "ring-2 ring-[#C78F50] bg-[#C78F50]/10";
 
 function CountBadge({ count }: { count: number }) {
   return (
     <span className="flex-shrink-0 rounded-full bg-[#E2E8F0] px-2 py-0.5 text-xs font-medium text-[#64748B]">{count}</span>
+  );
+}
+
+// Nó da árvore que também é uma zona de soltar (arrastar peça(s) da grade
+// até aqui — ver DndContext em ProductCategorization.tsx). `dropId` é
+// sempre o resultado de destinationDropId (mesma chave usada pra achar o
+// MoveDestination de volta no onDragEnd da página).
+function TreeNodeButton({
+  dropId,
+  active,
+  onClick,
+  children,
+}: {
+  dropId: string;
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: dropId });
+  return (
+    <button
+      ref={setNodeRef}
+      type="button"
+      onClick={onClick}
+      className={`${nodeBase} ${isOver ? nodeDropTarget : active ? nodeActive : nodeInactive}`}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -38,14 +69,14 @@ export function CategoryTree({
 }) {
   return (
     <nav aria-label="Categorias" className="space-y-0.5">
-      <button
-        type="button"
+      <TreeNodeButton
+        dropId={destinationDropId({ categoryId: null, subcategoryId: null })}
+        active={sameBrowseFilter(activeFilter, { kind: "uncategorized" })}
         onClick={() => onSelectFilter({ kind: "uncategorized" })}
-        className={`${nodeBase} ${sameBrowseFilter(activeFilter, { kind: "uncategorized" }) ? nodeActive : nodeInactive}`}
       >
         <span>Sem categoria</span>
         <CountBadge count={tree.uncategorized.productCount} />
-      </button>
+      </TreeNodeButton>
 
       <button
         type="button"
@@ -58,30 +89,26 @@ export function CategoryTree({
       <div className="mt-2 border-t border-[#E2E8F0] pt-2">
         {tree.categories.map((category) => (
           <div key={category.id}>
-            <button
-              type="button"
+            <TreeNodeButton
+              dropId={destinationDropId({ categoryId: category.id, subcategoryId: null })}
+              active={sameBrowseFilter(activeFilter, { kind: "category", categoryId: category.id })}
               onClick={() => onSelectFilter({ kind: "category", categoryId: category.id })}
-              className={`${nodeBase} ${sameBrowseFilter(activeFilter, { kind: "category", categoryId: category.id }) ? nodeActive : nodeInactive}`}
             >
               <span className="truncate">{category.name}</span>
               <CountBadge count={category.productCount} />
-            </button>
+            </TreeNodeButton>
             {category.subcategories.length > 0 && (
               <div className="ml-3 space-y-0.5 border-l border-[#E2E8F0] pl-2">
                 {category.subcategories.map((sub) => (
-                  <button
+                  <TreeNodeButton
                     key={sub.id}
-                    type="button"
+                    dropId={destinationDropId({ categoryId: category.id, subcategoryId: sub.id })}
+                    active={sameBrowseFilter(activeFilter, { kind: "subcategory", categoryId: category.id, subcategoryId: sub.id })}
                     onClick={() => onSelectFilter({ kind: "subcategory", categoryId: category.id, subcategoryId: sub.id })}
-                    className={`${nodeBase} ${
-                      sameBrowseFilter(activeFilter, { kind: "subcategory", categoryId: category.id, subcategoryId: sub.id })
-                        ? nodeActive
-                        : nodeInactive
-                    }`}
                   >
                     <span className="truncate">{sub.name}</span>
                     <CountBadge count={sub.productCount} />
-                  </button>
+                  </TreeNodeButton>
                 ))}
               </div>
             )}

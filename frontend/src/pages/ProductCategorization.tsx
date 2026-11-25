@@ -1,14 +1,24 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { DndContext, PointerSensor, useDraggable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 import { api, ApiError, exportCategoryCsv } from "../lib/api";
 import { useToast } from "../components/Toast";
 import { Pagination } from "../components/Pagination";
 import { totalPages } from "../lib/pagination";
 import { coverImage } from "../lib/productRow";
 import { formatAdminPrice, formatAdminSku } from "../lib/adminProductFormat";
-import { buildBulkMoveItems, deselectIds, fetchAllMatchingProductIds, selectAllMatching, selectRange, toggleSelection } from "../lib/categorization";
+import {
+  buildBulkMoveItems,
+  deselectIds,
+  fetchAllMatchingProductIds,
+  idsToMoveOnDrop,
+  selectAllMatching,
+  selectRange,
+  toggleSelection,
+} from "../lib/categorization";
 import { CategoryTree, sameBrowseFilter, type BrowseFilter } from "../components/categorization/CategoryTree";
-import { MoveToPicker, type MoveDestination } from "../components/categorization/MoveToPicker";
+import { MoveToPicker, destinationDropId, flattenDestinations, type MoveDestination } from "../components/categorization/MoveToPicker";
 import type { CategoryTree as CategoryTreeData, Product } from "../types";
 
 const PAGE_SIZE = 50;
@@ -34,6 +44,85 @@ function filterLabel(filter: BrowseFilter, tree: CategoryTreeData | null): strin
 function currentCategoryLabel(product: Product): string {
   if (!product.category) return "Sem categoria";
   return product.subcategory ? `${product.category.name} > ${product.subcategory.name}` : product.category.name;
+}
+
+// Linha/card arrastável — cada peça precisa do PRÓPRIO hook useDraggable;
+// como não dá pra chamar hook dentro de um .map() direto (regra dos hooks:
+// contagem de chamadas tem que ser estável por INSTÂNCIA de componente), a
+// peça vira um componente próprio em vez de só um bloco de JSX inline.
+function TableRow({
+  product,
+  isSelected,
+  onClick,
+}: {
+  product: Product;
+  isSelected: boolean;
+  onClick: (event: React.MouseEvent) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: product.id });
+  const cover = coverImage(product);
+  const style = transform ? { transform: CSS.Translate.toString(transform) } : undefined;
+
+  return (
+    <tr
+      ref={setNodeRef}
+      style={style}
+      onClick={onClick}
+      {...attributes}
+      {...listeners}
+      className={`cursor-pointer touch-none border-t border-[#E2E8F0] select-none ${
+        isDragging ? "relative z-10 shadow-lg" : isSelected ? "bg-[#C78F50]/10" : "hover:bg-[#F8FAFC]"
+      }`}
+    >
+      <td className="px-3 py-2">
+        <input type="checkbox" checked={isSelected} readOnly tabIndex={-1} className="pointer-events-none" />
+      </td>
+      <td className="px-3 py-2">
+        {cover ? <img src={cover.url} alt="" className="h-10 w-8 rounded object-cover" /> : <div className="h-10 w-8 rounded bg-[#E2E8F0]" />}
+      </td>
+      <td className="px-3 py-2 text-[#1A1A1A]">{product.name || "(sem nome)"}</td>
+      <td className="px-3 py-2 text-[#64748B]">{formatAdminSku(product.sku)}</td>
+      <td className="px-3 py-2 text-[#1A1A1A]">{formatAdminPrice(product.price)}</td>
+      <td className="px-3 py-2 text-[#64748B]">{currentCategoryLabel(product)}</td>
+    </tr>
+  );
+}
+
+function CardRow({
+  product,
+  isSelected,
+  onClick,
+}: {
+  product: Product;
+  isSelected: boolean;
+  onClick: (event: React.MouseEvent) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: product.id });
+  const cover = coverImage(product);
+  const style = transform ? { transform: CSS.Translate.toString(transform) } : undefined;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      onClick={onClick}
+      {...attributes}
+      {...listeners}
+      className={`flex items-center gap-3 rounded-lg border p-3 touch-none select-none ${
+        isDragging ? "relative z-10 shadow-lg" : isSelected ? "border-[#C78F50] bg-[#C78F50]/10" : "border-[#E2E8F0] bg-white"
+      }`}
+    >
+      <input type="checkbox" checked={isSelected} readOnly tabIndex={-1} className="pointer-events-none" />
+      {cover ? <img src={cover.url} alt="" className="h-12 w-9 shrink-0 rounded object-cover" /> : <div className="h-12 w-9 shrink-0 rounded bg-[#E2E8F0]" />}
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-[#1A1A1A]">{product.name || "(sem nome)"}</p>
+        <p className="truncate text-xs text-[#64748B]">
+          {formatAdminSku(product.sku)} · {formatAdminPrice(product.price)}
+        </p>
+        <p className="truncate text-xs text-[#64748B]">{currentCategoryLabel(product)}</p>
+      </div>
+    </div>
+  );
 }
 
 export function ProductCategorization() {
@@ -163,16 +252,17 @@ export function ProductCategorization() {
     }
   }
 
-  async function handleMove(destination: MoveDestination) {
-    setMovePickerOpen(false);
-    if (selected.length === 0) return;
-
-    const movedIds = [...selected];
+// Único caminho que de fato move peças — usado tanto pelo botão "Mover
+  // para..." (destino escolhido no MoveToPicker, ids = seleção atual) quanto
+  // pelo soltar na árvore (destino = nó onde soltou, ids = a peça arrastada
+  // OU, se ela já estava selecionada, a seleção inteira — ver handleDragEnd).
+  async function moveItems(ids: string[], destination: MoveDestination) {
+    if (ids.length === 0) return;
     setMoving(true);
     try {
-      const result = await api.bulkMoveCategory(buildBulkMoveItems(movedIds, destination.categoryId, destination.subcategoryId));
+      const result = await api.bulkMoveCategory(buildBulkMoveItems(ids, destination.categoryId, destination.subcategoryId));
       showToast("success", `${result.updated} peça(s) movida(s) para "${destination.label}".`, { label: "Desfazer", onClick: handleUndo });
-      setSelected((prev) => deselectIds(prev, movedIds));
+      setSelected((prev) => deselectIds(prev, ids));
       reloadTree();
       loadProducts();
     } catch (err) {
@@ -180,6 +270,29 @@ export function ProductCategorization() {
     } finally {
       setMoving(false);
     }
+  }
+
+  function handleMovePickerSelect(destination: MoveDestination) {
+    setMovePickerOpen(false);
+    moveItems(selected, destination);
+  }
+
+  const destinationsByDropId = useMemo(() => {
+    const map = new Map<string, MoveDestination>();
+    if (tree) for (const destination of flattenDestinations(tree)) map.set(destinationDropId(destination), destination);
+    return map;
+  }, [tree]);
+
+  const dragSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+
+  // Arrastar uma peça JÁ selecionada move a seleção inteira; arrastar uma
+  // peça fora da seleção move só ela (não altera o que estava selecionado).
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over) return;
+    const destination = destinationsByDropId.get(String(over.id));
+    if (!destination) return;
+    moveItems(idsToMoveOnDrop(String(active.id), selected), destination);
   }
 
   async function handleExport() {
@@ -204,6 +317,7 @@ export function ProductCategorization() {
   const allMatchingSelected = Boolean(data) && data!.total > 0 && selected.length >= data!.total;
 
   return (
+    <DndContext sensors={dragSensors} onDragEnd={handleDragEnd}>
     <div className="pb-24 sm:pb-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -290,28 +404,14 @@ export function ProductCategorization() {
                     </td>
                   </tr>
                 )}
-                {data?.items.map((product, index) => {
-                  const isSelected = selected.includes(product.id);
-                  const cover = coverImage(product);
-                  return (
-                    <tr
-                      key={product.id}
-                      onClick={(e) => handleRowClick(index, product.id, e)}
-                      className={`cursor-pointer border-t border-[#E2E8F0] select-none ${isSelected ? "bg-[#C78F50]/10" : "hover:bg-[#F8FAFC]"}`}
-                    >
-                      <td className="px-3 py-2">
-                        <input type="checkbox" checked={isSelected} readOnly tabIndex={-1} className="pointer-events-none" />
-                      </td>
-                      <td className="px-3 py-2">
-                        {cover ? <img src={cover.url} alt="" className="h-10 w-8 rounded object-cover" /> : <div className="h-10 w-8 rounded bg-[#E2E8F0]" />}
-                      </td>
-                      <td className="px-3 py-2 text-[#1A1A1A]">{product.name || "(sem nome)"}</td>
-                      <td className="px-3 py-2 text-[#64748B]">{formatAdminSku(product.sku)}</td>
-                      <td className="px-3 py-2 text-[#1A1A1A]">{formatAdminPrice(product.price)}</td>
-                      <td className="px-3 py-2 text-[#64748B]">{currentCategoryLabel(product)}</td>
-                    </tr>
-                  );
-                })}
+                {data?.items.map((product, index) => (
+                  <TableRow
+                    key={product.id}
+                    product={product}
+                    isSelected={selected.includes(product.id)}
+                    onClick={(e) => handleRowClick(index, product.id, e)}
+                  />
+                ))}
               </tbody>
             </table>
           </div>
@@ -320,27 +420,14 @@ export function ProductCategorization() {
           <div className="space-y-2 sm:hidden">
             {loading && !data && <p className="py-6 text-center text-sm text-[#64748B]">Carregando...</p>}
             {!loading && !loadError && data?.items.length === 0 && <p className="py-10 text-center text-sm text-[#64748B]">Nenhuma peça neste filtro.</p>}
-            {data?.items.map((product, index) => {
-              const isSelected = selected.includes(product.id);
-              const cover = coverImage(product);
-              return (
-                <div
-                  key={product.id}
-                  onClick={(e) => handleRowClick(index, product.id, e)}
-                  className={`flex items-center gap-3 rounded-lg border p-3 select-none ${isSelected ? "border-[#C78F50] bg-[#C78F50]/10" : "border-[#E2E8F0] bg-white"}`}
-                >
-                  <input type="checkbox" checked={isSelected} readOnly tabIndex={-1} className="pointer-events-none" />
-                  {cover ? <img src={cover.url} alt="" className="h-12 w-9 shrink-0 rounded object-cover" /> : <div className="h-12 w-9 shrink-0 rounded bg-[#E2E8F0]" />}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-[#1A1A1A]">{product.name || "(sem nome)"}</p>
-                    <p className="truncate text-xs text-[#64748B]">
-                      {formatAdminSku(product.sku)} · {formatAdminPrice(product.price)}
-                    </p>
-                    <p className="truncate text-xs text-[#64748B]">{currentCategoryLabel(product)}</p>
-                  </div>
-                </div>
-              );
-            })}
+            {data?.items.map((product, index) => (
+              <CardRow
+                key={product.id}
+                product={product}
+                isSelected={selected.includes(product.id)}
+                onClick={(e) => handleRowClick(index, product.id, e)}
+              />
+            ))}
           </div>
 
           <div className="mt-4">
@@ -367,12 +454,13 @@ export function ProductCategorization() {
             </button>
             {movePickerOpen && tree && (
               <div className="absolute bottom-full right-0 mb-2">
-                <MoveToPicker tree={tree} onSelect={handleMove} onClose={() => setMovePickerOpen(false)} />
+                <MoveToPicker tree={tree} onSelect={handleMovePickerSelect} onClose={() => setMovePickerOpen(false)} />
               </div>
             )}
           </div>
         </div>
       )}
     </div>
+    </DndContext>
   );
 }

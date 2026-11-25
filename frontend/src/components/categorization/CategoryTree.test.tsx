@@ -1,10 +1,23 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { DndContext } from "@dnd-kit/core";
 import { CategoryTree, sameBrowseFilter, type BrowseFilter } from "./CategoryTree";
 import type { CategoryTree as CategoryTreeData } from "../../types";
 
 afterEach(() => cleanup());
+
+// Cada nó da árvore é uma zona de soltar (useDroppable, ver etapa de
+// drag-and-drop) — exige um <DndContext> ancestral, mesmo sem simular
+// arrastar nenhum teste aqui (cliques normais continuam funcionando sem
+// nenhum drag de verdade acontecer).
+function renderTree(props: Parameters<typeof CategoryTree>[0]) {
+  return render(
+    <DndContext>
+      <CategoryTree {...props} />
+    </DndContext>
+  );
+}
 
 const tree: CategoryTreeData = {
   categories: [
@@ -31,7 +44,7 @@ describe("sameBrowseFilter", () => {
 
 describe("CategoryTree", () => {
   it("mostra 'Sem categoria' com a contagem e as categorias com suas subcategorias", () => {
-    render(<CategoryTree tree={tree} activeFilter={{ kind: "uncategorized" }} onSelectFilter={() => {}} />);
+    renderTree({ tree, activeFilter: { kind: "uncategorized" }, onSelectFilter: () => {} });
 
     expect(screen.getByText("Sem categoria")).toBeInTheDocument();
     expect(screen.getByText("3")).toBeInTheDocument();
@@ -43,7 +56,7 @@ describe("CategoryTree", () => {
 
   it("clicar num nó chama onSelectFilter com o filtro certo", () => {
     const onSelectFilter = vi.fn();
-    render(<CategoryTree tree={tree} activeFilter={{ kind: "uncategorized" }} onSelectFilter={onSelectFilter} />);
+    renderTree({ tree, activeFilter: { kind: "uncategorized" }, onSelectFilter });
 
     fireEvent.click(screen.getByText("Pedras Brutas"));
     expect(onSelectFilter).toHaveBeenCalledWith({ kind: "category", categoryId: "cat-1" });
@@ -57,7 +70,7 @@ describe("CategoryTree", () => {
 
   it("marca o nó ativo de forma diferente (ex.: Sem categoria quando é o filtro atual)", () => {
     const filter: BrowseFilter = { kind: "category", categoryId: "cat-1" };
-    render(<CategoryTree tree={tree} activeFilter={filter} onSelectFilter={() => {}} />);
+    renderTree({ tree, activeFilter: filter, onSelectFilter: () => {} });
     expect(screen.getByText("Pedras Brutas").closest("button")).toHaveClass("font-semibold");
   });
 });

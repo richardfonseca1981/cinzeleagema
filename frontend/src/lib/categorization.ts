@@ -39,6 +39,14 @@ export function deselectIds(selected: string[], idsToRemove: readonly string[]):
   return selected.filter((id) => !remove.has(id));
 }
 
+// Decide quem se move ao soltar uma peça arrastada sobre um nó da árvore
+// (ver DndContext em pages/ProductCategorization.tsx): se a peça arrastada
+// JÁ estava selecionada, a seleção inteira vai junto; senão, só ela — sem
+// alterar a seleção de quem não foi arrastado.
+export function idsToMoveOnDrop(draggedId: string, selected: readonly string[]): string[] {
+  return selected.includes(draggedId) ? [...selected] : [draggedId];
+}
+
 // Expande "mover as peças selecionadas para UM destino" no shape heterogêneo
 // que a API realmente aceita (ver backend lib/bulkCategory.ts) — a API não
 // tem um atalho "mesmo destino pra todas", o cliente monta a lista.
