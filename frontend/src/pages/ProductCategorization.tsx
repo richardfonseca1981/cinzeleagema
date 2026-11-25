@@ -29,10 +29,20 @@ import {
 } from "../lib/categorization";
 import { CategoryTree, sameBrowseFilter, type BrowseFilter } from "../components/categorization/CategoryTree";
 import { MoveToPicker, destinationDropId, flattenDestinations, type MoveDestination } from "../components/categorization/MoveToPicker";
-import type { CategoryTree as CategoryTreeData, Product } from "../types";
+import type { BulkCategoryUndoStatus, CategoryTree as CategoryTreeData, Product } from "../types";
 
 const PAGE_SIZE = 50;
 const SEARCH_DEBOUNCE_MS = 300;
+// Toast de "Desfazer" depois de mover peças — quanto mais peças, mais tempo
+// (e mais caro desfazer de cabeça se a janela fechar cedo demais). O botão
+// persistente na barra de ferramentas (ver undoStatus abaixo) continua
+// disponível mesmo depois do toast sumir, mas o toast ainda precisa dar
+// tempo real de reagir à ação que acabou de acontecer.
+const SINGLE_MOVE_TOAST_DURATION_MS = 8000;
+const MULTI_MOVE_TOAST_DURATION_MS = 15000;
+// Acima disso, confirmar antes de desfazer pelo botão persistente — evita um
+// clique acidental desfazendo uma movimentação de centenas de peças.
+const UNDO_CONFIRM_THRESHOLD = 20;
 
 function filterToParams(filter: BrowseFilter): { categoryId?: string; subcategoryId?: string; uncategorized?: boolean } {
   if (filter.kind === "uncategorized") return { uncategorized: true };
@@ -179,8 +189,26 @@ export function ProductCategorization() {
   const [moving, setMoving] = useState(false);
   const [exporting, setExporting] = useState(false);
 
+  // Botão persistente "Desfazer última movimentação" (barra de ferramentas) —
+  // só aparece enquanto a ÚLTIMA entrada do log de auditoria desta tela for
+  // um mover em lote ainda não desfeito (ver GET /bulk-category/undo-status).
+  const [undoStatus, setUndoStatus] = useState<BulkCategoryUndoStatus>({ available: false, count: 0 });
+  const [undoing, setUndoing] = useState(false);
+  const [confirmUndoOpen, setConfirmUndoOpen] = useState(false);
+
   const generationRef = useRef(0);
 
+  const refreshUndoStatus = useCallback(() => {
+    api
+      .getBulkCategoryUndoStatus()
+      .then(setUndoStatus)
+      .catch(() => setUndoStatus({ available: false, count: 0 }));
+  }, []);
+
+  // Toda ação que grava no log de auditoria desta tela (mover, desfazer,
+  // criar/renomear/apagar categoria ou subcategoria) já chama reloadTree() —
+  // encaixar o refresh do status aqui garante que nenhum ponto de chamada
+  // esqueça de atualizar o botão persistente.
   const reloadTree = useCallback(() => {
     api
       .getCategoryTree()
@@ -189,7 +217,8 @@ export function ProductCategorization() {
         setTreeError(false);
       })
       .catch(() => setTreeError(true));
-  }, []);
+    refreshUndoStatus();
+  }, [refreshUndoStatus]);
 
   useEffect(reloadTree, [reloadTree]);
 
@@ -273,6 +302,7 @@ export function ProductCategorization() {
   }
 
   async function handleUndo() {
+    setUndoing(true);
     try {
       const result = await api.undoBulkCategory();
       showToast("success", `Desfeito: ${result.updated} peça(s) restaurada(s).`);
@@ -280,7 +310,25 @@ export function ProductCategorization() {
       loadProducts();
     } catch (err) {
       showToast("error", err instanceof ApiError ? err.message : "Não foi possível desfazer");
+    } finally {
+      setUndoing(false);
     }
+  }
+
+  // Botão persistente: pede confirmação quando a movimentação que vai ser
+  // desfeita afeta muita coisa (limiar em UNDO_CONFIRM_THRESHOLD) — um clique
+  // num botão sempre visível é fácil demais de disparar sem querer.
+  function handlePersistentUndoClick() {
+    if (undoStatus.count > UNDO_CONFIRM_THRESHOLD) {
+      setConfirmUndoOpen(true);
+      return;
+    }
+    handleUndo();
+  }
+
+  function confirmPersistentUndo() {
+    setConfirmUndoOpen(false);
+    handleUndo();
   }
 
 // Único caminho que de fato move peças — usado tanto pelo botão "Mover
@@ -292,7 +340,12 @@ export function ProductCategorization() {
     setMoving(true);
     try {
       const result = await api.bulkMoveCategory(buildBulkMoveItems(ids, destination.categoryId, destination.subcategoryId));
-      showToast("success", `${result.updated} peça(s) movida(s) para "${destination.label}".`, { label: "Desfazer", onClick: handleUndo });
+      showToast(
+        "success",
+        `${result.updated} peça(s) movida(s) para "${destination.label}".`,
+        { label: "Desfazer", onClick: handleUndo },
+        { durationMs: result.updated > 1 ? MULTI_MOVE_TOAST_DURATION_MS : SINGLE_MOVE_TOAST_DURATION_MS }
+      );
       setSelected((prev) => deselectIds(prev, ids));
       reloadTree();
       loadProducts();
@@ -474,6 +527,16 @@ export function ProductCategorization() {
           <p className="text-sm text-[#64748B]">Mova peças entre categorias e subcategorias em lote. Exporte um backup antes de mudanças grandes.</p>
         </div>
         <div className="flex items-center gap-3">
+          {undoStatus.available && (
+            <button
+              type="button"
+              onClick={handlePersistentUndoClick}
+              disabled={undoing}
+              className="rounded-lg border border-[#C78F50] px-4 py-2 text-sm font-medium text-[#B37D3F] hover:bg-[#FFF8F0] disabled:opacity-50"
+            >
+              {undoing ? "Desfazendo..." : `Desfazer: ${undoStatus.count} peça(s)`}
+            </button>
+          )}
           <button
             type="button"
             onClick={handleExport}
@@ -634,6 +697,15 @@ export function ProductCategorization() {
         confirmLabel="Apagar mesmo assim"
         onConfirm={confirmPendingDelete}
         onCancel={() => setPendingDelete(null)}
+      />
+
+      <ConfirmDialog
+        open={confirmUndoOpen}
+        title="Desfazer última movimentação"
+        message={`Isso vai restaurar ${undoStatus.count} peça(s) para a categoria/subcategoria anterior. Confirmar?`}
+        confirmLabel="Desfazer mesmo assim"
+        onConfirm={confirmPersistentUndo}
+        onCancel={() => setConfirmUndoOpen(false)}
       />
     </div>
     <DragOverlay>{activeId ? <DragPreview product={draggedProduct} count={draggedIds.length} /> : null}</DragOverlay>

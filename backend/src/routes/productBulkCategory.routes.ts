@@ -4,7 +4,7 @@ import { requireAuth } from "../middleware/auth";
 import { asyncHandler } from "../utils/asyncHandler";
 import { bulkCategorySchema } from "../schemas/product.schema";
 import { applyBulkCategoryItems, validateBulkCategoryItems, type BulkCategorySnapshot } from "../lib/bulkCategory";
-import { getLastAction, recordAdminAction, type AdminActor } from "../lib/adminActionLog";
+import { getLastAction, getMostRecentAction, recordAdminAction, type AdminActor } from "../lib/adminActionLog";
 
 // Montado em /api/admin/products — requireAuth em todas as rotas.
 export const productBulkCategoryRouter = Router();
@@ -70,5 +70,24 @@ productBulkCategoryRouter.post(
     });
 
     res.json({ updated: result.before.length, skipped: result.skippedIds.length, items: result.after });
+  })
+);
+
+// Estado do "desfazer última movimentação" (botão persistente da barra de
+// ferramentas, ver ProductCategorization.tsx) — só disponível enquanto a
+// ÚLTIMA entrada do log desta tela for um mover em lote ainda não desfeito;
+// qualquer outra ação depois dela (inclusive o próprio undo) esconde o botão.
+productBulkCategoryRouter.get(
+  "/bulk-category/undo-status",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const latest = await getMostRecentAction();
+    if (!latest || latest.action !== BULK_CATEGORY_MOVE_ACTION) {
+      res.json({ available: false, count: 0 });
+      return;
+    }
+
+    const payload = latest.payload as unknown as { before: BulkCategorySnapshot[] };
+    res.json({ available: true, count: payload.before.length });
   })
 );

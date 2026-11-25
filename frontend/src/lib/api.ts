@@ -7,6 +7,7 @@ import type {
   AdminUserSummary,
   BulkCategoryItem,
   BulkCategoryResult,
+  BulkCategoryUndoStatus,
   Category,
   CategoryTree,
   CategoryTreeNode,
@@ -229,6 +230,7 @@ export const api = {
   bulkMoveCategory: (items: BulkCategoryItem[]) =>
     request<BulkCategoryResult>("/api/admin/products/bulk-category", { method: "PATCH", body: JSON.stringify({ items }) }),
   undoBulkCategory: () => request<BulkCategoryResult>("/api/admin/products/bulk-category/undo", { method: "POST" }),
+  getBulkCategoryUndoStatus: () => request<BulkCategoryUndoStatus>("/api/admin/products/bulk-category/undo-status"),
   createCategory: (name: string) =>
     request<CategoryTreeNode>("/api/admin/categories", { method: "POST", body: JSON.stringify({ name }) }),
   renameCategory: (id: string, name: string) =>
