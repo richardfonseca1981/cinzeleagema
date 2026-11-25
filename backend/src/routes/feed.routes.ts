@@ -22,6 +22,7 @@ const FEED_SELECT = {
   trackStock: true,
   stockQty: true,
   weightGrams: true,
+  sizeCm: true,
   images: { select: { url: true }, orderBy: { position: "asc" as const } },
   category: { select: { slug: true, name: true } },
   subcategory: { select: { name: true } },

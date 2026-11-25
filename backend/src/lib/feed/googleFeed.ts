@@ -24,6 +24,7 @@ export interface FeedSubcategory {
 
 export interface FeedProduct extends FeedEligibilityInput {
   weightGrams: unknown; // Decimal do Prisma ou já convertido — 0 = "não informado".
+  sizeCm: unknown; // Decimal do Prisma ou já convertido — 0 = "não informado".
   category: FeedCategory | null;
   subcategory: FeedSubcategory | null;
 }
@@ -46,20 +47,38 @@ function truncate(value: string, maxLength: number): string {
   return value.length > maxLength ? value.slice(0, maxLength) : value;
 }
 
+// Mesmo formato de tamanho já usado no site (frontend/src/lib/format.ts
+// formatWeightSize / backend/src/lib/seo/meta.ts formatWeightSizePt): número
+// + "cm" SEM espaço entre os dois, separador decimal pt-BR. Duplicado de
+// propósito aqui (mesma convenção de publicSlug.ts/productSlug.ts — nunca
+// importar essa formatação entre camadas) porque o título do feed precisa só
+// do tamanho (a descrição usa formatWeightSizePt, que já combina peso+tamanho).
+function formatSizeCmPt(cm: number): string {
+  return `${cm.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}cm`;
+}
+
+// Acrescenta a medida ao título quando houver `sizeCm` real (> 0) — "Título –
+// 10cm". Sem medida, devolve o título como veio (nunca inventa "– 0cm").
+function appendSizeToTitle(title: string, sizeCmNumber: number): string {
+  return sizeCmNumber > 0 ? `${title} – ${formatSizeCmPt(sizeCmNumber)}` : title;
+}
+
 // Única função que decide o CONTEÚDO de um item do feed a partir de uma
 // peça já elegível (ver evaluateFeedEligibility) — nunca filtra de novo
 // aqui, só transforma. Chamador garante que só passa peças elegíveis
 // (buildFeedItems abaixo faz esse filtro).
 export function buildFeedItem(product: FeedProduct, siteUrl: string): FeedItem {
   const base = siteUrl.replace(/\/+$/, "");
-  const title = resolveTitle(product, "pt");
-  const body = resolveBodyText(product, "pt", title);
+  const baseTitle = resolveTitle(product, "pt");
+  const body = resolveBodyText(product, "pt", baseTitle);
   const slug = buildPublicSlug(product.name, product.id);
 
   const [cover, ...rest] = product.images;
 
   const weightGramsNumber = Number(product.weightGrams);
   const weightKg = weightGramsNumber > 0 ? weightGramsNumber / 1000 : null;
+  const sizeCmNumber = Number(product.sizeCm);
+  const title = appendSizeToTitle(baseTitle, sizeCmNumber);
 
   const categorySlug = product.category?.slug ?? null;
   const categoryMapping = categorySlug ? GOOGLE_PRODUCT_CATEGORY_BY_CATEGORY_SLUG[categorySlug] ?? null : null;
@@ -73,7 +92,7 @@ export function buildFeedItem(product: FeedProduct, siteUrl: string): FeedItem {
   return {
     id: product.id,
     title: truncate(title, 150),
-    description: truncate(body?.text ?? title, 5000),
+    description: truncate(body?.text ?? baseTitle, 5000),
     link: `${base}/catalogo/${slug}`,
     imageLink: cover.url,
     additionalImageLinks: rest.slice(0, MAX_ADDITIONAL_IMAGES).map((image) => image.url),

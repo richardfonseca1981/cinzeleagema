@@ -16,6 +16,7 @@ function product(overrides: Partial<FeedProduct> = {}): FeedProduct {
     trackStock: false,
     stockQty: null,
     weightGrams: 0,
+    sizeCm: 0,
     images: [{ url: "https://pub-r2.example.com/foto1.webp" }],
     category: { slug: "pedras-brutas", name: "Pedras Brutas" },
     subcategory: null,
@@ -48,6 +49,32 @@ describe("buildFeedItem", () => {
     const images = Array.from({ length: 15 }, (_, i) => ({ url: `https://r2/foto-${i}.webp` }));
     const item = buildFeedItem(product({ images }), SITE_URL);
     expect(item.additionalImageLinks).toHaveLength(10);
+  });
+
+  it("com sizeCm > 0, acrescenta a medida ao final do título no formato já usado no site ('– 10cm')", () => {
+    const item = buildFeedItem(product({ name: "Ametista Bruta", sizeCm: 10 }), SITE_URL);
+    expect(item.title).toBe("Ametista Bruta – 10cm");
+  });
+
+  it("sem sizeCm (0 = não informado), mantém o título atual sem sufixo", () => {
+    const item = buildFeedItem(product({ name: "Ametista Bruta", sizeCm: 0 }), SITE_URL);
+    expect(item.title).toBe("Ametista Bruta");
+  });
+
+  it("medida com casa decimal usa vírgula (pt-BR), mesma convenção do site", () => {
+    const item = buildFeedItem(product({ name: "Citrino", sizeCm: 12.5 }), SITE_URL);
+    expect(item.title).toBe("Citrino – 12,5cm");
+  });
+
+  it("título + medida respeita o limite de 150 caracteres do Google", () => {
+    const longName = "A".repeat(145);
+    const item = buildFeedItem(product({ name: longName, sizeCm: 10 }), SITE_URL);
+    expect(item.title.length).toBeLessThanOrEqual(150);
+  });
+
+  it("descrição não leva o sufixo de medida do título (usa o nome base) — evita duplicar a medida mais de uma vez", () => {
+    const item = buildFeedItem(product({ name: "Ametista Bruta", sizeCm: 10, description: null, identificationPt: null }), SITE_URL);
+    expect(item.description).toBe("Ametista Bruta");
   });
 
   it("preço formatado como número decimal + ' BRL'", () => {
