@@ -10,6 +10,7 @@ export async function cleanDatabase() {
   await prisma.subcategory.deleteMany();
   await prisma.category.deleteMany();
   await prisma.adminUser.deleteMany();
+  await prisma.adminActionLog.deleteMany();
 }
 
 export function generateTestToken(overrides: Partial<{ sub: string; username: string; role: string }> = {}) {
