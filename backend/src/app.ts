@@ -19,6 +19,7 @@ import { shippingAdminRouter } from "./routes/shippingAdmin.routes";
 import { catalogJobRouter } from "./routes/catalogJob.routes";
 import { sitemapRouter } from "./routes/sitemap.routes";
 import { previewRouter } from "./routes/preview.routes";
+import { feedRouter } from "./routes/feed.routes";
 
 export function createApp() {
   const app = express();
@@ -34,6 +35,7 @@ export function createApp() {
   app.use("/api/exchange-rate", exchangeRateRouter);
   app.use("/api/sitemap.xml", sitemapRouter);
   app.use("/api/preview", previewRouter);
+  app.use("/api/feeds", feedRouter);
   // Antes de /api/products: /api/admin/products/export tem prefixo próprio,
   // não colide com as rotas públicas/admin de produto em "/api/products".
   app.use("/api/admin/products", productExportRouter);

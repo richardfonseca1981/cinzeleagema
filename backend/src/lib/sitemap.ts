@@ -1,5 +1,6 @@
 import { buildPublicSlug } from "./publicSlug";
 import { isEligibleForSitemap, type SitemapEligibilityInput } from "./sitemapEligibility";
+import { escapeXml } from "./xml";
 
 export interface SitemapProduct extends SitemapEligibilityInput {
   updatedAt: Date;
@@ -39,15 +40,6 @@ export function buildSitemapUrls(products: SitemapProduct[], now: Date = new Dat
   }
 
   return urls;
-}
-
-function escapeXml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
 }
 
 export function renderSitemapXml(urls: SitemapUrl[], siteUrl: string): string {

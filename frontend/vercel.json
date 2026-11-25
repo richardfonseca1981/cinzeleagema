@@ -1,6 +1,7 @@
 {
   "rewrites": [
     { "source": "/sitemap.xml", "destination": "https://cinzeleagema-production.up.railway.app/api/sitemap.xml" },
+    { "source": "/feeds/google.xml", "destination": "https://cinzeleagema-production.up.railway.app/api/feeds/google.xml" },
     { "source": "/og/:file", "destination": "https://cinzeleagema-production.up.railway.app/api/preview/og-image/:file" },
     { "source": "/api/preview/og-image/:file", "destination": "https://cinzeleagema-production.up.railway.app/api/preview/og-image/:file" },
     {
