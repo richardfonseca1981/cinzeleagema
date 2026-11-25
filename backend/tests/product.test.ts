@@ -295,6 +295,25 @@ describe("Product routes", () => {
     expect(res.body.items[0].slug).toBe("peca-bruta");
   });
 
+  it("filters products by uncategorized=true (categoryId IS NULL) — usado pela tela de categorização do admin", async () => {
+    await prisma.product.create({ data: { name: "Peça Com Categoria", slug: "peca-com-categoria", price: 10, categoryId: categoryWithSubId } });
+    await prisma.product.create({ data: { name: "Peça Sem Categoria", slug: "peca-sem-categoria", price: 10 } });
+
+    const res = await request(app).get("/api/products?uncategorized=true").set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.items).toHaveLength(1);
+    expect(res.body.items[0].slug).toBe("peca-sem-categoria");
+  });
+
+  it("uncategorized=true combinado com categoryId é rejeitado (400) — mutuamente exclusivos", async () => {
+    const res = await request(app)
+      .get(`/api/products?uncategorized=true&categoryId=${categoryWithSubId}`)
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(400);
+  });
+
   it("creates a product without blocking on translation (nameEn stays null when Claude isn't configured)", async () => {
     const res = await request(app)
       .post("/api/products")

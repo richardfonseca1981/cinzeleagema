@@ -20,6 +20,9 @@ import { catalogJobRouter } from "./routes/catalogJob.routes";
 import { sitemapRouter } from "./routes/sitemap.routes";
 import { previewRouter } from "./routes/preview.routes";
 import { feedRouter } from "./routes/feed.routes";
+import { categoryAdminRouter } from "./routes/categoryAdmin.routes";
+import { productBulkCategoryRouter } from "./routes/productBulkCategory.routes";
+import { productCategoryExportRouter } from "./routes/productCategoryExport.routes";
 
 export function createApp() {
   const app = express();
@@ -41,9 +44,12 @@ export function createApp() {
   app.use("/api/admin/products", productExportRouter);
   app.use("/api/admin/products", productOrderRouter);
   app.use("/api/admin/products", productIdentificationRouter);
+  app.use("/api/admin/products", productBulkCategoryRouter);
+  app.use("/api/admin/products", productCategoryExportRouter);
   app.use("/api/shipping", shippingRouter);
   app.use("/api/admin/shipping", shippingAdminRouter);
   app.use("/api/admin/catalog", catalogJobRouter);
+  app.use("/api/admin/categories", categoryAdminRouter);
   app.use("/api/products", productRouter);
   app.use("/api/orders", orderRouter);
   app.use("/api/products/:productId/images", imageRouter);
