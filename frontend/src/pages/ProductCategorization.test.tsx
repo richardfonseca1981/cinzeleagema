@@ -15,6 +15,7 @@ vi.mock("../lib/api", async () => {
       listProducts: vi.fn(),
       bulkMoveCategory: vi.fn(),
       undoBulkCategory: vi.fn(),
+      getBulkCategoryUndoStatus: vi.fn(),
       createCategory: vi.fn(),
       deleteCategory: vi.fn(),
     },
@@ -73,6 +74,7 @@ function renderPage() {
 
 beforeEach(() => {
   vi.mocked(api.getCategoryTree).mockResolvedValue(tree);
+  vi.mocked(api.getBulkCategoryUndoStatus).mockResolvedValue({ available: false, count: 0 });
 });
 
 afterEach(() => {
@@ -189,5 +191,76 @@ describe("ProductCategorization", () => {
     fireEvent.click(screen.getByText("Apagar mesmo assim"));
 
     await waitFor(() => expect(api.deleteCategory).toHaveBeenCalledWith("cat-1", true));
+  });
+
+  describe("botão persistente 'Desfazer última movimentação'", () => {
+    it("não aparece quando não há ação desfazível", async () => {
+      vi.mocked(api.listProducts).mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 50 });
+      renderPage();
+
+      await waitFor(() => expect(api.getBulkCategoryUndoStatus).toHaveBeenCalled());
+      expect(screen.queryByText(/^Desfazer:/)).not.toBeInTheDocument();
+    });
+
+    it("aparece com a contagem de peças quando há uma movimentação desfazível", async () => {
+      vi.mocked(api.listProducts).mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 50 });
+      vi.mocked(api.getBulkCategoryUndoStatus).mockResolvedValue({ available: true, count: 7 });
+      renderPage();
+
+      expect(await screen.findByText("Desfazer: 7 peça(s)")).toBeInTheDocument();
+    });
+
+    it("até 20 peças, clicar desfaz direto (sem pedir confirmação)", async () => {
+      vi.mocked(api.listProducts).mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 50 });
+      vi.mocked(api.getBulkCategoryUndoStatus).mockResolvedValue({ available: true, count: 20 });
+      vi.mocked(api.undoBulkCategory).mockResolvedValue({ updated: 20, skipped: 0, skippedIds: [], items: [] });
+      renderPage();
+
+      fireEvent.click(await screen.findByText("Desfazer: 20 peça(s)"));
+
+      await waitFor(() => expect(api.undoBulkCategory).toHaveBeenCalled());
+      expect(screen.queryByText("Desfazer última movimentação")).not.toBeInTheDocument();
+    });
+
+    it("acima de 20 peças, clicar pede confirmação antes de desfazer", async () => {
+      vi.mocked(api.listProducts).mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 50 });
+      vi.mocked(api.getBulkCategoryUndoStatus).mockResolvedValue({ available: true, count: 200 });
+      vi.mocked(api.undoBulkCategory).mockResolvedValue({ updated: 200, skipped: 0, skippedIds: [], items: [] });
+      renderPage();
+
+      fireEvent.click(await screen.findByText("Desfazer: 200 peça(s)"));
+
+      expect(await screen.findByText("Desfazer última movimentação")).toBeInTheDocument();
+      expect(api.undoBulkCategory).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByText("Desfazer mesmo assim"));
+
+      await waitFor(() => expect(api.undoBulkCategory).toHaveBeenCalled());
+    });
+
+    it("cancelar a confirmação não desfaz nada", async () => {
+      vi.mocked(api.listProducts).mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 50 });
+      vi.mocked(api.getBulkCategoryUndoStatus).mockResolvedValue({ available: true, count: 200 });
+      renderPage();
+
+      fireEvent.click(await screen.findByText("Desfazer: 200 peça(s)"));
+      fireEvent.click(await screen.findByText("Cancelar"));
+
+      expect(api.undoBulkCategory).not.toHaveBeenCalled();
+      expect(screen.getByText("Desfazer: 200 peça(s)")).toBeInTheDocument();
+    });
+
+    it("depois de desfazer, o botão some (o status é reconsultado)", async () => {
+      vi.mocked(api.listProducts).mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 50 });
+      vi.mocked(api.getBulkCategoryUndoStatus)
+        .mockResolvedValueOnce({ available: true, count: 5 })
+        .mockResolvedValue({ available: false, count: 0 });
+      vi.mocked(api.undoBulkCategory).mockResolvedValue({ updated: 5, skipped: 0, skippedIds: [], items: [] });
+      renderPage();
+
+      fireEvent.click(await screen.findByText("Desfazer: 5 peça(s)"));
+
+      await waitFor(() => expect(screen.queryByText(/^Desfazer:/)).not.toBeInTheDocument());
+    });
   });
 });

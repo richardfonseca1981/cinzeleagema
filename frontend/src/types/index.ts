@@ -129,6 +129,13 @@ export interface BulkCategoryResult {
   items: BulkCategoryItem[];
 }
 
+// GET /api/admin/products/bulk-category/undo-status — estado do botão
+// persistente "Desfazer última movimentação" (ver ProductCategorization.tsx).
+export interface BulkCategoryUndoStatus {
+  available: boolean;
+  count: number;
+}
+
 export interface Product {
   id: string;
   // Null = peça sem nome ainda (ver CONTEXT.md "campos opcionais"). O site

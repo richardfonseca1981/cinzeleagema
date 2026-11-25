@@ -32,3 +32,13 @@ export async function recordAdminAction(
 export async function getLastAction(action: string) {
   return prisma.adminActionLog.findFirst({ where: { action }, orderBy: { createdAt: "desc" } });
 }
+
+// Entrada mais recente do log, de QUALQUER tipo de ação — usado pra decidir
+// se o botão persistente "Desfazer última movimentação" aparece (ver
+// GET /bulk-category/undo-status): só fica disponível enquanto a ÚLTIMA
+// coisa que aconteceu nesta tela for um mover em lote ainda não desfeito. Se
+// qualquer outra ação administrativa (criar categoria, o próprio desfazer
+// etc.) veio depois, o botão some.
+export async function getMostRecentAction() {
+  return prisma.adminActionLog.findFirst({ orderBy: { createdAt: "desc" } });
+}

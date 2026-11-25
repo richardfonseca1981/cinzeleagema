@@ -195,3 +195,85 @@ describe("POST /api/admin/products/bulk-category/undo", () => {
     expect((await prisma.product.findUniqueOrThrow({ where: { id: p1.id } })).categoryId).toBe(catB.id);
   });
 });
+
+describe("GET /api/admin/products/bulk-category/undo-status", () => {
+  it("exige token", async () => {
+    await request(app).get("/api/admin/products/bulk-category/undo-status").expect(401);
+  });
+
+  it("sem nenhuma ação ainda, não há nada pra desfazer", async () => {
+    const res = await request(app)
+      .get("/api/admin/products/bulk-category/undo-status")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+
+    expect(res.body).toEqual({ available: false, count: 0 });
+  });
+
+  it("depois de mover em lote, fica disponível com a contagem de peças afetadas", async () => {
+    const category = await prisma.category.create({ data: { name: "Big", slug: "big", position: 0 } });
+    const p1 = await prisma.product.create({ data: { name: "P1", slug: "p1" } });
+    const p2 = await prisma.product.create({ data: { name: "P2", slug: "p2" } });
+
+    await request(app)
+      .patch("/api/admin/products/bulk-category")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        items: [
+          { id: p1.id, categoryId: category.id, subcategoryId: null },
+          { id: p2.id, categoryId: category.id, subcategoryId: null },
+        ],
+      })
+      .expect(200);
+
+    const res = await request(app)
+      .get("/api/admin/products/bulk-category/undo-status")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+
+    expect(res.body).toEqual({ available: true, count: 2 });
+  });
+
+  it("depois de desfazer, some de novo", async () => {
+    const category = await prisma.category.create({ data: { name: "Big", slug: "big", position: 0 } });
+    const p1 = await prisma.product.create({ data: { name: "P1", slug: "p1" } });
+
+    await request(app)
+      .patch("/api/admin/products/bulk-category")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ items: [{ id: p1.id, categoryId: category.id, subcategoryId: null }] })
+      .expect(200);
+    await request(app).post("/api/admin/products/bulk-category/undo").set("Authorization", `Bearer ${token}`).expect(200);
+
+    const res = await request(app)
+      .get("/api/admin/products/bulk-category/undo-status")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+
+    expect(res.body).toEqual({ available: false, count: 0 });
+  });
+
+  it("se outra ação administrativa aconteceu depois do mover em lote, não fica mais disponível", async () => {
+    const category = await prisma.category.create({ data: { name: "Big", slug: "big", position: 0 } });
+    const p1 = await prisma.product.create({ data: { name: "P1", slug: "p1" } });
+
+    await request(app)
+      .patch("/api/admin/products/bulk-category")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ items: [{ id: p1.id, categoryId: category.id, subcategoryId: null }] })
+      .expect(200);
+
+    // Simula outra ação da tela acontecendo depois (ex.: criar categoria) —
+    // a última entrada do log deixa de ser o mover em lote.
+    await prisma.adminActionLog.create({
+      data: { adminId: "admin-1", adminUsername: "felipe", action: "category_create", payload: {} },
+    });
+
+    const res = await request(app)
+      .get("/api/admin/products/bulk-category/undo-status")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+
+    expect(res.body).toEqual({ available: false, count: 0 });
+  });
+});
