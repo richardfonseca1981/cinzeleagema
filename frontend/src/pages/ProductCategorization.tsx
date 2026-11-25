@@ -146,6 +146,7 @@ export function ProductCategorization() {
   const [selectingAll, setSelectingAll] = useState(false);
 
   const [movePickerOpen, setMovePickerOpen] = useState(false);
+  const moveButtonRef = useRef<HTMLButtonElement>(null);
   const [moving, setMoving] = useState(false);
   const [exporting, setExporting] = useState(false);
 
@@ -555,6 +556,7 @@ export function ProductCategorization() {
               Limpar
             </button>
             <button
+              ref={moveButtonRef}
               type="button"
               onClick={() => setMovePickerOpen((v) => !v)}
               disabled={moving}
@@ -563,9 +565,7 @@ export function ProductCategorization() {
               {moving ? "Movendo..." : "Mover para..."}
             </button>
             {movePickerOpen && tree && (
-              <div className="absolute bottom-full right-0 mb-2">
-                <MoveToPicker tree={tree} onSelect={handleMovePickerSelect} onClose={() => setMovePickerOpen(false)} />
-              </div>
+              <MoveToPicker tree={tree} anchorRef={moveButtonRef} onSelect={handleMovePickerSelect} onClose={() => setMovePickerOpen(false)} />
             )}
           </div>
         </div>
