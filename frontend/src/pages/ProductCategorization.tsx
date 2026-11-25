@@ -1,7 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { DndContext, PointerSensor, useDraggable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
-import { CSS } from "@dnd-kit/utilities";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  pointerWithin,
+  useDraggable,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
 import { api, ApiError, exportCategoryCsv } from "../lib/api";
 import { useToast } from "../components/Toast";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -60,19 +69,20 @@ function TableRow({
   isSelected: boolean;
   onClick: (event: React.MouseEvent) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: product.id });
+  // Sem transform/estilo aplicado na linha em si — o visual de "sendo
+  // arrastada" é todo do <DragOverlay> (portado pelo próprio @dnd-kit,
+  // sempre acima de tudo); aqui só esmaece a linha de origem.
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: product.id });
   const cover = coverImage(product);
-  const style = transform ? { transform: CSS.Translate.toString(transform) } : undefined;
 
   return (
     <tr
       ref={setNodeRef}
-      style={style}
       onClick={onClick}
       {...attributes}
       {...listeners}
       className={`cursor-pointer touch-none border-t border-[#E2E8F0] select-none ${
-        isDragging ? "relative z-10 shadow-lg" : isSelected ? "bg-[#C78F50]/10" : "hover:bg-[#F8FAFC]"
+        isDragging ? "opacity-40" : isSelected ? "bg-[#C78F50]/10" : "hover:bg-[#F8FAFC]"
       }`}
     >
       <td className="px-3 py-2">
@@ -98,19 +108,17 @@ function CardRow({
   isSelected: boolean;
   onClick: (event: React.MouseEvent) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: product.id });
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: product.id });
   const cover = coverImage(product);
-  const style = transform ? { transform: CSS.Translate.toString(transform) } : undefined;
 
   return (
     <div
       ref={setNodeRef}
-      style={style}
       onClick={onClick}
       {...attributes}
       {...listeners}
       className={`flex items-center gap-3 rounded-lg border p-3 touch-none select-none ${
-        isDragging ? "relative z-10 shadow-lg" : isSelected ? "border-[#C78F50] bg-[#C78F50]/10" : "border-[#E2E8F0] bg-white"
+        isDragging ? "opacity-40" : isSelected ? "border-[#C78F50] bg-[#C78F50]/10" : "border-[#E2E8F0] bg-white"
       }`}
     >
       <input type="checkbox" checked={isSelected} readOnly tabIndex={-1} className="pointer-events-none" />
@@ -122,6 +130,27 @@ function CardRow({
         </p>
         <p className="truncate text-xs text-[#64748B]">{currentCategoryLabel(product)}</p>
       </div>
+    </div>
+  );
+}
+
+// Conteúdo do <DragOverlay> — quando mais de uma peça está sendo movida
+// junto (a arrastada fazia parte da seleção), mostra "N peças" em vez da
+// miniatura de uma só, pra não sugerir que só aquela vai mudar.
+function DragPreview({ product, count }: { product: Product | undefined; count: number }) {
+  if (count > 1) {
+    return (
+      <div className="rounded-lg border border-[#C78F50] bg-white px-4 py-2 text-sm font-semibold text-[#1A1A1A] shadow-xl">
+        {count} peças
+      </div>
+    );
+  }
+  if (!product) return null;
+  const cover = coverImage(product);
+  return (
+    <div className="flex items-center gap-2 rounded-lg border border-[#C78F50] bg-white px-3 py-2 shadow-xl">
+      {cover ? <img src={cover.url} alt="" className="h-10 w-8 rounded object-cover" /> : <div className="h-10 w-8 rounded bg-[#E2E8F0]" />}
+      <span className="max-w-[160px] truncate text-sm font-medium text-[#1A1A1A]">{product.name || "(sem nome)"}</span>
     </div>
   );
 }
@@ -287,15 +316,32 @@ export function ProductCategorization() {
 
   const dragSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
+  // Id da peça sendo arrastada agora — alimenta o <DragOverlay> abaixo (o
+  // visual "flutuante" de arrastar, sempre por cima de tudo) e o indicador
+  // "N peças" quando a seleção inteira está sendo movida.
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  function handleDragStart(event: DragStartEvent) {
+    setActiveId(String(event.active.id));
+  }
+
+  function handleDragCancel() {
+    setActiveId(null);
+  }
+
   // Arrastar uma peça JÁ selecionada move a seleção inteira; arrastar uma
   // peça fora da seleção move só ela (não altera o que estava selecionado).
   function handleDragEnd(event: DragEndEvent) {
+    setActiveId(null);
     const { active, over } = event;
     if (!over) return;
     const destination = destinationsByDropId.get(String(over.id));
     if (!destination) return;
     moveItems(idsToMoveOnDrop(String(active.id), selected), destination);
   }
+
+  const draggedIds = activeId ? idsToMoveOnDrop(activeId, selected) : [];
+  const draggedProduct = activeId ? data?.items.find((p) => p.id === activeId) : undefined;
 
   const [pendingDelete, setPendingDelete] = useState<{ kind: "category" | "subcategory"; id: string; name: string; productCount: number } | null>(
     null
@@ -414,7 +460,13 @@ export function ProductCategorization() {
   const allMatchingSelected = Boolean(data) && data!.total > 0 && selected.length >= data!.total;
 
   return (
-    <DndContext sensors={dragSensors} onDragEnd={handleDragEnd}>
+    <DndContext
+      sensors={dragSensors}
+      collisionDetection={pointerWithin}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
+    >
     <div className="pb-24 sm:pb-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -584,6 +636,7 @@ export function ProductCategorization() {
         onCancel={() => setPendingDelete(null)}
       />
     </div>
+    <DragOverlay>{activeId ? <DragPreview product={draggedProduct} count={draggedIds.length} /> : null}</DragOverlay>
     </DndContext>
   );
 }
