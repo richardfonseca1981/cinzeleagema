@@ -1,5 +1,6 @@
 import { resolveBodyText, resolveTitle } from "../catalog/content";
 import { buildPublicSlug } from "../publicSlug";
+import { formatWeightSizePt } from "../seo/meta";
 import { escapeXml } from "../xml";
 import { evaluateFeedEligibility, type FeedEligibilityInput } from "./feedEligibility";
 import { GOOGLE_PRODUCT_CATEGORY_BY_CATEGORY_SLUG } from "./googleProductCategoryMap";
@@ -63,6 +64,15 @@ function appendSizeToTitle(title: string, sizeCmNumber: number): string {
   return sizeCmNumber > 0 ? `${title} – ${formatSizeCmPt(sizeCmNumber)}` : title;
 }
 
+// Primeira linha da descrição: nome + peso/tamanho REAIS (formatWeightSizePt
+// já combina os dois com " · ", omitindo o que for 0 — nunca inventa dado
+// que a peça não tem). Sem peso nem tamanho, a linha é só o nome (nada a
+// acrescentar).
+function buildDescriptionLeadLine(baseTitle: string, weightGramsNumber: number, sizeCmNumber: number): string {
+  const weightSize = formatWeightSizePt(weightGramsNumber, sizeCmNumber);
+  return weightSize ? `${baseTitle} – ${weightSize}` : baseTitle;
+}
+
 // Única função que decide o CONTEÚDO de um item do feed a partir de uma
 // peça já elegível (ver evaluateFeedEligibility) — nunca filtra de novo
 // aqui, só transforma. Chamador garante que só passa peças elegíveis
@@ -89,10 +99,17 @@ export function buildFeedItem(product: FeedProduct, siteUrl: string): FeedItem {
       : product.category.name
     : null;
 
+  // Linha inicial com os dados reais (nome + peso/tamanho), seguida do texto
+  // já resolvido (identificação ou description própria) — sem corpo próprio
+  // (`body` null), a descrição é só a linha inicial, nunca repete o nome de
+  // novo como "corpo".
+  const leadLine = buildDescriptionLeadLine(baseTitle, weightGramsNumber, sizeCmNumber);
+  const description = body?.text ? `${leadLine}\n\n${body.text}` : leadLine;
+
   return {
     id: product.id,
     title: truncate(title, 150),
-    description: truncate(body?.text ?? baseTitle, 5000),
+    description: truncate(description, 5000),
     link: `${base}/catalogo/${slug}`,
     imageLink: cover.url,
     additionalImageLinks: rest.slice(0, MAX_ADDITIONAL_IMAGES).map((image) => image.url),

@@ -72,9 +72,28 @@ describe("buildFeedItem", () => {
     expect(item.title.length).toBeLessThanOrEqual(150);
   });
 
-  it("descrição não leva o sufixo de medida do título (usa o nome base) — evita duplicar a medida mais de uma vez", () => {
-    const item = buildFeedItem(product({ name: "Ametista Bruta", sizeCm: 10, description: null, identificationPt: null }), SITE_URL);
-    expect(item.description).toBe("Ametista Bruta");
+  it("descrição começa com nome + peso/tamanho reais, mesmo quando o título já tem o sufixo de medida", () => {
+    const item = buildFeedItem(
+      product({ name: "Ametista Bruta", sizeCm: 10, weightGrams: 250, description: "Peça rara, lapidação exclusiva.", identificationPt: null }),
+      SITE_URL
+    );
+    expect(item.description.startsWith("Ametista Bruta – 250g · 10cm\n\n")).toBe(true);
+    expect(item.description).toContain("Peça rara, lapidação exclusiva.");
+  });
+
+  it("sem peso nem tamanho, a linha inicial da descrição é só o nome (não inventa '· 0cm')", () => {
+    const item = buildFeedItem(product({ name: "Ametista Bruta", weightGrams: 0, sizeCm: 0, description: "Texto próprio." }), SITE_URL);
+    expect(item.description.startsWith("Ametista Bruta\n\n")).toBe(true);
+    expect(item.description).not.toContain("0cm");
+    expect(item.description).not.toContain("0g");
+  });
+
+  it("sem description/identificação própria (body null), a descrição é só a linha inicial — não duplica o nome", () => {
+    const item = buildFeedItem(
+      product({ name: "Ametista Bruta", sizeCm: 10, weightGrams: 250, description: null, identificationPt: null }),
+      SITE_URL
+    );
+    expect(item.description).toBe("Ametista Bruta – 250g · 10cm");
   });
 
   it("preço formatado como número decimal + ' BRL'", () => {
@@ -86,6 +105,7 @@ describe("buildFeedItem", () => {
     expect(buildFeedItem(product({ weightGrams: 250 }), SITE_URL).weightKg).toBeCloseTo(0.25);
     expect(buildFeedItem(product({ weightGrams: 0 }), SITE_URL).weightKg).toBeNull();
   });
+
 
   it("product_type combina categoria e subcategoria; sem subcategoria usa só a categoria", () => {
     const withSub = buildFeedItem(
