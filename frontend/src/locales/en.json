@@ -117,14 +117,8 @@
   },
   "contactModal": {
     "title": "Contact Us",
-    "submittedTitle": "Message received",
-    "submittedBody": "Soon you'll be able to send messages directly from here. For now, reach us on WhatsApp.",
-    "whatsappCta": "Chat on WhatsApp",
-    "nameLabel": "Full name",
-    "emailLabel": "Email",
-    "subjectLabel": "Subject",
-    "messageLabel": "Message",
-    "submit": "Send"
+    "intro": "Choose the channel you prefer — we'll reply there:",
+    "whatsappCta": "Chat on WhatsApp"
   },
   "qualityPolicyModal": {
     "title": "Quality Policy",

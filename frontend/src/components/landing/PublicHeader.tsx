@@ -6,6 +6,12 @@ import { WhatsAppGroupMarquee } from "./WhatsAppGroupMarquee";
 import { WHATSAPP_HREF } from "../../lib/whatsapp";
 import { useConsent } from "../../lib/consent";
 
+// Mesma leitura direta de env var que Landing.tsx já fazia para o rodapé
+// (CONTACT_EMAIL) — duplicada de propósito aqui (mesma convenção de
+// publicSlug.ts/productSlug.ts: cada camada/componente lê o que precisa,
+// sem criar um módulo compartilhado só para isso).
+const CONTACT_EMAIL = import.meta.env.VITE_CONTACT_EMAIL;
+
 // Cabeçalho único do site público (landing, catálogo, detalhe do produto,
 // carrinho, checkout, política de privacidade) — reaproveita o
 // Header/ContactModal da landing em vez de duplicar o cabeçalho em cada
@@ -31,7 +37,7 @@ export function PublicHeader() {
         <WhatsAppGroupMarquee />
         <Header onOpenContact={() => setContactOpen(true)} />
       </div>
-      <ContactModal open={contactOpen} onClose={() => setContactOpen(false)} whatsappHref={WHATSAPP_HREF} />
+      <ContactModal open={contactOpen} onClose={() => setContactOpen(false)} whatsappHref={WHATSAPP_HREF} contactEmail={CONTACT_EMAIL} />
       <button
         type="button"
         onClick={reopen}

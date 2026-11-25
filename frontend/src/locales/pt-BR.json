@@ -117,14 +117,8 @@
   },
   "contactModal": {
     "title": "Fale Conosco",
-    "submittedTitle": "Mensagem recebida",
-    "submittedBody": "Em breve você poderá enviar mensagens por aqui. Por enquanto, fale conosco pelo WhatsApp.",
-    "whatsappCta": "Falar no WhatsApp",
-    "nameLabel": "Nome completo",
-    "emailLabel": "E-mail",
-    "subjectLabel": "Assunto",
-    "messageLabel": "Mensagem",
-    "submit": "Enviar"
+    "intro": "Escolha o canal que preferir — respondemos por aqui:",
+    "whatsappCta": "Falar no WhatsApp"
   },
   "qualityPolicyModal": {
     "title": "Política de Qualidade",
