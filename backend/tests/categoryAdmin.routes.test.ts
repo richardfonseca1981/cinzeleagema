@@ -80,7 +80,7 @@ describe("DELETE /api/admin/categories/:id", () => {
       .set("Authorization", `Bearer ${token}`)
       .expect(409);
 
-    expect(res.body.productCount).toBe(2);
+    expect(res.body.details.productCount).toBe(2);
     expect(await prisma.category.findUnique({ where: { id: category.id } })).not.toBeNull();
   });
 
@@ -94,7 +94,7 @@ describe("DELETE /api/admin/categories/:id", () => {
       .set("Authorization", `Bearer ${token}`)
       .expect(409);
 
-    expect(res.body.productCount).toBe(1);
+    expect(res.body.details.productCount).toBe(1);
   });
 
   it("moveAffectedToUncategorized=true move as peças para Sem categoria E apaga, numa transação só", async () => {

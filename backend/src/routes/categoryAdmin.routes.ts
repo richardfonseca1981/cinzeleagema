@@ -126,7 +126,7 @@ categoryAdminRouter.delete(
     if (productCount > 0 && !moveAffectedToUncategorized) {
       res.status(409).json({
         error: `Esta categoria tem ${productCount} peça(s). Mova as peças antes de apagar, ou confirme mover para "Sem categoria" e apagar.`,
-        productCount,
+        details: { productCount },
       });
       return;
     }
@@ -216,7 +216,7 @@ categoryAdminRouter.delete(
     if (productCount > 0 && !moveAffectedToUncategorized) {
       res.status(409).json({
         error: `Esta subcategoria tem ${productCount} peça(s). Mova as peças antes de apagar, ou confirme remover a subcategoria delas e apagar.`,
-        productCount,
+        details: { productCount },
       });
       return;
     }

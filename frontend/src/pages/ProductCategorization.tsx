@@ -4,6 +4,7 @@ import { DndContext, PointerSensor, useDraggable, useSensor, useSensors, type Dr
 import { CSS } from "@dnd-kit/utilities";
 import { api, ApiError, exportCategoryCsv } from "../lib/api";
 import { useToast } from "../components/Toast";
+import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Pagination } from "../components/Pagination";
 import { totalPages } from "../lib/pagination";
 import { coverImage } from "../lib/productRow";
@@ -295,6 +296,101 @@ export function ProductCategorization() {
     moveItems(idsToMoveOnDrop(String(active.id), selected), destination);
   }
 
+  const [pendingDelete, setPendingDelete] = useState<{ kind: "category" | "subcategory"; id: string; name: string; productCount: number } | null>(
+    null
+  );
+
+  function detailsProductCount(err: unknown): number {
+    if (err instanceof ApiError && err.details && typeof err.details === "object") {
+      const count = (err.details as { productCount?: unknown }).productCount;
+      if (typeof count === "number") return count;
+    }
+    return 0;
+  }
+
+  async function handleCreateCategory(name: string) {
+    try {
+      await api.createCategory(name);
+      reloadTree();
+    } catch (err) {
+      showToast("error", err instanceof ApiError ? err.message : "Não foi possível criar a categoria");
+    }
+  }
+
+  async function handleRenameCategory(id: string, name: string) {
+    try {
+      await api.renameCategory(id, name);
+      reloadTree();
+    } catch (err) {
+      showToast("error", err instanceof ApiError ? err.message : "Não foi possível renomear a categoria");
+    }
+  }
+
+  async function handleDeleteCategory(id: string) {
+    const name = tree?.categories.find((c) => c.id === id)?.name ?? "esta categoria";
+    try {
+      await api.deleteCategory(id);
+      showToast("success", "Categoria apagada.");
+      reloadTree();
+      loadProducts();
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        setPendingDelete({ kind: "category", id, name, productCount: detailsProductCount(err) });
+        return;
+      }
+      showToast("error", err instanceof ApiError ? err.message : "Não foi possível apagar a categoria");
+    }
+  }
+
+  async function handleCreateSubcategory(categoryId: string, name: string) {
+    try {
+      await api.createSubcategory(categoryId, name);
+      reloadTree();
+    } catch (err) {
+      showToast("error", err instanceof ApiError ? err.message : "Não foi possível criar a subcategoria");
+    }
+  }
+
+  async function handleRenameSubcategory(id: string, name: string) {
+    try {
+      await api.renameSubcategory(id, name);
+      reloadTree();
+    } catch (err) {
+      showToast("error", err instanceof ApiError ? err.message : "Não foi possível renomear a subcategoria");
+    }
+  }
+
+  async function handleDeleteSubcategory(id: string) {
+    const name = tree?.categories.flatMap((c) => c.subcategories).find((s) => s.id === id)?.name ?? "esta subcategoria";
+    try {
+      await api.deleteSubcategory(id);
+      showToast("success", "Subcategoria apagada.");
+      reloadTree();
+      loadProducts();
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        setPendingDelete({ kind: "subcategory", id, name, productCount: detailsProductCount(err) });
+        return;
+      }
+      showToast("error", err instanceof ApiError ? err.message : "Não foi possível apagar a subcategoria");
+    }
+  }
+
+  async function confirmPendingDelete() {
+    if (!pendingDelete) return;
+    const { kind, id } = pendingDelete;
+    setPendingDelete(null);
+    try {
+      if (kind === "category") await api.deleteCategory(id, true);
+      else await api.deleteSubcategory(id, true);
+      showToast("success", "Apagada — peças movidas para Sem categoria.");
+      reloadTree();
+      loadProducts();
+    } catch (err) {
+      showToast("error", err instanceof ApiError ? err.message : "Não foi possível apagar");
+    }
+  }
+
   async function handleExport() {
     setExporting(true);
     try {
@@ -342,7 +438,21 @@ export function ProductCategorization() {
       <div className="grid gap-4 sm:grid-cols-[220px_1fr]">
         <aside className="rounded-xl border border-[#E2E8F0] bg-white p-3">
           {treeError && <p className="text-sm text-[#B91C1C]">Não foi possível carregar as categorias.</p>}
-          {tree && <CategoryTree tree={tree} activeFilter={filter} onSelectFilter={handleSelectFilter} />}
+          {tree && (
+            <CategoryTree
+              tree={tree}
+              activeFilter={filter}
+              onSelectFilter={handleSelectFilter}
+              actions={{
+                onCreateCategory: handleCreateCategory,
+                onRenameCategory: handleRenameCategory,
+                onDeleteCategory: handleDeleteCategory,
+                onCreateSubcategory: handleCreateSubcategory,
+                onRenameSubcategory: handleRenameSubcategory,
+                onDeleteSubcategory: handleDeleteSubcategory,
+              }}
+            />
+          )}
         </aside>
 
         <section>
@@ -460,6 +570,19 @@ export function ProductCategorization() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title={`Apagar ${pendingDelete?.kind === "category" ? "categoria" : "subcategoria"}`}
+        message={
+          pendingDelete?.kind === "category"
+            ? `"${pendingDelete.name}" tem ${pendingDelete.productCount} peça(s). Confirmar move todas para "Sem categoria" e apaga a categoria.`
+            : `"${pendingDelete?.name}" tem ${pendingDelete?.productCount} peça(s). Confirmar remove a subcategoria delas (a categoria continua) e apaga a subcategoria.`
+        }
+        confirmLabel="Apagar mesmo assim"
+        onConfirm={confirmPendingDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
     </DndContext>
   );

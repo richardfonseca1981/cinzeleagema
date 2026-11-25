@@ -15,12 +15,14 @@ vi.mock("../lib/api", async () => {
       listProducts: vi.fn(),
       bulkMoveCategory: vi.fn(),
       undoBulkCategory: vi.fn(),
+      createCategory: vi.fn(),
+      deleteCategory: vi.fn(),
     },
     exportCategoryCsv: vi.fn(),
   };
 });
 
-import { api } from "../lib/api";
+import { api, ApiError } from "../lib/api";
 import { ProductCategorization } from "./ProductCategorization";
 
 function makeProduct(overrides: Partial<Product>): Product {
@@ -153,5 +155,39 @@ describe("ProductCategorization", () => {
     fireEvent.click(screen.getByText("Selecionar as 3 peça(s) deste filtro"));
 
     await waitFor(() => expect(screen.getByText("3 selecionada(s)")).toBeInTheDocument());
+  });
+
+  it("criar categoria pela árvore chama api.createCategory e recarrega a árvore", async () => {
+    vi.mocked(api.listProducts).mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 50 });
+    vi.mocked(api.createCategory).mockResolvedValue({ id: "cat-2", name: "Homedecor", slug: "homedecor", position: 1, productCount: 0, subcategories: [] });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByText("+ Nova categoria")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText("+ Nova categoria"));
+    fireEvent.change(screen.getByPlaceholderText("Nova categoria"), { target: { value: "Homedecor" } });
+    fireEvent.click(screen.getByLabelText("Confirmar"));
+
+    await waitFor(() => expect(api.createCategory).toHaveBeenCalledWith("Homedecor"));
+    // Recarrega a árvore depois de criar (2ª chamada: a do mount + a do reload).
+    await waitFor(() => expect(api.getCategoryTree).toHaveBeenCalledTimes(2));
+  });
+
+  it("apagar categoria com peças (409) abre confirmação; confirmar chama deleteCategory(id, true)", async () => {
+    vi.mocked(api.listProducts).mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 50 });
+    vi.mocked(api.deleteCategory).mockImplementation(async (_id, moveAffected) => {
+      if (!moveAffected) throw new ApiError(409, "Esta categoria tem 4 peça(s).", { productCount: 4 });
+      return { deleted: true, productsMoved: 4 };
+    });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByText("Pedras Brutas")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByLabelText("Apagar Pedras Brutas"));
+
+    expect(await screen.findByText(/4 peça\(s\)/)).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Apagar mesmo assim"));
+
+    await waitFor(() => expect(api.deleteCategory).toHaveBeenCalledWith("cat-1", true));
   });
 });
