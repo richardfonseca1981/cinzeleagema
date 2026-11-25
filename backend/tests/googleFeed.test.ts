@@ -106,6 +106,11 @@ describe("buildFeedItem", () => {
     expect(buildFeedItem(product({ weightGrams: 0 }), SITE_URL).weightKg).toBeNull();
   });
 
+  it("productLengthCm vem de sizeCm > 0; sizeCm 0 ('não informado') vira null — nunca inventa product_width/product_height", () => {
+    expect(buildFeedItem(product({ sizeCm: 10 }), SITE_URL).productLengthCm).toBe(10);
+    expect(buildFeedItem(product({ sizeCm: 0 }), SITE_URL).productLengthCm).toBeNull();
+  });
+
 
   it("product_type combina categoria e subcategoria; sem subcategoria usa só a categoria", () => {
     const withSub = buildFeedItem(
@@ -170,6 +175,22 @@ describe("renderGoogleFeedXml", () => {
     expect(xml).toContain("<g:condition>new</g:condition>");
     expect(xml).toContain("<g:identifier_exists>false</g:identifier_exists>");
     expect(xml).toContain("<g:brand>Cinzel e a Gema</g:brand>");
+  });
+
+  it("product_length/product_weight aparecem no formato oficial 'número espaço unidade' quando há dado real", () => {
+    const items = buildFeedItems([product({ sizeCm: 10, weightGrams: 250 })], SITE_URL);
+    const xml = renderGoogleFeedXml(items, SITE_URL);
+
+    expect(xml).toContain("<g:product_length>10.0 cm</g:product_length>");
+    expect(xml).toContain("<g:product_weight>0.250 kg</g:product_weight>");
+  });
+
+  it("sem sizeCm/weightGrams (0 = não informado), product_length/product_weight ficam de fora do XML", () => {
+    const items = buildFeedItems([product({ sizeCm: 0, weightGrams: 0 })], SITE_URL);
+    const xml = renderGoogleFeedXml(items, SITE_URL);
+
+    expect(xml).not.toContain("product_length");
+    expect(xml).not.toContain("product_weight");
   });
 
   it("escapa caracteres especiais em título/descrição (& < > \" ')", () => {
