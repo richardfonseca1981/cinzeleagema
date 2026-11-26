@@ -353,7 +353,7 @@
   },
   "consent": {
     "title": "Preferências de cookies",
-    "message": "Usamos o Google Analytics para medir visitas e cliques no site (nunca CEP completo, dados de pagamento ou qualquer dado que te identifique diretamente). Você pode aceitar ou rejeitar essa medição.",
+    "message": "Usamos o Google Analytics para medir visitas e cliques no site, sem enviar CEP completo, dados de pagamento, nome ou telefone. Você pode aceitar ou rejeitar essa medição.",
     "learnMore": "Saiba mais",
     "accept": "Aceitar",
     "reject": "Rejeitar"
@@ -364,9 +364,13 @@
     "updatedAt": "Última atualização: {{date}}",
     "intro": "Esta página explica quais dados o site da Cinzel e a Gema coleta, para quê e como você pode controlar essa coleta, em conformidade com a Lei Geral de Proteção de Dados (LGPD).",
     "controllerTitle": "Quem é o controlador dos dados",
-    "controllerBody": "O controlador dos dados tratados neste site é {{legalName}}, CNPJ {{cnpj}}, com sede em {{address}}. Dúvidas sobre privacidade podem ser enviadas para cinzeleagema@gmail.com.",
+    "controllerBody": "O controlador dos dados tratados neste site é {{legalName}}, CNPJ {{cnpj}}, com sede em {{address}}. Dúvidas sobre privacidade podem ser enviadas para {{email}}.",
     "whatWeCollectTitle": "O que coletamos",
-    "whatWeCollectBody": "Usamos o Google Analytics (GA4) para entender como os visitantes usam o site: páginas vistas, origem do tráfego (de onde você veio — por exemplo uma rede social ou um link de divulgação) e cliques em elementos como o botão de WhatsApp, o botão de adicionar ao pedido e a cotação de frete. Nunca coletamos o CEP completo, dados de pagamento, nem qualquer informação que identifique você diretamente.",
+    "whatWeCollectBody": "Medição do site (Google Analytics): páginas vistas, origem do tráfego, termos digitados na busca do catálogo, cliques em elementos como os botões de WhatsApp e e-mail, adicionar ao pedido e cotação de frete. Nessa medição nunca enviamos ao Google o CEP completo, dados de pagamento, nome, telefone ou e-mail. Da cotação de frete, o Google recebe apenas cidade e estado.",
+    "orderDataTitle": "Dados que você informa ao fazer um pedido",
+    "orderDataBody": "Ao finalizar um pedido, pedimos seu nome e telefone. Usamos esses dados apenas para falar com você sobre o pedido: confirmar as peças, o pagamento e a entrega. Eles são enviados ao sistema de atendimento da loja (FluxioDesk). Se esse envio não for possível, o site abre uma conversa no WhatsApp com a mensagem pronta, que só é enviada se você clicar em enviar. O site não guarda nome e telefone em banco de dados próprio. Tratamos esses dados para executar o pedido e atender sua solicitação (LGPD, art. 7º, V).",
+    "shippingCalcTitle": "Cálculo de frete",
+    "shippingCalcBody": "Para calcular o frete, o CEP que você digita é enviado ao nosso servidor, que consulta o ViaCEP (para identificar cidade e estado) e o Melhor Envio (para calcular preço e prazo). Esses serviços recebem o CEP e os dados da encomenda, mas não o seu nome nem o seu telefone. O CEP fica salvo apenas no seu navegador, para você não perder a cotação ao recarregar a página.",
     "consentTitle": "Consentimento e Google Consent Mode",
     "consentBody": "Ao chegar no site, você vê um banner perguntando se aceita ou rejeita essa medição. Enquanto você não responder, ou se escolher \"Rejeitar\", usamos o Google Consent Mode: nenhum cookie de analytics é gravado e nenhuma medição individual é feita. O Google Analytics ainda recebe sinais agregados e sem identificação (chamados de pings sem cookie) para estimar, por modelagem estatística, o volume geral de visitas — sem conseguir saber quem é você nem seguir sua navegação entre visitas. Em um site com o volume de tráfego da Cinzel e a Gema, essa modelagem é bem menos precisa do que a medição com cookie: ela pode não captar corretamente picos pequenos de tráfego.",
     "revokeTitle": "Como revisar sua escolha",
@@ -377,9 +381,21 @@
     "cookiesListCart": "cinzeleagema_cart e cinzeleagema_shipping — guardam o pedido e os dados de frete em andamento, para você não perder o progresso ao recarregar a página.",
     "cookiesListUtm": "cinzeleagema_utm — guarda, só durante a sessão no seu navegador (apagado ao fechar a aba), de qual link/campanha de divulgação você veio, para medirmos a divulgação corretamente.",
     "cookiesListGa": "Cookies do próprio Google Analytics (como _ga) — só são gravados se você aceitar a medição no banner.",
+    "sharingTitle": "Com quem compartilhamos dados",
+    "sharingListGoogle": "Google (Google Analytics), só com o seu consentimento.",
+    "sharingListHosting": "Vercel e Railway, hospedagem do site e do servidor — recebem o endereço IP de quem acessa.",
+    "sharingListPhotos": "Cloudflare, hospedagem das fotos das peças.",
+    "sharingListShipping": "ViaCEP e Melhor Envio, para calcular o frete.",
+    "sharingListSupport": "Sistema de atendimento da loja (FluxioDesk), para os pedidos.",
+    "sharingListWhatsapp": "WhatsApp/Meta, quando você inicia uma conversa.",
+    "sharingClosing": "Não vendemos seus dados.",
+    "internationalTransferTitle": "Transferência internacional",
+    "internationalTransferBody": "Alguns desses serviços, como Google, Vercel, Railway e Cloudflare, podem processar dados em servidores fora do Brasil. Quando isso ocorre, observamos as regras da LGPD para transferência internacional de dados.",
+    "retentionTitle": "Por quanto tempo guardamos os dados",
+    "retentionBody": "Medição no Google Analytics: 14 meses. Dados guardados no seu navegador (carrinho, frete, idioma): até você limpar os dados do navegador. Escolha de cookies: até você mudá-la. Nome e telefone de um pedido: pelo tempo necessário para atender o pedido e cumprir obrigações legais.",
     "rightsTitle": "Seus direitos (LGPD)",
-    "rightsBody": "Você pode solicitar, a qualquer momento, pelo e-mail cinzeleagema@gmail.com: confirmação de que tratamos seus dados, acesso aos dados tratados, correção de dados incorretos, e revogação do consentimento — a revogação também pode ser feita diretamente pelo link \"Preferências de cookies\" no rodapé, sem precisar nos contatar.",
+    "rightsBody": "Você pode pedir, a qualquer momento, pelo e-mail {{email}}: confirmação de que tratamos seus dados; acesso; correção de dados incorretos; anonimização, bloqueio ou eliminação de dados desnecessários; portabilidade; informação sobre com quem compartilhamos seus dados; e revogação do consentimento (que também pode ser feita direto pelo link \"Preferências de cookies\" no rodapé). Respondemos em até 15 dias. Você também pode apresentar reclamação à Autoridade Nacional de Proteção de Dados (ANPD), em gov.br/anpd.",
     "contactTitle": "Contato",
-    "contactBody": "Para qualquer dúvida sobre esta política, escreva para cinzeleagema@gmail.com."
+    "contactBody": "Para qualquer dúvida sobre esta política, escreva para {{email}}."
   }
 }
