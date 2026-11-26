@@ -3,15 +3,12 @@ import { PublicHeader } from "../components/landing/PublicHeader";
 import { WhatsAppFloatingButton } from "../components/landing/WhatsAppFloatingButton";
 import { WHATSAPP_HREF } from "../lib/whatsapp";
 import { Seo } from "../components/Seo";
+import { COMPANY } from "../config/company";
 
 // Data fixa do último texto publicado — atualizar manualmente sempre que o
 // conteúdo desta página mudar de fato (não é a data do build).
 const UPDATED_AT = "2026-11-24";
 
-// ATENÇÃO: os textos abaixo (locales/pt-BR.json e en.json, chaves "privacy.*")
-// têm marcadores [RAZÃO SOCIAL] / [CNPJ] / [E-MAIL DE CONTATO PARA PRIVACIDADE]
-// que precisam ser substituídos por dados reais do controlador ANTES do
-// merge pra main — ver CONTEXT.md "SEO — Rodada 3" (pendência bloqueante).
 export function Privacy() {
   const { t } = useTranslation();
 
@@ -26,7 +23,9 @@ export function Privacy() {
 
         <section className="mt-8">
           <h2 className="text-lg font-semibold">{t("privacy.controllerTitle")}</h2>
-          <p className="mt-2 leading-relaxed text-[#1A1A1A]">{t("privacy.controllerBody")}</p>
+          <p className="mt-2 leading-relaxed text-[#1A1A1A]">
+            {t("privacy.controllerBody", { legalName: COMPANY.legalName, cnpj: COMPANY.cnpj, address: COMPANY.address })}
+          </p>
         </section>
 
         <section className="mt-8">
