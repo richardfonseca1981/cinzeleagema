@@ -90,9 +90,8 @@ export function Footer({
                 </button>
               </li>
               <li><Link to="/privacidade" className="hover:text-white">{t("footer.privacyPolicy")}</Link></li>
-              {/* Política de Troca/Devolução e Termos de Venda: ainda sem página própria
-                  (aguardam decisão do cliente, ver CONTEXT.md). Adicionar aqui como novos
-                  <li><Link to="/..."> quando as páginas existirem — não criar link morto antes disso. */}
+              <li><Link to="/troca-e-devolucao" className="hover:text-white">{t("footer.exchangePolicy")}</Link></li>
+              <li><Link to="/termos-de-venda" className="hover:text-white">{t("footer.saleTerms")}</Link></li>
               <li>
                 <button type="button" onClick={reopen} className="hover:text-white">
                   {t("footer.cookiePreferences")}

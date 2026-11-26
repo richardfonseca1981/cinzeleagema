@@ -86,3 +86,13 @@ export function localizeProductName(
 export function localizeCategoryName(t: (key: string, options?: Record<string, unknown>) => string, name: string): string {
   return t(`categoryNames.${name}`, { defaultValue: name });
 }
+
+// Usado pelas páginas legais (Privacy, ExchangePolicy, SaleTerms) para a data
+// de "última atualização". `new Date("YYYY-MM-DD")` interpreta a string como
+// meia-noite UTC, o que pode mostrar o dia anterior em fusos negativos (ex.:
+// Brasil) — por isso ano/mês/dia são extraídos e passados pro construtor
+// local do Date, nunca a string ISO direto.
+export function formatUpdatedAt(iso: string, locale: string): string {
+  const [year, month, day] = iso.split("-").map(Number);
+  return new Intl.DateTimeFormat(locale).format(new Date(year, month - 1, day));
+}

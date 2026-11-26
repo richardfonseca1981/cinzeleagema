@@ -15,6 +15,12 @@ function toDateOnly(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
+// Data da última revisão de texto das páginas legais (Política de Troca e
+// Devolução, Termos de Venda — mesmo UPDATED_AT fixo nos componentes
+// ExchangePolicy.tsx/SaleTerms.tsx do frontend). Não usa o lastmod do
+// catálogo: o texto dessas páginas não muda quando um produto é editado.
+const LEGAL_PAGES_LASTMOD = "2026-11-26";
+
 // Única função que decide o conteúdo do sitemap: filtra pela regra de
 // elegibilidade (ver sitemapEligibility.ts) e monta as entradas, incluindo
 // "/" e "/catalogo" com o lastmod mais recente entre as peças elegíveis
@@ -32,6 +38,8 @@ export function buildSitemapUrls(products: SitemapProduct[], now: Date = new Dat
   const urls: SitemapUrl[] = [
     { path: "/", lastmod: staticLastmod },
     { path: "/catalogo", lastmod: staticLastmod },
+    { path: "/troca-e-devolucao", lastmod: LEGAL_PAGES_LASTMOD },
+    { path: "/termos-de-venda", lastmod: LEGAL_PAGES_LASTMOD },
   ];
 
   for (const product of eligible) {

@@ -83,4 +83,14 @@ describe("Footer", () => {
     const expected = `${COMPANY.legalName} · CNPJ ${COMPANY.cnpj} · ${COMPANY.address}`;
     expect(screen.getByText(expected)).toBeInTheDocument();
   });
+
+  it("tem os links de Política de Troca e Devolução e Termos de Venda, ao lado do de privacidade", () => {
+    renderFooter();
+    expect(screen.getByRole("link", { name: "Política de Troca e Devolução" })).toHaveAttribute(
+      "href",
+      "/troca-e-devolucao"
+    );
+    expect(screen.getByRole("link", { name: "Termos de Venda" })).toHaveAttribute("href", "/termos-de-venda");
+    expect(screen.getByRole("link", { name: "Política de Privacidade" })).toHaveAttribute("href", "/privacidade");
+  });
 });

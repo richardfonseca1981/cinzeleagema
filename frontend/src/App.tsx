@@ -13,6 +13,8 @@ import { ProductDetail } from "./pages/ProductDetail";
 import { Cart } from "./pages/Cart";
 import { Checkout } from "./pages/Checkout";
 import { Privacy } from "./pages/Privacy";
+import { ExchangePolicy } from "./pages/ExchangePolicy";
+import { SaleTerms } from "./pages/SaleTerms";
 import { AdminLayout } from "./components/AdminLayout";
 import { ConsentBanner } from "./components/ConsentBanner";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -38,6 +40,8 @@ export default function App() {
                 <Route path="/carrinho" element={<Cart />} />
                 <Route path="/finalizar" element={<Checkout />} />
                 <Route path="/privacidade" element={<Privacy />} />
+                <Route path="/troca-e-devolucao" element={<ExchangePolicy />} />
+                <Route path="/termos-de-venda" element={<SaleTerms />} />
 
                 <Route path="/admin" element={<Login />} />
                 <Route path="/login" element={<Navigate to="/admin" replace />} />
