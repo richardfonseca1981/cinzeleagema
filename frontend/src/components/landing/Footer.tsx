@@ -1,9 +1,10 @@
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { FacebookIcon, InstagramIcon, LinkedinIcon, MailIcon, MapPinIcon, WhatsAppIcon } from "./icons";
+import { FacebookIcon, InstagramIcon, LinkedinIcon, MailIcon, WhatsAppIcon } from "./icons";
 import { WhatsAppGroupLink } from "./WhatsAppGroupLink";
 import { useConsent } from "../../lib/consent";
 import { trackEvent } from "../../lib/analytics";
+import { COMPANY } from "../../config/company";
 
 export function Footer({
   whatsappHref,
@@ -74,10 +75,6 @@ export function Footer({
                   </a>
                 </li>
               )}
-              <li className="flex items-center gap-2 text-[#5F84BA]">
-                <MapPinIcon className="h-4 w-4 flex-shrink-0" />
-                {t("footer.addressPlaceholder")}
-              </li>
             </ul>
           </div>
 
@@ -93,6 +90,9 @@ export function Footer({
                 </button>
               </li>
               <li><Link to="/privacidade" className="hover:text-white">{t("footer.privacyPolicy")}</Link></li>
+              {/* Política de Troca/Devolução e Termos de Venda: ainda sem página própria
+                  (aguardam decisão do cliente, ver CONTEXT.md). Adicionar aqui como novos
+                  <li><Link to="/..."> quando as páginas existirem — não criar link morto antes disso. */}
               <li>
                 <button type="button" onClick={reopen} className="hover:text-white">
                   {t("footer.cookiePreferences")}
@@ -102,8 +102,11 @@ export function Footer({
           </div>
         </div>
 
-        <div className="mt-10 border-t border-[#5F84BA]/20 pt-6 text-center text-xs text-[#5F84BA]">
-          {t("footer.copyright", { year })}
+        <div className="mt-10 border-t border-[#5F84BA]/20 pt-6 text-center text-xs text-[#5F84BA] space-y-1">
+          <p>
+            {t("footer.companyInfo", { legalName: COMPANY.legalName, cnpj: COMPANY.cnpj, address: COMPANY.address })}
+          </p>
+          <p>{t("footer.copyright", { year })}</p>
         </div>
       </div>
     </footer>

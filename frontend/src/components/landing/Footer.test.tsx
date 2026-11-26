@@ -3,7 +3,9 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import "../../i18n";
+import i18n from "../../i18n";
 import { ConsentProvider } from "../../lib/consent";
+import { COMPANY } from "../../config/company";
 import { Footer } from "./Footer";
 
 vi.mock("../../lib/analytics", async (importOriginal) => {
@@ -13,9 +15,10 @@ vi.mock("../../lib/analytics", async (importOriginal) => {
 
 import { trackEvent } from "../../lib/analytics";
 
-afterEach(() => {
+afterEach(async () => {
   cleanup();
   vi.clearAllMocks();
+  await i18n.changeLanguage("pt-BR");
 });
 
 function renderFooter(props: Partial<Parameters<typeof Footer>[0]> = {}, initialEntries: string[] = ["/"]) {
@@ -66,5 +69,18 @@ describe("Footer", () => {
     renderFooter({ contactEmail: undefined });
     expect(screen.queryByText("cinzeleagema@gmail.com")).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: /\(00\) 00000-0000/ })).toBeInTheDocument();
+  });
+
+  it("mostra razão social, CNPJ e endereço reais (pt-BR), como texto (sem link)", () => {
+    renderFooter();
+    const expected = `${COMPANY.legalName} · CNPJ ${COMPANY.cnpj} · ${COMPANY.address}`;
+    expect(screen.getByText(expected)).toBeInTheDocument();
+  });
+
+  it("mostra razão social, CNPJ e endereço reais também em inglês (dados não traduzidos)", async () => {
+    await i18n.changeLanguage("en");
+    renderFooter();
+    const expected = `${COMPANY.legalName} · CNPJ ${COMPANY.cnpj} · ${COMPANY.address}`;
+    expect(screen.getByText(expected)).toBeInTheDocument();
   });
 });

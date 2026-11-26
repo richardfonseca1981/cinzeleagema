@@ -105,7 +105,6 @@
   "footer": {
     "tagline": "Curadoria e comercialização de pedras preciosas com foco em qualidade e procedência.",
     "contactTitle": "Contato",
-    "addressPlaceholder": "Endereço a definir",
     "navTitle": "Navegação",
     "about": "Sobre Nós",
     "products": "Produtos",
@@ -113,6 +112,7 @@
     "qualityPolicy": "Política de Qualidade",
     "privacyPolicy": "Política de Privacidade",
     "cookiePreferences": "Preferências de cookies",
+    "companyInfo": "{{legalName}} · CNPJ {{cnpj}} · {{address}}",
     "copyright": "© {{year}} Cinzel e a Gema. Todos os direitos reservados."
   },
   "contactModal": {
