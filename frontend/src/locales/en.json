@@ -459,7 +459,7 @@
     "pricingTitle": "3. Prices, availability, and payment",
     "pricingListPrices": "Prices are in Brazilian reais (R$) and apply at the time the order is placed.",
     "pricingListAvailability": "Since most pieces are one of a kind, availability is limited to a single unit. If a piece is sold through another channel before payment is confirmed, we will let you know and refund the full amount within {{refundBusinessDays}} business days.",
-    "pricingListPayment": "Payment methods: Pix and credit card, {{installments}}. The order is confirmed once payment is approved.",
+    "pricingListPayment": "Payment methods: payment is arranged with our team over WhatsApp after you place your order on the site. We accept Pix and credit card {{installments}}. The order is confirmed once payment is approved.",
     "shippingTitle": "4. Shipping and timelines",
     "shippingListCalculation": "Shipping is calculated in the cart, by postal code, with options from Correios (Brazil's postal service) and, when available, a carrier. We do not currently offer free shipping.",
     "shippingListPosting": "We ship within {{shippingBusinessDays}} business days after payment is confirmed, via the carrier or Correios, depending on the option you choose in the cart. The delivery time shown in the quote starts counting after the item ships.",

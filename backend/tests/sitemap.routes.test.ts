@@ -31,6 +31,7 @@ describe("GET /api/sitemap.xml", () => {
     expect(res.text).toContain("<urlset");
     expect(res.text).toContain("<loc>https://www.cinzeleagema.com.br/</loc>");
     expect(res.text).toContain("<loc>https://www.cinzeleagema.com.br/catalogo</loc>");
+    expect(res.text).toContain("<loc>https://www.cinzeleagema.com.br/privacidade</loc>");
     expect(res.text).toContain("<loc>https://www.cinzeleagema.com.br/troca-e-devolucao</loc>");
     expect(res.text).toContain("<loc>https://www.cinzeleagema.com.br/termos-de-venda</loc>");
   });

@@ -442,7 +442,7 @@
     "pricingTitle": "3. Preços, disponibilidade e pagamento",
     "pricingListPrices": "Os preços estão em reais (R$) e valem no momento da finalização do pedido.",
     "pricingListAvailability": "Como a maioria das peças é única, a disponibilidade é de uma unidade. Se uma peça for vendida por outro canal antes da confirmação do pagamento, avisamos e devolvemos o valor integral em até {{refundBusinessDays}} dias úteis.",
-    "pricingListPayment": "Formas de pagamento: Pix e cartão de crédito {{installments}}. O pedido é confirmado após a aprovação do pagamento.",
+    "pricingListPayment": "Formas de pagamento: o pagamento é combinado com nossa equipe pelo WhatsApp depois que você envia o pedido pelo site. Aceitamos Pix e cartão de crédito {{installments}}. O pedido é confirmado após a aprovação do pagamento.",
     "shippingTitle": "4. Frete e prazos",
     "shippingListCalculation": "O frete é calculado no carrinho, por CEP, com as opções dos Correios e, quando disponível, de transportadora. No momento não oferecemos frete grátis.",
     "shippingListPosting": "Postamos em até {{shippingBusinessDays}} dias úteis após a confirmação do pagamento, pela transportadora ou pelos Correios, conforme a opção que você escolher no carrinho. O prazo de entrega informado no cálculo começa a contar depois da postagem.",

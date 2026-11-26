@@ -23,14 +23,21 @@ function product(overrides: Partial<SitemapProduct> = {}): SitemapProduct {
 describe("buildSitemapUrls", () => {
   it("inclui / e /catalogo mesmo sem nenhuma peça elegível", () => {
     const urls = buildSitemapUrls([], new Date("2026-11-12T00:00:00Z"));
-    expect(urls.map((u) => u.path)).toEqual(["/", "/catalogo", "/troca-e-devolucao", "/termos-de-venda"]);
+    expect(urls.map((u) => u.path)).toEqual([
+      "/",
+      "/catalogo",
+      "/privacidade",
+      "/troca-e-devolucao",
+      "/termos-de-venda",
+    ]);
     expect(urls.find((u) => u.path === "/")?.lastmod).toBe("2026-11-12");
     expect(urls.find((u) => u.path === "/catalogo")?.lastmod).toBe("2026-11-12");
   });
 
-  it("inclui as páginas legais (Política de Troca, Termos de Venda) com lastmod fixo, independente do catálogo", () => {
+  it("inclui as páginas legais (Privacidade, Política de Troca, Termos de Venda) com lastmod fixo, independente do catálogo", () => {
     const p = product({ updatedAt: new Date("2026-10-15T00:00:00Z") });
     const urls = buildSitemapUrls([p]);
+    expect(urls.find((u) => u.path === "/privacidade")?.lastmod).toBe("2026-11-26");
     expect(urls.find((u) => u.path === "/troca-e-devolucao")?.lastmod).toBe("2026-11-26");
     expect(urls.find((u) => u.path === "/termos-de-venda")?.lastmod).toBe("2026-11-26");
   });

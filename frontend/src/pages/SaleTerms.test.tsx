@@ -80,6 +80,14 @@ describe("SaleTerms", () => {
     ).toBeInTheDocument();
   });
 
+  it("explica que o pagamento é combinado por WhatsApp depois do pedido (pt-BR)", async () => {
+    renderPage();
+    await screen.findByRole("heading", { level: 1 });
+    expect(
+      screen.getByText(/o pagamento é combinado com nossa equipe pelo WhatsApp depois que você envia o pedido pelo site/)
+    ).toBeInTheDocument();
+  });
+
   it("tem links reais para a Política de Troca e para a Política de Privacidade", async () => {
     renderPage();
     await screen.findByRole("heading", { level: 1 });
@@ -102,6 +110,9 @@ describe("SaleTerms", () => {
 
     expect(screen.getByText("In case of any divergence, the Portuguese version prevails.")).toBeInTheDocument();
     expect(screen.getByText(new RegExp(escapeRegExp(LEGAL_POLICY.installments.en)))).toBeInTheDocument();
+    expect(
+      screen.getByText(/payment is arranged with our team over WhatsApp after you place your order on the site/)
+    ).toBeInTheDocument();
     const exchangeLink = screen.getByRole("link", { name: "Return and Exchange Policy" });
     expect(exchangeLink).toHaveAttribute("href", "/troca-e-devolucao");
     const privacyLink = screen.getByRole("link", { name: "Privacy Policy" });
