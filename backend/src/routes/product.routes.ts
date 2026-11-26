@@ -71,12 +71,12 @@ async function resolveSubcategoryId(categoryId: string | null | undefined, subca
 productRouter.get(
   "/",
   asyncHandler(async (req, res) => {
-    const { active, categoryId, subcategoryId, q, page, pageSize, sort } = listProductsQuerySchema.parse(req.query);
+    const { active, categoryId, subcategoryId, uncategorized, q, page, pageSize, sort } = listProductsQuerySchema.parse(req.query);
 
     const baseWhere = {
       ...(active === undefined ? {} : { active }),
-      ...(categoryId ? { categoryId } : {}),
-      ...(subcategoryId ? { subcategoryId } : {}),
+      ...(uncategorized ? { categoryId: null } : categoryId ? { categoryId } : {}),
+      ...(uncategorized ? {} : subcategoryId ? { subcategoryId } : {}),
     };
 
     // Busca por nome/nome em inglês/SKU em memória (ver lib/productSearch.ts):

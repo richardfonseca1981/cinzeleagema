@@ -3,6 +3,7 @@ import { Landing } from "./pages/Landing";
 import { Login } from "./pages/Login";
 import { ProductList } from "./pages/ProductList";
 import { ProductOrder } from "./pages/ProductOrder";
+import { ProductCategorization } from "./pages/ProductCategorization";
 import { ProductForm } from "./pages/ProductForm";
 import { CatalogGenerator } from "./pages/CatalogGenerator";
 import { AdminUsers } from "./pages/AdminUsers";
@@ -45,6 +46,7 @@ export default function App() {
                   <Route element={<AdminLayout />}>
                     <Route path="/admin/produtos" element={<ProductList />} />
                     <Route path="/admin/produtos/ordem" element={<ProductOrder />} />
+                    <Route path="/admin/produtos/categorizar" element={<ProductCategorization />} />
                     <Route path="/admin/produtos/novo" element={<ProductForm />} />
                     <Route path="/admin/produtos/:id" element={<ProductForm />} />
                     <Route path="/admin/catalogo" element={<CatalogGenerator />} />

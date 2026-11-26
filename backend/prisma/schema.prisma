@@ -18,6 +18,29 @@ model AdminUser {
   updatedAt    DateTime @updatedAt
 }
 
+// Log de auditoria genérico (não é um log de todo o sistema, só das ações
+// administrativas da tela de categorização — mover peça em lote, criar/
+// renomear/apagar categoria/subcategoria). Uma tabela só, com `payload` em
+// Json, em vez de uma tabela por tipo de ação — evita multiplicar schema a
+// cada nova ação, e o único consumo real hoje (desfazer a última ação em
+// lote) só precisa ler a entrada mais recente, nunca faz JOIN nela.
+// `adminUsername` fica congelado aqui (não só `adminId`) para o log continuar
+// legível mesmo que o AdminUser seja apagado depois — por isso não é uma FK.
+model AdminActionLog {
+  id            String   @id @default(cuid())
+  adminId       String
+  adminUsername String
+  action        String
+  // Formato por `action` (sem schema fixo de propósito):
+  // "bulk_category_move" -> { before: [{id,categoryId,subcategoryId}], after: [...] }
+  // "category_delete"/"subcategory_delete" -> { id, name, movedTo: {categoryId,subcategoryId}|null, affectedProductIds: [...] }
+  // "category_create"/"category_rename" -> { id, name, previousName? }
+  payload   Json
+  createdAt DateTime @default(now())
+
+  @@index([action, createdAt])
+}
+
 // Categorias/subcategorias servem apenas para organização, navegação e
 // filtro do catálogo — não devem carregar campos técnicos variáveis por
 // categoria (esse conceito, attributeSchema/attributes, foi removido

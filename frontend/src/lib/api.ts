@@ -5,7 +5,13 @@ import type {
   AdminShippingSimulation,
   AdminShippingZone,
   AdminUserSummary,
+  BulkCategoryItem,
+  BulkCategoryResult,
+  BulkCategoryUndoStatus,
   Category,
+  CategoryTree,
+  CategoryTreeNode,
+  SubcategoryTreeNode,
   CatalogJobRequest,
   CatalogJobStatusResponse,
   CatalogOptionsCategory,
@@ -108,6 +114,7 @@ export const api = {
       active?: boolean;
       categoryId?: string;
       subcategoryId?: string;
+      uncategorized?: boolean;
       q?: string;
       page?: number;
       pageSize?: number;
@@ -117,8 +124,11 @@ export const api = {
     const query = new URLSearchParams();
     if (params.q) query.set("q", params.q);
     if (params.active !== undefined) query.set("active", String(params.active));
-    if (params.categoryId) query.set("categoryId", params.categoryId);
-    if (params.subcategoryId) query.set("subcategoryId", params.subcategoryId);
+    if (params.uncategorized) query.set("uncategorized", "true");
+    else {
+      if (params.categoryId) query.set("categoryId", params.categoryId);
+      if (params.subcategoryId) query.set("subcategoryId", params.subcategoryId);
+    }
     if (params.page !== undefined) query.set("page", String(params.page));
     if (params.pageSize !== undefined) query.set("pageSize", String(params.pageSize));
     // "default" é o valor padrão do backend — não precisa ir na querystring.
@@ -212,6 +222,39 @@ export const api = {
   createCatalogJob: (data: CatalogJobRequest) =>
     request<{ id: string }>("/api/admin/catalog/jobs", { method: "POST", body: JSON.stringify(data) }),
   getCatalogJob: (id: string) => request<CatalogJobStatusResponse>(`/api/admin/catalog/jobs/${id}`),
+
+  // Tela de categorização (admin) — árvore com contagem + mover em lote +
+  // desfazer. CRUD de categoria/subcategoria (criar/renomear/apagar) tem
+  // suas próprias funções, adicionadas junto com a UI inline que as usa.
+  getCategoryTree: () => request<CategoryTree>("/api/admin/categories/tree"),
+  bulkMoveCategory: (items: BulkCategoryItem[]) =>
+    request<BulkCategoryResult>("/api/admin/products/bulk-category", { method: "PATCH", body: JSON.stringify({ items }) }),
+  undoBulkCategory: () => request<BulkCategoryResult>("/api/admin/products/bulk-category/undo", { method: "POST" }),
+  getBulkCategoryUndoStatus: () => request<BulkCategoryUndoStatus>("/api/admin/products/bulk-category/undo-status"),
+  createCategory: (name: string) =>
+    request<CategoryTreeNode>("/api/admin/categories", { method: "POST", body: JSON.stringify({ name }) }),
+  renameCategory: (id: string, name: string) =>
+    request<{ id: string; name: string; slug: string }>(`/api/admin/categories/${id}`, { method: "PATCH", body: JSON.stringify({ name }) }),
+  deleteCategory: (id: string, moveAffectedToUncategorized = false) =>
+    request<{ deleted: true; productsMoved: number }>(`/api/admin/categories/${id}`, {
+      method: "DELETE",
+      body: JSON.stringify({ moveAffectedToUncategorized }),
+    }),
+  createSubcategory: (categoryId: string, name: string) =>
+    request<SubcategoryTreeNode & { categoryId: string }>(`/api/admin/categories/${categoryId}/subcategories`, {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    }),
+  renameSubcategory: (id: string, name: string) =>
+    request<{ id: string; name: string; slug: string }>(`/api/admin/categories/subcategories/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ name }),
+    }),
+  deleteSubcategory: (id: string, moveAffectedToUncategorized = false) =>
+    request<{ deleted: true; productsMoved: number }>(`/api/admin/categories/subcategories/${id}`, {
+      method: "DELETE",
+      body: JSON.stringify({ moveAffectedToUncategorized }),
+    }),
 };
 
 // Versão stateless do tratamento por IA, para fotos staged (sem productId/
@@ -319,6 +362,33 @@ export async function exportProductsXlsx(): Promise<{ blob: Blob; filename: stri
   const disposition = res.headers.get("Content-Disposition") ?? "";
   const match = /filename="?([^"]+)"?/.exec(disposition);
   const filename = match?.[1] ?? `pecas-${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+  return { blob: await res.blob(), filename };
+}
+
+// Baixa o backup da categorização atual (id, sku, nome, categoria,
+// subcategoria) — mesmo padrão autenticado de exportProductsXlsx (fetch+blob,
+// o endpoint exige o token do admin).
+export async function exportCategoryCsv(): Promise<{ blob: Blob; filename: string }> {
+  const session = getSession();
+
+  const res = await fetch(`${API_URL}/api/admin/products/category-export.csv`, {
+    headers: session ? { Authorization: `Bearer ${session.token}` } : {},
+  });
+
+  if (res.status === 401) {
+    clearSession();
+    window.location.href = "/admin";
+    throw new ApiError(401, "Sessão expirada");
+  }
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, body.error ?? "Não foi possível exportar a categorização", body.details);
+  }
+
+  const disposition = res.headers.get("Content-Disposition") ?? "";
+  const match = /filename="?([^"]+)"?/.exec(disposition);
+  const filename = match?.[1] ?? `categorizacao-${new Date().toISOString().slice(0, 10)}.csv`;
 
   return { blob: await res.blob(), filename };
 }

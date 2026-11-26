@@ -87,6 +87,55 @@ export interface Category {
   subcategories: Subcategory[];
 }
 
+// Árvore de categorização do admin (GET /api/admin/categories/tree, com
+// contagem de peças) — diferente de Category/Subcategory acima, que vêm do
+// GET /api/categories público (sem contagem, usado pelo catálogo/menu).
+export interface SubcategoryTreeNode {
+  id: string;
+  name: string;
+  slug: string;
+  position: number;
+  productCount: number;
+}
+
+export interface CategoryTreeNode {
+  id: string;
+  name: string;
+  slug: string;
+  position: number;
+  productCount: number;
+  subcategories: SubcategoryTreeNode[];
+}
+
+export interface CategoryTree {
+  categories: CategoryTreeNode[];
+  uncategorized: { productCount: number };
+}
+
+// Destino de PATCH /api/admin/products/bulk-category — por peça (ver
+// backend/src/lib/bulkCategory.ts), mesmo quando a tela só oferece "mover
+// todas as selecionadas para o mesmo lugar" (expandido no cliente antes de
+// mandar).
+export interface BulkCategoryItem {
+  id: string;
+  categoryId: string | null;
+  subcategoryId: string | null;
+}
+
+export interface BulkCategoryResult {
+  updated: number;
+  skipped: number;
+  skippedIds: string[];
+  items: BulkCategoryItem[];
+}
+
+// GET /api/admin/products/bulk-category/undo-status — estado do botão
+// persistente "Desfazer última movimentação" (ver ProductCategorization.tsx).
+export interface BulkCategoryUndoStatus {
+  available: boolean;
+  count: number;
+}
+
 export interface Product {
   id: string;
   // Null = peça sem nome ainda (ver CONTEXT.md "campos opcionais"). O site
