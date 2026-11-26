@@ -219,6 +219,21 @@ describe("Catalog — eventos (GA4)", () => {
     expect(trackEvent).toHaveBeenCalledWith("search", { search_term: "topazio" });
   });
 
+  it("search_term enviado ao GA4 é saneado (telefone vira [redacted]), mas a busca em si usa o termo original", async () => {
+    renderCatalog();
+    await screen.findByText("Ametista Grande");
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Pesquisar peças" }), {
+      target: { value: "Contato 14 99822-1804" },
+    });
+    fireEvent.submit(screen.getByRole("search"));
+
+    expect(trackEvent).toHaveBeenCalledWith("search", { search_term: "[redacted]" });
+    await waitFor(() =>
+      expect(api.listProducts).toHaveBeenCalledWith(expect.objectContaining({ q: "Contato 14 99822-1804", page: 1 }))
+    );
+  });
+
   it("limpar a busca (termo vazio) NÃO dispara 'search'", async () => {
     renderCatalog(["/catalogo?q=ametista"]);
     await screen.findByText("Ametista Grande");

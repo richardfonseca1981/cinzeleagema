@@ -14,6 +14,7 @@ import { CloseIcon, SearchIcon } from "../components/landing/icons";
 import { WHATSAPP_HREF } from "../lib/whatsapp";
 import { hasMorePages, mergeProductPages } from "../lib/catalogPagination";
 import { CATALOG_SORTS, parseCatalogSort, type CatalogSort } from "../lib/catalogSort";
+import { sanitizeSearchTerm } from "../lib/sanitizeSearchTerm";
 
 // Mesmo limite do backend (ver listProductsQuerySchema) — corta antes de
 // mandar a requisição, em vez de deixar o servidor rejeitar com 400.
@@ -168,7 +169,7 @@ export function Catalog() {
   function handleSearchSubmit(e: React.FormEvent) {
     e.preventDefault();
     const term = searchDraft.trim().slice(0, SEARCH_MAX_LENGTH);
-    if (term) trackEvent("search", { search_term: term });
+    if (term) trackEvent("search", { search_term: sanitizeSearchTerm(term) });
     setFilters({ categoryId, subcategoryId, sort, q: term });
   }
 
