@@ -1,107 +1,56 @@
-import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
+import { useLocation } from "react-router-dom";
 import { Modal } from "./Modal";
-import { WhatsAppIcon } from "./icons";
+import { WhatsAppIcon, MailIcon } from "./icons";
+import { trackEvent } from "../../lib/analytics";
 
+// Só os dois canais REAIS de contato (WhatsApp e e-mail) — não há backend
+// para receber mensagem nenhuma. Chegou a existir um formulário (nome/e-mail/
+// assunto/mensagem) aqui, mas o "envio" só mostrava uma tela de sucesso sem
+// mandar a mensagem a lugar nenhum, enganando o visitante — removido de
+// propósito (ver CONTEXT.md "Feed de produtos" > correção do item "Contato"
+// do menu, e a correção desta rodada). Se um dia houver backend de e-mail/
+// notificação, um formulário de verdade pode voltar — não antes disso.
 export function ContactModal({
   open,
   onClose,
   whatsappHref,
+  contactEmail,
 }: {
   open: boolean;
   onClose: () => void;
   whatsappHref: string | null;
+  contactEmail: string | undefined;
 }) {
   const { t } = useTranslation();
-  const [submitted, setSubmitted] = useState(false);
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    // Site estático, sem backend: não há envio real ainda. Quando um
-    // serviço de e-mail/backend estiver disponível, conectar o submit deste
-    // formulário a ele em vez de só mostrar a mensagem de fallback abaixo.
-    setSubmitted(true);
-  }
-
-  function handleClose() {
-    setSubmitted(false);
-    onClose();
-  }
+  const location = useLocation();
 
   return (
-    <Modal open={open} onClose={handleClose} title={t("contactModal.title")}>
-      {submitted ? (
-        <div className="text-center">
-          <div className="rounded-lg bg-[#F0FDF4] p-4">
-            <p className="text-sm font-semibold text-[#22C55E]">{t("contactModal.submittedTitle")}</p>
-            <p className="mt-1 text-sm text-[#1A1A1A]">{t("contactModal.submittedBody")}</p>
-          </div>
-          {whatsappHref && (
-            <a
-              href={whatsappHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#C78F50] px-6 py-3 font-semibold text-[#010B1A] transition hover:bg-[#B37D3F]"
-            >
-              <WhatsAppIcon className="h-4 w-4" />
-              {t("contactModal.whatsappCta")}
-            </a>
-          )}
-        </div>
-      ) : (
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="contact-name" className="block text-sm font-medium text-[#1A1A1A]">
-              {t("contactModal.nameLabel")}
-            </label>
-            <input
-              id="contact-name"
-              type="text"
-              required
-              className="mt-1 w-full rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm focus:border-[#C78F50] focus:outline-none"
-            />
-          </div>
-          <div>
-            <label htmlFor="contact-email" className="block text-sm font-medium text-[#1A1A1A]">
-              {t("contactModal.emailLabel")}
-            </label>
-            <input
-              id="contact-email"
-              type="email"
-              required
-              className="mt-1 w-full rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm focus:border-[#C78F50] focus:outline-none"
-            />
-          </div>
-          <div>
-            <label htmlFor="contact-subject" className="block text-sm font-medium text-[#1A1A1A]">
-              {t("contactModal.subjectLabel")}
-            </label>
-            <input
-              id="contact-subject"
-              type="text"
-              required
-              className="mt-1 w-full rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm focus:border-[#C78F50] focus:outline-none"
-            />
-          </div>
-          <div>
-            <label htmlFor="contact-message" className="block text-sm font-medium text-[#1A1A1A]">
-              {t("contactModal.messageLabel")}
-            </label>
-            <textarea
-              id="contact-message"
-              rows={4}
-              required
-              className="mt-1 w-full rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm focus:border-[#C78F50] focus:outline-none"
-            />
-          </div>
-          <button
-            type="submit"
-            className="w-full rounded-lg bg-[#C78F50] px-4 py-2.5 font-semibold text-[#010B1A] transition hover:bg-[#B37D3F]"
+    <Modal open={open} onClose={onClose} title={t("contactModal.title")}>
+      <p className="text-sm text-[#1A1A1A]">{t("contactModal.intro")}</p>
+      <div className="mt-4 space-y-3">
+        {whatsappHref && (
+          <a
+            href={whatsappHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => trackEvent("whatsapp_click", { origin: "contact_modal", page: location.pathname })}
+            className="flex items-center justify-center gap-2 rounded-full bg-[#25D366] px-6 py-3 font-semibold text-white transition hover:opacity-90"
           >
-            {t("contactModal.submit")}
-          </button>
-        </form>
-      )}
+            <WhatsAppIcon className="h-4 w-4" />
+            {t("contactModal.whatsappCta")}
+          </a>
+        )}
+        {contactEmail && (
+          <a
+            href={`mailto:${contactEmail}`}
+            className="flex items-center justify-center gap-2 rounded-full border border-[#E2E8F0] px-6 py-3 font-semibold text-[#1A1A1A] transition hover:border-[#C78F50]"
+          >
+            <MailIcon className="h-4 w-4" />
+            {contactEmail}
+          </a>
+        )}
+      </div>
     </Modal>
   );
 }
