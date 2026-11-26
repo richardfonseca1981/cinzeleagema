@@ -364,7 +364,7 @@
     "updatedAt": "Última atualização: {{date}}",
     "intro": "Esta página explica quais dados o site da Cinzel e a Gema coleta, para quê e como você pode controlar essa coleta, em conformidade com a Lei Geral de Proteção de Dados (LGPD).",
     "controllerTitle": "Quem é o controlador dos dados",
-    "controllerBody": "O controlador dos dados tratados neste site é Cinzel e a Gema Comércio e Representação Ltda., CNPJ 68.854.699/0001-90. Dúvidas sobre privacidade podem ser enviadas para cinzeleagema@gmail.com.",
+    "controllerBody": "O controlador dos dados tratados neste site é {{legalName}}, CNPJ {{cnpj}}, com sede em {{address}}. Dúvidas sobre privacidade podem ser enviadas para cinzeleagema@gmail.com.",
     "whatWeCollectTitle": "O que coletamos",
     "whatWeCollectBody": "Usamos o Google Analytics (GA4) para entender como os visitantes usam o site: páginas vistas, origem do tráfego (de onde você veio — por exemplo uma rede social ou um link de divulgação) e cliques em elementos como o botão de WhatsApp, o botão de adicionar ao pedido e a cotação de frete. Nunca coletamos o CEP completo, dados de pagamento, nem qualquer informação que identifique você diretamente.",
     "consentTitle": "Consentimento e Google Consent Mode",

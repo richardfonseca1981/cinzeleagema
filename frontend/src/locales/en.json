@@ -381,7 +381,7 @@
     "updatedAt": "Last updated: {{date}}",
     "intro": "This page explains what data the Cinzel e a Gema website collects, why, and how you can control that collection, in line with Brazil's General Data Protection Law (LGPD).",
     "controllerTitle": "Who is the data controller",
-    "controllerBody": "The controller of the data processed on this site is Cinzel e a Gema Comércio e Representação Ltda., CNPJ (Brazilian company registry) 68.854.699/0001-90. Privacy questions can be sent to cinzeleagema@gmail.com.",
+    "controllerBody": "The controller of the data processed on this site is {{legalName}}, CNPJ (Brazilian company registry) {{cnpj}}, based at {{address}}. Privacy questions can be sent to cinzeleagema@gmail.com.",
     "whatWeCollectTitle": "What we collect",
     "whatWeCollectBody": "We use Google Analytics (GA4) to understand how visitors use the site: pages viewed, traffic origin (where you came from — for example a social network or a promotional link), and clicks on elements like the WhatsApp button, the add-to-order button, and the shipping quote. We never collect your full postal code, payment data, or anything that identifies you directly.",
     "consentTitle": "Consent and Google Consent Mode",
