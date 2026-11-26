@@ -5,12 +5,28 @@ import { WHATSAPP_HREF } from "../lib/whatsapp";
 import { Seo } from "../components/Seo";
 import { COMPANY } from "../config/company";
 
+// Mesma leitura direta de env var que Landing.tsx/PublicHeader.tsx já fazem
+// (CONTACT_EMAIL) — duplicada de propósito, mesma convenção do resto do
+// projeto. Não entra em config/company.ts porque esse módulo é só identidade
+// jurídica (razão social/CNPJ/endereço); e-mail de contato já tinha fonte
+// própria (VITE_CONTACT_EMAIL) usada em todo o site.
+const CONTACT_EMAIL = import.meta.env.VITE_CONTACT_EMAIL;
+
 // Data fixa do último texto publicado — atualizar manualmente sempre que o
 // conteúdo desta página mudar de fato (não é a data do build).
-const UPDATED_AT = "2026-11-24";
+const UPDATED_AT = "2026-11-26";
+
+// new Date("YYYY-MM-DD") interpreta a string como meia-noite UTC, o que pode
+// mostrar o dia anterior em fusos negativos (ex.: Brasil) — por isso o ano/
+// mês/dia são extraídos e passados pro construtor local do Date, nunca a
+// string ISO direto.
+function formatUpdatedAt(iso: string, locale: string): string {
+  const [year, month, day] = iso.split("-").map(Number);
+  return new Intl.DateTimeFormat(locale).format(new Date(year, month - 1, day));
+}
 
 export function Privacy() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#1A1A1A]">
@@ -18,19 +34,36 @@ export function Privacy() {
       <PublicHeader />
       <div className="mx-auto max-w-3xl px-4 py-10">
         <h1 className="text-2xl font-bold">{t("privacy.pageTitle")}</h1>
-        <p className="mt-1 text-sm text-[#64748B]">{t("privacy.updatedAt", { date: UPDATED_AT })}</p>
+        <p className="mt-1 text-sm text-[#64748B]">
+          {t("privacy.updatedAt", { date: formatUpdatedAt(UPDATED_AT, i18n.language) })}
+        </p>
         <p className="mt-6 leading-relaxed text-[#1A1A1A]">{t("privacy.intro")}</p>
 
         <section className="mt-8">
           <h2 className="text-lg font-semibold">{t("privacy.controllerTitle")}</h2>
           <p className="mt-2 leading-relaxed text-[#1A1A1A]">
-            {t("privacy.controllerBody", { legalName: COMPANY.legalName, cnpj: COMPANY.cnpj, address: COMPANY.address })}
+            {t("privacy.controllerBody", {
+              legalName: COMPANY.legalName,
+              cnpj: COMPANY.cnpj,
+              address: COMPANY.address,
+              email: CONTACT_EMAIL,
+            })}
           </p>
         </section>
 
         <section className="mt-8">
           <h2 className="text-lg font-semibold">{t("privacy.whatWeCollectTitle")}</h2>
           <p className="mt-2 leading-relaxed text-[#1A1A1A]">{t("privacy.whatWeCollectBody")}</p>
+        </section>
+
+        <section className="mt-8">
+          <h2 className="text-lg font-semibold">{t("privacy.orderDataTitle")}</h2>
+          <p className="mt-2 leading-relaxed text-[#1A1A1A]">{t("privacy.orderDataBody")}</p>
+        </section>
+
+        <section className="mt-8">
+          <h2 className="text-lg font-semibold">{t("privacy.shippingCalcTitle")}</h2>
+          <p className="mt-2 leading-relaxed text-[#1A1A1A]">{t("privacy.shippingCalcBody")}</p>
         </section>
 
         <section className="mt-8">
@@ -55,13 +88,36 @@ export function Privacy() {
         </section>
 
         <section className="mt-8">
+          <h2 className="text-lg font-semibold">{t("privacy.sharingTitle")}</h2>
+          <ul className="mt-2 list-disc space-y-1 pl-5 leading-relaxed text-[#1A1A1A]">
+            <li>{t("privacy.sharingListGoogle")}</li>
+            <li>{t("privacy.sharingListHosting")}</li>
+            <li>{t("privacy.sharingListPhotos")}</li>
+            <li>{t("privacy.sharingListShipping")}</li>
+            <li>{t("privacy.sharingListSupport")}</li>
+            <li>{t("privacy.sharingListWhatsapp")}</li>
+          </ul>
+          <p className="mt-2 leading-relaxed text-[#1A1A1A]">{t("privacy.sharingClosing")}</p>
+        </section>
+
+        <section className="mt-8">
+          <h2 className="text-lg font-semibold">{t("privacy.internationalTransferTitle")}</h2>
+          <p className="mt-2 leading-relaxed text-[#1A1A1A]">{t("privacy.internationalTransferBody")}</p>
+        </section>
+
+        <section className="mt-8">
+          <h2 className="text-lg font-semibold">{t("privacy.retentionTitle")}</h2>
+          <p className="mt-2 leading-relaxed text-[#1A1A1A]">{t("privacy.retentionBody")}</p>
+        </section>
+
+        <section className="mt-8">
           <h2 className="text-lg font-semibold">{t("privacy.rightsTitle")}</h2>
-          <p className="mt-2 leading-relaxed text-[#1A1A1A]">{t("privacy.rightsBody")}</p>
+          <p className="mt-2 leading-relaxed text-[#1A1A1A]">{t("privacy.rightsBody", { email: CONTACT_EMAIL })}</p>
         </section>
 
         <section className="mt-8">
           <h2 className="text-lg font-semibold">{t("privacy.contactTitle")}</h2>
-          <p className="mt-2 leading-relaxed text-[#1A1A1A]">{t("privacy.contactBody")}</p>
+          <p className="mt-2 leading-relaxed text-[#1A1A1A]">{t("privacy.contactBody", { email: CONTACT_EMAIL })}</p>
         </section>
       </div>
       <WhatsAppFloatingButton whatsappHref={WHATSAPP_HREF} />

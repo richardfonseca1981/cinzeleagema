@@ -370,7 +370,7 @@
   },
   "consent": {
     "title": "Cookie preferences",
-    "message": "We use Google Analytics to measure visits and clicks on the site (never your full postal code, payment data, or anything that directly identifies you). You can accept or reject this measurement.",
+    "message": "We use Google Analytics to measure visits and clicks on the site, without sending your full postal code, payment data, name, or phone number. You can accept or reject this measurement.",
     "learnMore": "Learn more",
     "accept": "Accept",
     "reject": "Reject"
@@ -381,9 +381,13 @@
     "updatedAt": "Last updated: {{date}}",
     "intro": "This page explains what data the Cinzel e a Gema website collects, why, and how you can control that collection, in line with Brazil's General Data Protection Law (LGPD).",
     "controllerTitle": "Who is the data controller",
-    "controllerBody": "The controller of the data processed on this site is {{legalName}}, CNPJ (Brazilian company registry) {{cnpj}}, based at {{address}}. Privacy questions can be sent to cinzeleagema@gmail.com.",
+    "controllerBody": "The controller of the data processed on this site is {{legalName}}, CNPJ (Brazilian company registry) {{cnpj}}, based at {{address}}. Privacy questions can be sent to {{email}}.",
     "whatWeCollectTitle": "What we collect",
-    "whatWeCollectBody": "We use Google Analytics (GA4) to understand how visitors use the site: pages viewed, traffic origin (where you came from — for example a social network or a promotional link), and clicks on elements like the WhatsApp button, the add-to-order button, and the shipping quote. We never collect your full postal code, payment data, or anything that identifies you directly.",
+    "whatWeCollectBody": "Site measurement (Google Analytics): pages viewed, traffic origin, terms typed into the catalog search, clicks on elements such as the WhatsApp and email buttons, add-to-order, and the shipping quote. In this measurement we never send Google your full postal code, payment data, name, phone number, or email. From the shipping quote, Google only receives city and state.",
+    "orderDataTitle": "Data you provide when placing an order",
+    "orderDataBody": "When you place an order, we ask for your name and phone number. We use this data only to talk to you about the order: confirming the pieces, payment, and delivery. It is sent to the store's customer service system (FluxioDesk). If that delivery isn't possible, the site opens a WhatsApp conversation with the message already written, which is only sent if you click send. The site does not store your name and phone number in its own database. We process this data to fulfill the order and attend to your request (LGPD, art. 7, V).",
+    "shippingCalcTitle": "Shipping calculation",
+    "shippingCalcBody": "To calculate shipping, the postal code you type is sent to our server, which queries ViaCEP (to identify the city and state) and Melhor Envio (to calculate price and delivery time). These services receive the postal code and the order's shipment data, but not your name or phone number. The postal code is saved only in your browser, so you don't lose the quote if the page reloads.",
     "consentTitle": "Consent and Google Consent Mode",
     "consentBody": "When you arrive on the site, you see a banner asking whether you accept or reject this measurement. While you haven't answered, or if you choose \"Reject\", we use Google Consent Mode: no analytics cookie is set and no individual measurement happens. Google Analytics still receives aggregated, cookie-less signals to estimate overall traffic volume through statistical modeling — without being able to tell who you are or follow your browsing across visits. On a site with Cinzel e a Gema's traffic volume, this modeling is noticeably less precise than cookie-based measurement: it may fail to capture small traffic spikes correctly.",
     "revokeTitle": "How to review your choice",
@@ -394,9 +398,21 @@
     "cookiesListCart": "cinzeleagema_cart and cinzeleagema_shipping — store your in-progress order and shipping data, so you don't lose your progress if the page reloads.",
     "cookiesListUtm": "cinzeleagema_utm — stores, only for the current browser session (cleared when you close the tab), which promotional link/campaign you arrived from, so we can measure our promotion correctly.",
     "cookiesListGa": "Google Analytics' own cookies (such as _ga) — only set if you accept measurement in the banner.",
+    "sharingTitle": "Who we share data with",
+    "sharingListGoogle": "Google (Google Analytics), only with your consent.",
+    "sharingListHosting": "Vercel and Railway, hosting for the site and the server — they receive the IP address of whoever accesses it.",
+    "sharingListPhotos": "Cloudflare, hosting for the product photos.",
+    "sharingListShipping": "ViaCEP and Melhor Envio, to calculate shipping.",
+    "sharingListSupport": "The store's customer service system (FluxioDesk), for orders.",
+    "sharingListWhatsapp": "WhatsApp/Meta, when you start a conversation.",
+    "sharingClosing": "We do not sell your data.",
+    "internationalTransferTitle": "International data transfer",
+    "internationalTransferBody": "Some of these services, such as Google, Vercel, Railway, and Cloudflare, may process data on servers outside Brazil. When that happens, we follow LGPD's rules for international data transfer.",
+    "retentionTitle": "How long we keep your data",
+    "retentionBody": "Google Analytics measurement: 14 months. Data stored in your browser (cart, shipping, language): until you clear your browser data. Cookie choice: until you change it. Name and phone number from an order: for as long as needed to fulfill the order and comply with legal obligations.",
     "rightsTitle": "Your rights (LGPD)",
-    "rightsBody": "You may request, at any time, by emailing cinzeleagema@gmail.com: confirmation that we process your data, access to the data processed, correction of incorrect data, and withdrawal of consent — withdrawal can also be done directly through the \"Cookie preferences\" link in the footer, with no need to contact us.",
+    "rightsBody": "You may request, at any time, by emailing {{email}}: confirmation that we process your data; access; correction of incorrect data; anonymization, blocking, or deletion of unnecessary data; portability; information about who we share your data with; and withdrawal of consent (which can also be done directly through the \"Cookie preferences\" link in the footer). We respond within 15 days. You can also file a complaint with Brazil's National Data Protection Authority (ANPD), at gov.br/anpd.",
     "contactTitle": "Contact",
-    "contactBody": "For any question about this policy, write to cinzeleagema@gmail.com."
+    "contactBody": "For any question about this policy, write to {{email}}."
   }
 }
