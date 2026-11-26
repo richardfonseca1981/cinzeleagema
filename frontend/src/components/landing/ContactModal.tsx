@@ -44,6 +44,7 @@ export function ContactModal({
         {contactEmail && (
           <a
             href={`mailto:${contactEmail}`}
+            onClick={() => trackEvent("email_click", { origin: "contact_modal", page: location.pathname })}
             className="flex items-center justify-center gap-2 rounded-full border border-[#E2E8F0] px-6 py-3 font-semibold text-[#1A1A1A] transition hover:border-[#C78F50]"
           >
             <MailIcon className="h-4 w-4" />

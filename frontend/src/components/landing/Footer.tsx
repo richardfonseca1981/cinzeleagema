@@ -1,8 +1,9 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { FacebookIcon, InstagramIcon, LinkedinIcon, MailIcon, MapPinIcon, WhatsAppIcon } from "./icons";
 import { WhatsAppGroupLink } from "./WhatsAppGroupLink";
 import { useConsent } from "../../lib/consent";
+import { trackEvent } from "../../lib/analytics";
 
 export function Footer({
   whatsappHref,
@@ -17,6 +18,7 @@ export function Footer({
 }) {
   const { t } = useTranslation();
   const { reopen } = useConsent();
+  const location = useLocation();
   const year = new Date().getFullYear();
 
   return (
@@ -45,7 +47,13 @@ export function Footer({
             <ul className="mt-3 space-y-2 text-sm">
               {whatsappHref && whatsappNumber && (
                 <li>
-                  <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-white">
+                  <a
+                    href={whatsappHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => trackEvent("whatsapp_click", { origin: "footer", page: location.pathname })}
+                    className="flex items-center gap-2 hover:text-white"
+                  >
                     <WhatsAppIcon className="h-4 w-4 flex-shrink-0" />
                     {whatsappNumber}
                   </a>
@@ -56,7 +64,11 @@ export function Footer({
               </li>
               {contactEmail && (
                 <li>
-                  <a href={`mailto:${contactEmail}`} className="flex items-center gap-2 hover:text-white">
+                  <a
+                    href={`mailto:${contactEmail}`}
+                    onClick={() => trackEvent("email_click", { origin: "footer", page: location.pathname })}
+                    className="flex items-center gap-2 hover:text-white"
+                  >
                     <MailIcon className="h-4 w-4 flex-shrink-0" />
                     {contactEmail}
                   </a>

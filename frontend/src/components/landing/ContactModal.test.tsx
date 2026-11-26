@@ -54,6 +54,18 @@ describe("ContactModal", () => {
     expect(emailLink).toHaveAttribute("href", "mailto:cinzeleagema@gmail.com");
   });
 
+  it("link de e-mail dispara email_click (origin: contact_modal), sem o endereço como parâmetro", () => {
+    renderModal({ contactEmail: "cinzeleagema@gmail.com" }, ["/catalogo"]);
+    const emailLink = screen.getByRole("link", { name: /cinzeleagema@gmail\.com/ });
+
+    fireEvent.click(emailLink);
+
+    expect(trackEvent).toHaveBeenCalledWith("email_click", { origin: "contact_modal", page: "/catalogo" });
+    const [, params] = vi.mocked(trackEvent).mock.calls[0];
+    expect(params).not.toHaveProperty("email");
+    expect(JSON.stringify(params)).not.toContain("cinzeleagema@gmail.com");
+  });
+
   it("sem whatsappHref, o link de WhatsApp não aparece (mas o de e-mail continua)", () => {
     renderModal({ whatsappHref: null });
     expect(screen.queryByRole("link", { name: /whatsapp/i })).not.toBeInTheDocument();
