@@ -137,6 +137,23 @@ describe("buildFeedItem", () => {
     expect(noCategory.googleProductCategory).toBeNull();
   });
 
+  // As 7 categorias reais de produção (ver auditoria 2026-11-27 ->
+  // googleProductCategoryMap.ts): confere que CADA slug real do site resulta
+  // exatamente no google_product_category esperado — detecta regressão se
+  // alguém reordenar/remover uma entrada do mapa.
+  it.each([
+    ["pedras-brutas", "Arts & Entertainment > Hobbies & Creative Arts > Arts & Crafts > Art & Crafting Materials > Embellishments & Trims > Loose Stones"],
+    ["pedras-polidas", "Arts & Entertainment > Hobbies & Creative Arts > Arts & Crafts > Art & Crafting Materials > Embellishments & Trims > Loose Stones"],
+    ["capelas", "Home & Garden > Decor"],
+    ["esferas", "Home & Garden > Decor"],
+    ["obeliscos", "Home & Garden > Decor > Artwork > Sculptures & Statues"],
+    ["esculturas", "Home & Garden > Decor > Artwork > Sculptures & Statues"],
+    ["joias", "Apparel & Accessories > Jewelry"],
+  ])("slug real '%s' -> google_product_category '%s'", (slug, expectedPath) => {
+    const item = buildFeedItem(product({ category: { slug, name: slug } }), SITE_URL);
+    expect(item.googleProductCategory).toBe(expectedPath);
+  });
+
   it("título e descrição truncados nos limites do Google (150 / 5000)", () => {
     const longName = "A".repeat(200);
     const longDescription = "B".repeat(6000);
@@ -160,6 +177,25 @@ describe("buildFeedItems", () => {
 
     const items = buildFeedItems([eligible, inactive, noPrice, noPhoto], SITE_URL);
     expect(items.map((i) => i.id)).toEqual(["cm-ok-a1b2c3"]);
+  });
+
+  // Categoria sem entrada no mapa (slug renomeado/removido, categoria nova
+  // ainda não mapeada etc.) nunca deve derrubar o feed nem excluir a peça —
+  // só o campo opcional google_product_category fica ausente (ver
+  // googleProductCategoryMap.ts). O total de itens gerados é o mesmo com ou
+  // sem mapeamento.
+  it("categoria sem mapeamento não quebra o feed nem muda o total de itens — só fica sem google_product_category", () => {
+    const mappedProduct = product({ id: "cm-mapeado-a1b2c3", category: { slug: "pedras-brutas", name: "Pedras Brutas" } });
+    const unmappedProduct = product({ id: "cm-sem-mapa-b2c3d4", category: { slug: "categoria-nova-sem-mapa", name: "Categoria Nova" } });
+
+    const items = buildFeedItems([mappedProduct, unmappedProduct], SITE_URL);
+    expect(items).toHaveLength(2);
+
+    const xml = renderGoogleFeedXml(items, SITE_URL);
+    expect(xml.match(/<item>/g)).toHaveLength(2);
+
+    const unmappedItem = items.find((i) => i.id === "cm-sem-mapa-b2c3d4")!;
+    expect(unmappedItem.googleProductCategory).toBeNull();
   });
 });
 
