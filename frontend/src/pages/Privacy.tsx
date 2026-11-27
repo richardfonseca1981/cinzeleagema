@@ -4,6 +4,7 @@ import { WhatsAppFloatingButton } from "../components/landing/WhatsAppFloatingBu
 import { WHATSAPP_HREF } from "../lib/whatsapp";
 import { Seo } from "../components/Seo";
 import { COMPANY } from "../config/company";
+import { formatUpdatedAt } from "../lib/format";
 
 // Mesma leitura direta de env var que Landing.tsx/PublicHeader.tsx já fazem
 // (CONTACT_EMAIL) — duplicada de propósito, mesma convenção do resto do
@@ -15,15 +16,6 @@ const CONTACT_EMAIL = import.meta.env.VITE_CONTACT_EMAIL;
 // Data fixa do último texto publicado — atualizar manualmente sempre que o
 // conteúdo desta página mudar de fato (não é a data do build).
 const UPDATED_AT = "2026-11-26";
-
-// new Date("YYYY-MM-DD") interpreta a string como meia-noite UTC, o que pode
-// mostrar o dia anterior em fusos negativos (ex.: Brasil) — por isso o ano/
-// mês/dia são extraídos e passados pro construtor local do Date, nunca a
-// string ISO direto.
-function formatUpdatedAt(iso: string, locale: string): string {
-  const [year, month, day] = iso.split("-").map(Number);
-  return new Intl.DateTimeFormat(locale).format(new Date(year, month - 1, day));
-}
 
 export function Privacy() {
   const { t, i18n } = useTranslation();
